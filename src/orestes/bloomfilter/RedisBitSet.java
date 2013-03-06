@@ -1,4 +1,4 @@
-package orestes.common.consistency;
+package orestes.bloomfilter;
 
 import java.util.BitSet;
 import java.util.List;

@@ -1,4 +1,4 @@
-package orestes.common.consistency;
+package orestes.bloomfilter;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -123,7 +123,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 * methods, as it has to perform arithmetic operations on potentially large numbers.
 	 * <li><tt>Hashmethod.CRC32</tt> uses a CRC32 checksum. It is rather fast an offers a good distribution.</li>
 	 * <li><tt>Hashmethod.Adler32</tt> uses the Adler32 checksum. Adler32 is faster than CRC32 but offers a slightly
-	 * less unfirm distribution.</li>
+	 * less uniform distribution.</li>
 	 * <li><tt>Hashmethod.Murmur</tt> uses the Murmur 2 hash function. It is a new and increasingly popular hash
 	 * function that is fast and very uniformly distributed.</li>
 	 * </ul>

@@ -1,4 +1,4 @@
-package orestes.common.consistency;
+package orestes.bloomfilter;
 
 import java.util.Collection;
 import java.util.List;

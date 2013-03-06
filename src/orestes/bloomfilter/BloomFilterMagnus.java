@@ -1,4 +1,4 @@
-package orestes.common.consistency;
+package orestes.bloomfilter;
 
 /**
  * This program is free software: you can redistribute it and/or modify
