@@ -1,4 +1,4 @@
-Orestes Bloom filters
+Orestes Bloom filter library
 ===================
 
 This is a set of Bloom filters we implemented as we found all existing open-source implementations to be lacking in various aspects. We will publish a statistical and performance analysis soon. Documentation on how to use these Bloom filters from a single applications as well as in a distributed, concurrent, Redis-based implementation will also follow.
@@ -72,12 +72,9 @@ bf.addAll(bulk);
 To get the best performance for a given use-case the parameters of the bloom filter mus be chosen wisely. There are several helpers and constructor overloads to configure the Bloom filter. So for example we could choose the Bloom filter to use 1000 Bits and then use the best number of hash functions for an expected amount of 6666 inserted elements. And then we choose Murmur as a different hash function:
 ```java
 //Create a more customized Bloom filter
-//Bits to use
-int m = 10000;
-//Optimal number of hash functions given n and m
-int k = BloomFilter.optimalK(6666, m);
-//The hash function type
-HashMethod hash = HashMethod.Murmur;
+int m = 10000; //Bits to use
+int k = BloomFilter.optimalK(6666, m); //Optimal number of hash functions given n and m
+HashMethod hash = HashMethod.Murmur; //The hash function type
 BloomFilter<Integer> bf2 = new BloomFilter<>(m, k);
 //Only set the hash function before using the Bloom filter
 bf2.setHashMethod(hash);
