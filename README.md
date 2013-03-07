@@ -10,7 +10,7 @@ The regular Bloom filter is very easy to use. It is the base class of all other 
 //Create a Bloom filter that has a false positive rate of 0.1 when containing 1000 elements
 BloomFilter<String> bf = new BloomFilter<>(1000, 0.1);
 ```
-The Bloom filter class is generic and will work with any type that implements the `toString()` method in a sensible way, since that String is what the Bloom filter feeds into its hash functions. Now lets add something:
+The Bloom filter class is generic and will work with any type that implements the `toString()` method in a sensible way, since that String is what the Bloom filter feeds into its hash functions. The `hashCode()` method is not used, since it returns integers that normally do not satisfy a uniform distribution of outputs that is essential for the optimal peformance of the Bloom filter. Now lets add something:
 
 ```java
 //Add a few elements
@@ -63,13 +63,14 @@ bf.clone();
 bf.clear();
 ```
 
-Also elements can be added in bulk:
+Also elements can be added and queried in bulk:
 ```java
 List<String> bulk = Arrays.asList(new String[] { "one", "two", "three" });
 bf.addAll(bulk);
+print(bf.containsAll(bulk)); //true
 ```
 
-To get the best performance for a given use-case the parameters of the bloom filter mus be chosen wisely. There are several helpers and constructor overloads to configure the Bloom filter. So for example we could choose the Bloom filter to use 1000 Bits and then use the best number of hash functions for an expected amount of 6666 inserted elements. And then we choose Murmur as a different hash function:
+To get the best performance for a given use-case the parameters of the bloom filter must be chosen wisely. There are several helpers and constructor overloads to configure the Bloom filter. So for example we could choose the Bloom filter to use 1000 Bits and then use the best number of hash functions for an expected amount of 6666 inserted elements. We choose Murmur as our hash function which is faster than cryptographic hash functions like MD5:
 ```java
 //Create a more customized Bloom filter
 int m = 10000; //Bits to use
@@ -78,6 +79,30 @@ HashMethod hash = HashMethod.Murmur; //The hash function type
 BloomFilter<Integer> bf2 = new BloomFilter<>(m, k);
 //Only set the hash function before using the Bloom filter
 bf2.setHashMethod(hash);
+```
+
+Bloom filters allow other cool stuff too. Consider for instance that you collected two Bloom filters which are compatible in their parameters. Now you want to consolidate their elements. This is achieved by ORing the respective Bit-Arrays of the Bloom filters:
+```java
+//Create two Bloom filters with equal parameters
+BloomFilter<String> one = new BloomFilter<String>(100, 0.01);
+BloomFilter<String> other = new BloomFilter<String>(100, 0.01);
+one.add("this");
+other.add("that");
+one.union(other);
+print(one.contains("this")); //true
+print(one.contains("that")); //true
+```
+
+The good thing about the `union()` operation is, that it returns the exact Bloom filter which would have been created, if all elements were inserted in one Bloom filter.
+
+There is a similar `intersect` operation achieved by ANDing the Bit-Arrays. It does however behave slightly different as it does not return the Bloom filter that only contains the intersection. It guarantees to have all elements of the intersection but the false positive rate might be slightly higher than that of the pure intersection:
+
+```java
+other.add("this");
+other.add("boggles");
+one.intersect(other);
+print(one.contains("this")); //true
+print(one.contains("boggles")); //false
 ```
 
 
