@@ -12,7 +12,17 @@ There are 4 types of Bloom filters in the Orestes Bloom filter library:
 * **Redis Counting Bloom Filter**, a Redis-backed, concurrency-safe Counting Bloom filter in two variants: one that holds a pregenerated regular Bloom filter and relies on Redis Lua scripting and one that can be distributed through client side consistent hasing or Redis Cluster
 
 ## Features
-What kind of Bloom filters are there in the library?
+There are a many things we addressed as we sorely missed them in other implementations:
+* Bloom filter and Counting Bloom filter with compatible interface in both a local and shared variants
+* Configuration of all parameters: Bit-Array size *m*, number of hash functions *k*, counting bits *c*
+* Automatic configuration by tolerable false positive rate *p* and expected elements *n*
+* Statistics, e.g. what is my current false positive probability?
+* Choice among different hash functions: the better (i.e. uniformly distributed) the hash function, the more accurate the Bloom filter but the better the hash function usually the slower it is -> choose from about 10-15  optimized hash functions, e.g. MD5, SHA, Murmur, LCGs, Carter-Wegman etc. or use a custom one
+* Operations on the shared Bloom filter need to be fast (single round-trips to Redis per operation and heavy use of pipelining)
+* Generation of the Bloom filter is always fast (on-the-fly pregeneration)
+* Support of union and intersection
+* Proper implementation of [rejection sampling](http://en.wikipedia.org/wiki/Rejection_sampling) in hashing and chaining of hash values taking into account the [avalanche effect](http://en.wikipedia.org/wiki/Avalanche_effect): increased the hash quality
+* Minimal dependencies: the local Bloom filters have none at all, the Redis Bloom filters need the [jedis](https://github.com/xetorthio/jedis) client library (in the `lib` folder)
 
 
 
