@@ -3,10 +3,10 @@ Orestes Bloom filter library
 
 This is a set of Bloom filters we implemented as we found all existing open-source implementations to be lacking in various aspects. This libary takes some inspiration from the [simple Bloom filter implementation of Magnus Skjegstad](https://github.com/MagnusS/Java-BloomFilter) and the [Ruby Bloom filters by Ilya Grigorik](https://github.com/igrigorik/bloomfilter-rb).
 
-The Bloom filter is a probabilistic set data structure which is very small. This is achieved by allowing false positives with some probability *p*. It has an `add` and `contains` operation which a both very fast (time complexity *O(1)*). The Counting Bloom filter is an extension of the Bloom filter with a `remove` operation at the cost of incurring an additional space overhead for counting. There are many good introductions to Bloom filters: the [Wikipedia article](http://en.wikipedia.org/wiki/Bloom_filter) is excellent, and even better is a [survey by Broder and Mitzenmacher](http://www.cs.utexas.edu/~yzhang/teaching/cs386m-f8/Readings/im2005b.pdf). Typical use cases of Bloom filters are content summaries and sets that would usually grow too large in fields such as networking, distributed systems, databases and analytics.
+The Bloom filter is a probabilistic set data structure which is very small. This is achieved by allowing false positives with some probability *p*. It has an `add` and `contains` operation which both are very fast (time complexity *O(1)*). The Counting Bloom filter is an extension of the Bloom filter with a `remove` operation at the cost of incurring an additional space overhead for counting. There are many good introductions to Bloom filters: the [Wikipedia article](http://en.wikipedia.org/wiki/Bloom_filter) is excellent, and even better is a [survey by Broder and Mitzenmacher](http://www.cs.utexas.edu/~yzhang/teaching/cs386m-f8/Readings/im2005b.pdf). Typical use cases of Bloom filters are content summaries and sets that would usually grow too large in fields such as networking, distributed systems, databases and analytics.
 
 There are 4 types of Bloom filters in the Orestes Bloom filter library:
-* **Bloom filter**, a regular in-memory Java Bloom filter
+* **Regular Bloom filter**, a regular in-memory Java Bloom filter
 * **Counting Bloom filter**, a Counting Bloom Filter which supports element removal
 * **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications
 * **Redis Counting Bloom Filter**, a Redis-backed, concurrency-safe Counting Bloom filter in two variants: one that holds a pregenerated regular Bloom filter and relies on Redis Lua scripting and one that can be distributed through client side consistent hasing or Redis Cluster
@@ -21,13 +21,14 @@ There are a many things we addressed as we sorely missed them in other implement
 * Operations on the shared Bloom filter need to be fast (single round-trips to Redis per operation and heavy use of pipelining)
 * Generation of the Bloom filter is always fast (on-the-fly pregeneration)
 * Support of union and intersection
-* Implementation of [rejection sampling](http://en.wikipedia.org/wiki/Rejection_sampling) and chaining of hash values taking into account the [avalanche effect](http://en.wikipedia.org/wiki/Avalanche_effect): higher hash quality
-* Minimal dependencies: the local Bloom filters have none, the Redis Bloom filters need the [jedis](https://github.com/xetorthio/jedis) client jar (in  `lib` folder)
-* Concurrency: the shared Bloom filter may be queried and accessed by many applications simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
+* Implementation of [rejection sampling](http://en.wikipedia.org/wiki/Rejection_sampling) and chaining of hash values taking into account the [avalanche effect](http://en.wikipedia.org/wiki/Avalanche_effect) (higher hash quality)
+* Minimal dependencies: the local Bloom filters have none, the Redis Bloom filters need the [jedis](https://github.com/xetorthio/jedis) client library (in  `lib` folder)
+* Concurrency: the shared Bloom filter can be accessed by many clients simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
 
-### How to use it?
+## Getting started
+Download the `orestes-bf.jar` and add it your classpath. Or checkout the repository and build it using ant: `ant build`. For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project.
 
-
+## Usage
 ### Regular Bloom Filter
 The regular Bloom filter is very easy to use. It is the base class of all other Bloom filters. Figure out, how many elements you expect to have in the Bloom filter ( *n* ) and then which false positive rate is tolerable ( *p* ).
 
@@ -129,6 +130,8 @@ one.intersect(other);
 print(one.contains("this")); //true
 print(one.contains("boggles")); //false
 ```
+
+## Counting Bloom Filter
 
 
 License
