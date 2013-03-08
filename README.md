@@ -6,14 +6,14 @@ This is a set of Bloom filters we implemented as we found all existing open-sour
 The Bloom filter is a probabilistic set data structure which is very small. This is achieved by allowing false positives with some probability *p*. It has an `add` and `contains` operation which both are very fast (time complexity *O(1)*). The Counting Bloom filter is an extension of the Bloom filter with a `remove` operation at the cost of incurring an additional space overhead for counting. There are many good introductions to Bloom filters: the [Wikipedia article](http://en.wikipedia.org/wiki/Bloom_filter) is excellent, and even better is a [survey by Broder and Mitzenmacher](http://www.cs.utexas.edu/~yzhang/teaching/cs386m-f8/Readings/im2005b.pdf). Typical use cases of Bloom filters are content summaries and sets that would usually grow too large in fields such as networking, distributed systems, databases and analytics.
 
 There are 4 types of Bloom filters in the Orestes Bloom filter library:
-* **Regular Bloom filter**, a regular in-memory Java Bloom filter
-* **Counting Bloom filter**, a Counting Bloom Filter which supports element removal
-* **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications
-* **Redis Counting Bloom Filter**, a Redis-backed, concurrency-safe Counting Bloom filter in two variants: one that holds a pregenerated regular Bloom filter and relies on Redis Lua scripting and one that can be distributed through client side consistent hasing or Redis Cluster
+* **Regular Bloom filter**, a regular in-memory Java Bloom filter (`BloomFilter`)
+* **Counting Bloom filter**, a Counting Bloom Filter which supports element removal (`CBloomFilter`)
+* **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`BloomFilterRedis`)
+* **Redis Counting Bloom Filter**, a Redis-backed, concurrency-safe Counting Bloom filter in two variants: one that holds a pregenerated regular Bloom filter and relies on Redis Lua scripting (`CBloomFilterRedisBits`) and one that can be distributed through client side consistent hasing or Redis Cluster (`CBloomFilterRedis`)
 
 ## Features
 There are a many things we addressed as we sorely missed them in other implementations:
-* Bloom filter and Counting Bloom filter with compatible interface in both a local and shared variants
+* Bloom filter and Counting Bloom filter in both a local and shared variants with the same interface
 * Configuration of all parameters: Bit-Array size *m*, number of hash functions *k*, counting bits *c*
 * Automatic configuration given the tolerable false positive rate *p* and expected elements *n*
 * Statistics, e.g. what is my current false positive probability?
