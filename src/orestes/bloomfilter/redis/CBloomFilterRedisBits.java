@@ -1,5 +1,6 @@
-package orestes.bloomfilter;
+package orestes.bloomfilter.redis;
 
+import orestes.bloomfilter.CBloomFilter;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 
@@ -34,7 +35,7 @@ public class CBloomFilterRedisBits<T> extends CBloomFilter<T> {
 			t.set(M, Integer.toString(m));
 			t.set(K, Integer.toString(k));
 			t.set(C, Integer.toString(c));
-			t.set(HASH, getHashFunctionName());
+			t.set(HASH, getCryptographicHashFunctionName());
 			t.exec();
 		}
 		incr = jedis.scriptLoad(SETANDINCR);

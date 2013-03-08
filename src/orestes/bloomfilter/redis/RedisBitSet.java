@@ -1,4 +1,4 @@
-package orestes.bloomfilter;
+package orestes.bloomfilter.redis;
 
 import java.util.BitSet;
 import java.util.List;

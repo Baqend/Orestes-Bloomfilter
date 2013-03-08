@@ -3,6 +3,7 @@ package orestes.bloomfilter;
 import java.util.BitSet;
 import java.util.Collection;
 
+
 public class CBloomFilter<T> extends BloomFilter<T> {
 	protected BitSet counts;
 	protected int c;

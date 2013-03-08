@@ -1,7 +1,9 @@
-package orestes.bloomfilter;
+package orestes.bloomfilter.redis;
 
 import java.util.Collection;
 import java.util.List;
+
+import orestes.bloomfilter.BloomFilter;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
@@ -49,7 +51,7 @@ public class BloomFilterRedis<T> extends BloomFilter<T> {
 			Transaction t = jedis.multi();
 			t.set(M, Integer.toString(m));
 			t.set(K, Integer.toString(k));
-			t.set(HASH, getHashFunctionName());
+			t.set(HASH, getCryptographicHashFunctionName());
 			t.exec();
 		}
 	}
