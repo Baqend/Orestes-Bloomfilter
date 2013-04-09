@@ -11,6 +11,15 @@ There are 4 types of Bloom filters in the Orestes Bloom filter library:
 * **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`BloomFilterRedis`)
 * **Redis Counting Bloom Filter**, a Redis-backed, concurrency-safe Counting Bloom filter in two variants: one that holds a pregenerated regular Bloom filter and relies on Redis Lua scripting (`CBloomFilterRedisBits`) and one that can be distributed through client side consistent hasing or Redis Cluster (`CBloomFilterRedis`)
 
+## Err, Bloom what?
+Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
+```java
+BloomFilter<String> urls = new BloomFilter<>(100_000_000, 0.01); //Expect 100M URLs
+urls.add("http://github.com") //Add millions of URLs
+urls.contains("http://twitter.com") //Know in an instant which ones you have or have not seen before
+```
+So what's the catch? Bloom filters allow false positive (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare false positives (false negatives never happen) then Bloom filters are probably for you.
+
 ## Features
 There are a many things we addressed as we sorely missed them in other implementations:
 * Bloom filter and Counting Bloom filter in both a local and shared variants with the same interface
@@ -26,11 +35,11 @@ There are a many things we addressed as we sorely missed them in other implement
 * Concurrency: the shared Bloom filter can be accessed by many clients simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
 
 ## Getting started
-Download the `orestes-bf.jar` and add it your classpath. Or checkout the repository and build it using ant: `ant build`. For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project.
+Download the [orestes-bf.jar](https://orestes-binaries.s3.amazonaws.com/orestes-bf.jar) and add it your classpath (also in `/build` folder). Or checkout the repository and build it using ant: `ant build`. For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project.
 
 ## Usage
 ### Regular Bloom Filter
-The regular Bloom filter is very easy to use. It is the base class of all other Bloom filters. Figure out, how many elements you expect to have in the Bloom filter ( *n* ) and then which false positive rate is tolerable ( *p* ).
+The regular Bloom filter is very easy to use. It is the base class of all other Bloom filters. Figure out how many elements you expect to have in the Bloom filter ( *n* ) and then which false positive rate is tolerable ( *p* ).
 
 ```java
 //Create a Bloom filter that has a false positive rate of 0.1 when containing 1000 elements
