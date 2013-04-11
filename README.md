@@ -11,6 +11,9 @@ There are 4 types of Bloom filters in the Orestes Bloom filter library:
 * **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`BloomFilterRedis`)
 * **Redis Counting Bloom Filter**, a Redis-backed, concurrency-safe Counting Bloom filter in two variants: one that holds a pregenerated regular Bloom filter and relies on Redis Lua scripting (`CBloomFilterRedisBits`) and one that can be distributed through client side consistent hasing or Redis Cluster (`CBloomFilterRedis`)
 
+### Docs
+The Javadoc is online [here](http://orestes-bloomfilter-docs.s3-website-eu-west-1.amazonaws.com/) and in the */docs* folder of the repository.
+
 ## Err, Bloom what?
 Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
 ```java
@@ -35,7 +38,7 @@ There are a many things we addressed as we sorely missed them in other implement
 * Concurrency: the shared Bloom filter can be accessed by many clients simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
 
 ## Getting started
-Download the [orestes-bf.jar](https://orestes-binaries.s3.amazonaws.com/orestes-bf.jar) and add it your classpath (also in `/build` folder). Or checkout the repository and build it using ant: `ant build`. For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project.
+Download the [orestes-bf.jar](https://orestes-binaries.s3.amazonaws.com/orestes-bf.jar) and add it your classpath. The jar is also contained in the */build* folder of the repository. Or checkout the repository and build it using ant: `ant build`. For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project.
 
 ## Usage
 ### Regular Bloom Filter
