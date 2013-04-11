@@ -12,7 +12,7 @@ There are 4 types of Bloom filters in the Orestes Bloom filter library:
 * **Redis Counting Bloom Filter**, a Redis-backed, concurrency-safe Counting Bloom filter in two variants: one that holds a pregenerated regular Bloom filter and relies on Redis Lua scripting (`CBloomFilterRedisBits`) and one that can be distributed through client side consistent hasing or Redis Cluster (`CBloomFilterRedis`)
 
 ### Docs
-The Javadoc is online [here](http://orestes-bloomfilter-docs.s3-website-eu-west-1.amazonaws.com/) and in the */docs* folder of the repository.
+The Javadocs are online [here](http://orestes-bloomfilter-docs.s3-website-eu-west-1.amazonaws.com/) and in the */docs* folder of the repository.
 
 ## Err, Bloom what?
 Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
@@ -144,6 +144,68 @@ print(one.contains("boggles")); //false
 ```
 
 ## Counting Bloom Filter
+The Counting Bloom filter allows object removal. For this purpose it has binary counters instead of simple bits. In `CBloomFilter` the amount of bits *c* per counter can be set. If you expect to insert elements only once, the probability of a Bit overflow is very small for *c = 4* : *1.37 * 10^-15 * m* for up to *n* inserted elements ([details](http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html#SECTION00053000000000000000)).
+
+```java
+//Create a Counting Bloom filter that has a FP rate of 0.01 when 1000 are inserted
+//and uses 4 Bits for Counting
+CBloomFilter<String> cbf = new CBloomFilter<>(1000, 0.01, 4);
+cbf.add("http://google.com");
+cbf.add("http://twitter.com");
+print(cbf.contains("http://google.com")); //true
+print(cbf.contains("http://twitter.com")); //true
+```
+
+If you insert one distinct item multiple times, the same counter always get updated so you should pick a higher *c* so that *2^c > inserted_copies*.
+The Counting Bloom Filter extends the normal Bloom Filter by `remove` and `removeAll` methods:
+
+```java
+cbf.remove("http://google.com");
+print(cbf.contains("http://google.com")); //false
+```
+
+To handle overflows (which is unlikely to ever be an issue) you can set an overflow callback:
+
+```java
+//Handling Overflows
+cbf.setOverflowHandler(new OverflowHandler() {
+	@Override
+	public void onOverflow() {
+		print("Oops, c should better be higher the next time.");
+	}
+});
+for (int i = 1; i < 20; i++) {
+	print("Round " + i);
+	cbf.add("http://example.com"); //Causes onOverflow() in Round >= 16
+}
+```
+
+To understand the inner workings of the Counting Bloom filter lets actually look at the bits of small filter:
+
+```java
+CBloomFilter<String> small = new CBloomFilter<>(3, 0.2, 4);
+small.add("One");
+small.add("Two");
+small.add("Three");
+print(small.toString());
+```
+This gives:
+```bash
+Counting Bloom Filter, Parameters m = 11, k = 3, c = 4
+1 0001
+0 0000
+1 0001
+0 0000
+0 0000
+0 0000
+1 0001
+0 0000
+1 0001
+0 0000
+1 0101
+```
+
+The Counting Bloom filter thus has a bit size of 11, uses 3 hash functions and 4 bits for counting. The first row is the materialized bit array of all counters > 0. Explcitly saving it makes `contains` calls fast and generation when transferring the Counting Bloom Filter flattened to a Bloom filter.
 
 
 License
