@@ -144,7 +144,7 @@ public class RedisBitSet extends BitSet {
 	/**
 	 * Performs the normal {@link #set(int, boolean)} operation using the given pipeline.
 	 * 
-	 * @param t
+	 * @param p
 	 *            the propagated pipeline
 	 * @param bitIndex
 	 *            a bit index

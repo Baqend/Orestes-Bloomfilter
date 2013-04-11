@@ -110,7 +110,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	}
 
 	/**
-	 * Increment the iternal counter upon insertion of new elements.
+	 * Increment the internal counter upon insertion of new elements.
 	 * 
 	 * @param index
 	 *            position at which to increase
@@ -132,12 +132,17 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 		}
 
 		// If the counter overflowed, call the handler
-		if (!incremented)
+		// and set the counter to the maximum value
+		if (!incremented) {
 			overflowHandler.onOverflow();
+			for (int i = (high - 1); i >= low; i--) {
+				counts.set(i);
+			}
+		}
 	}
 
 	/**
-	 * Decrements the interal counter upon deletion.
+	 * Decrements the internal counter upon deletion and unsets the Bloom filter bit if necessary.
 	 * 
 	 * @param index
 	 *            position at which to decrease
@@ -175,8 +180,6 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	/**
 	 * Returns the number of bits used for counting
 	 * 
-	 * @param c
-	 *            Number of bits used for counting
 	 */
 	public int getC() {
 		return this.c;
