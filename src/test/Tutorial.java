@@ -1,17 +1,18 @@
 package test;
 
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
-
-import com.google.gson.JsonElement;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.BloomFilter.HashMethod;
 import orestes.bloomfilter.CBloomFilter;
 import orestes.bloomfilter.CBloomFilter.OverflowHandler;
 import orestes.bloomfilter.json.BloomFilterConverter;
+import orestes.bloomfilter.redis.BloomFilterRedis;
+import orestes.bloomfilter.redis.CBloomFilterRedis;
+
+import com.google.gson.JsonElement;
 
 public class Tutorial {
 	
@@ -124,11 +125,42 @@ public class Tutorial {
 		
 	}
 	
+	public static void redisBF() {
+		//Redis' IP
+		String IP = "192.168.44.131";	
+		//Open a Redis-backed Bloom filter
+		BloomFilterRedis<String> bfr = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
+		bfr.add("cow");
+		
+		//Open a second Redis-backed Bloom filter with a new connection
+		BloomFilterRedis<String> bfr2 = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
+		bfr2.add("bison");
+		
+		print(bfr.contains("cow")); //true
+		print(bfr.contains("bison")); //true
+	}
+	
+	public static void redisCBF() {
+		//Redis' IP
+		String IP = "192.168.44.131";	
+		//Open a Redis-backed Bloom filter
+		CBloomFilterRedis<String> cbfr = new CBloomFilterRedis<>(IP, 6379, 10000, 0.01);
+		cbfr.add("cow");
+		
+		//Open a second Redis-backed Bloom filter with a new connection
+		CBloomFilterRedis<String> bfr2 = new CBloomFilterRedis<>(IP, 6379, 10000, 0.01);
+		bfr2.add("bison");
+		bfr2.remove("cow");
+		
+		print(cbfr.contains("bison")); //true
+		print(cbfr.contains("cow")); //false
+	}
+	
 	public static void jsonBF() {
 		BloomFilter<String> bf = new BloomFilter<>(50, 0.1);
 		bf.add("Ululu");
 		JsonElement json = BloomFilterConverter.toJson(bf);
-		print(json);
+		print(json); //{"m":240,"k":4,"HashMethod":"Cryptographic","CryptographicHashFunction":"MD5","bits":"AAAAEAAAAACAgAAAAAAAAAAAAAAQ"}
 		BloomFilter<String> otherBf = BloomFilterConverter.fromJson(json);
 		print(bf.contains("Ululu")); //true
 	}

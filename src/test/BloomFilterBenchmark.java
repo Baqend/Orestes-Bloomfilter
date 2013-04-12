@@ -1,8 +1,10 @@
-package orestes.bloomfilter;
+package test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import orestes.bloomfilter.BloomFilter;
 
 /**
  * A (very) simple benchmark to evaluate the performance of the Bloom filter class.

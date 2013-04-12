@@ -6,14 +6,17 @@ import java.util.List;
 import java.util.UUID;
 
 import orestes.bloomfilter.BloomFilter.HashMethod;
+import orestes.bloomfilter.redis.CBloomFilterRedis;
 import orestes.bloomfilter.redis.CBloomFilterRedisBits;
 
 import org.junit.Ignore;
 import org.junit.Test;
 
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
+import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.Transaction;
 import redis.clients.util.SafeEncoder;
 
@@ -22,6 +25,7 @@ import redis.clients.util.SafeEncoder;
  */
 public class RedisTests {
 
+	private static String IP = "192.168.44.131";
 
 	@Test
 	public void jedisTest() {
@@ -174,8 +178,20 @@ public class RedisTests {
 		
 	}
 	
+	@Test
+	public void sharding() {
+		List<JedisShardInfo> shards = new ArrayList<JedisShardInfo>();
+		JedisShardInfo si = new JedisShardInfo(IP, 6379);
+		si = new JedisShardInfo(IP, 6380);
+		shards.add(si);
+		ShardedJedis jedis = new ShardedJedis(shards);
+		jedis.set("a", "brakdabra");
+		System.out.println(jedis.get("a"));
+	}
+	
+	
 	private Jedis jedis() {
-		return new Jedis("192.168.249.10", 6379);
+		return new Jedis(IP, 6379);
 	}
 
 }
