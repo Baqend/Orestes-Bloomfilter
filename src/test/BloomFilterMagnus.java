@@ -1,4 +1,4 @@
-package orestes.bloomfilter;
+package test;
 
 /**
  * This program is free software: you can redistribute it and/or modify

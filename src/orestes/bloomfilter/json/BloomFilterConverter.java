@@ -15,7 +15,7 @@ public class BloomFilterConverter {
 	/**
 	 * Convert a Bloom filter into a JSON Element.
 	 * @param source the Bloom filter to convert
-	 * @return
+	 * @return the JSON representation of the Bloom filter
 	 */
 	public static JsonElement toJson(BloomFilter<?> source) {
 		JsonObject root = new JsonObject();

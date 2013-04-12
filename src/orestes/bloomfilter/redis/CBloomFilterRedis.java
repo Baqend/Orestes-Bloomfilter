@@ -30,12 +30,12 @@ public class CBloomFilterRedis<T> extends CBloomFilter<T> {
 	protected Pipeline p;
 	protected int ttl = 0;
 
-	public CBloomFilterRedis(String host, int port, double n, double p, int c) {
-		this(host, port, optimalM(n, p), optimalK(n, optimalM(n, p)), c);
+	public CBloomFilterRedis(String host, int port, double n, double p) {
+		this(host, port, optimalM(n, p), optimalK(n, optimalM(n, p)));
 	}
 
-	public CBloomFilterRedis(String host, int port, int m, int k, int c) {
-		this(host, port, null, new RedisBitSet(host, port, BLOOM, m), m, k, c);
+	public CBloomFilterRedis(String host, int port, int m, int k) {
+		this(host, port, null, new RedisBitSet(host, port, BLOOM, m), m, k, 32);
 	}
 
 	protected CBloomFilterRedis(String host, int port, BitSet counts, BitSet bloom, int m, int k, int c) {
@@ -56,7 +56,7 @@ public class CBloomFilterRedis<T> extends CBloomFilter<T> {
 
 	public CBloomFilterRedis(Jedis jedis) {
 		this(jedis.getClient().getHost(), jedis.getClient().getPort(), Integer.parseInt(jedis.get(M)), Integer
-				.parseInt(jedis.get(K)), Integer.parseInt(jedis.get(C)));
+				.parseInt(jedis.get(K)));
 		setCryptographicHashFunction(jedis.get(HASH));
 	}
 

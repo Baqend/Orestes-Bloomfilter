@@ -17,7 +17,7 @@ import redis.clients.jedis.Jedis;
 
 public class RedisBFTests {
 
-	public static String host = "192.168.249.10";
+	public static String host = "192.168.44.131";
 	public static int port = 6379;
 
 	@Test
@@ -25,7 +25,7 @@ public class RedisBFTests {
 		Jedis jedis = jedis();
 		double n = 2;
 		double p = 0.01;
-		CBloomFilterRedis<String> b = new CBloomFilterRedis<String>(host, port, n, p, 4);
+		CBloomFilterRedis<String> b = new CBloomFilterRedis<String>(host, port, n, p);
 		CBloomFilterRedisBits<String> b2 = new CBloomFilterRedisBits<String>(host, port, n, p, 4);
 		b.clear();
 		b2.clear();
@@ -40,7 +40,7 @@ public class RedisBFTests {
 		Jedis jedis = jedis();
 		double n = 5;
 		double p = 0.01;
-		CBloomFilterRedis<String> b = new CBloomFilterRedis<String>(host, port, n, p, 4);
+		CBloomFilterRedis<String> b = new CBloomFilterRedis<String>(host, port, n, p);
 		CBloomFilterRedisBits<String> b2 = new CBloomFilterRedisBits<String>(host, port, n, p, 4);
 		b.clear();
 		b2.clear();
@@ -52,12 +52,12 @@ public class RedisBFTests {
 
 	@Test
 	public void ImplementationDifferences() {
-		int n = 1_000_000;
+		int n = 10_000;
 		int m = 10_000;
 		BloomFilter<String> bf = new BloomFilter<String>(m, 10);
 		BloomFilterRedis<String> bfr = new BloomFilterRedis<String>(host, port, m, 10);
 		CBloomFilter<String> cbf = new CBloomFilter<String>(m, 10, 4);
-		CBloomFilterRedis<String> cbfr = new CBloomFilterRedis<String>(host, port, m, 10, 4);
+		CBloomFilterRedis<String> cbfr = new CBloomFilterRedis<String>(host, port, m, 10);
 		CBloomFilterRedisBits<String> cbfrb = new CBloomFilterRedisBits<String>(host, port, m, 10, 4);
 
 		bfr.clear();
@@ -75,12 +75,12 @@ public class RedisBFTests {
 		cbfrb.clear();
 	}
 
-	@Ignore
+	//@Ignore
 	@Test
 	public void concurrencyTests() throws InterruptedException {
 		final int n = 300;
 		int threads = 2;
-		new CBloomFilterRedis<String>(host, port, 10, 10, 4).clear();
+		new CBloomFilterRedis<String>(host, port, 10, 10).clear();
 		final ArrayList<String> real = new ArrayList<String>(n);
 		for (int i = 0; i < n; i++) {
 			real.add("Ich bin die OID " + i);
@@ -93,13 +93,14 @@ public class RedisBFTests {
 
 				@Override
 				public void run() {
-					CBloomFilter<String> cbfr = new CBloomFilterRedis<String>(host, port, 10, 10, 4);
+					CBloomFilter<String> cbfr = new CBloomFilterRedis<String>(host, port, 10, 10);
 					for (int j = 0; j < n; j++) {
 						String str = real.get((int) (Math.random() * n));
 						String before = ((RedisBitSet)cbfr.getBitSet()).asBitSet().toString();
 						cbfr.add(str);
 						String between = ((RedisBitSet)cbfr.getBitSet()).asBitSet().toString();
 						if (!cbfr.contains(str)) {
+							//False Negative
 							System.out.println("[Thread " + id + "]: ooops " + str + " not contained");
 							System.out.println("Before: " + before);
 							System.out.println("Between: " + between);
@@ -107,6 +108,7 @@ public class RedisBFTests {
 						}
 						cbfr.remove(str);
 						if (cbfr.contains(str)) {
+							//False Positive
 							System.out.println("[Thread " + id + "]: ooops " + str + " still contained");
 						}
 					}
