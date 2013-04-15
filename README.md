@@ -48,6 +48,8 @@ Download the [orestes-bf.jar](https://orestes-binaries.s3.amazonaws.com/orestes-
 - [Redis Bloom Filters](#a3)
 - [Redis Counting Bloom Filters](#a4)
 - [JSON Representation](#a5)
+- [Hash Functions](#a6)
+- [Performance](#a7)
 
 <a name="a1"/>
 ### Regular Bloom Filter
@@ -285,13 +287,13 @@ JSON is not an ideal format for binary content (Base64 only uses 64 out of 94 po
 
 <a name="a6"/>
 ## Hash Functions
-There is a detailed description of the available hash functions in the <a href="http://orestes-bloomfilter-docs.s3-website-eu-west-1.amazonaws.com/orestes/bloomfilter/BloomFilter.html#setHashMethod(orestes.bloomfilter.BloomFilter.HashMethod)">Javadocs of the Bloomfilter.setHashMethod method</a> and the Javadocs of the respective hash function implementations. Hash uniformity (i.e. all bits of the Bloom filter are equally likely) is of great importance for the false positive rate. But there is also an inherent tradeoff between hash uniformity and speed of computation. For instance cryptographic hash functions have very good distribution properties but are very CPU intensive. Pseudorandom number generators like the [linear congruential generator](http://en.wikipedia.org/wiki/Linear_congruential_generator) are easy to compute but do not have perfectly random outputs but rather certain distribution patterns which for some inputs are notable and for others are negligible.
+There is a detailed description of the available hash functions in the <a href="http://orestes-bloomfilter-docs.s3-website-eu-west-1.amazonaws.com/orestes/bloomfilter/BloomFilter.html#setHashMethod(orestes.bloomfilter.BloomFilter.HashMethod)">Javadocs of the Bloomfilter.setHashMethod method</a> and the Javadocs of the respective hash function implementations. Hash uniformity (i.e. all bits of the Bloom filter are equally likely) is of great importance for the false positive rate. But there is also an inherent tradeoff between hash uniformity and speed of computation. For instance cryptographic hash functions have very good distribution properties but are very CPU intensive. Pseudorandom number generators like the [linear congruential generator](http://en.wikipedia.org/wiki/Linear_congruential_generator) are easy to compute but do not have perfectly random outputs but rather certain distribution patterns which for some inputs are notable and for others are negligible. The implementations of all hash functions are part of the BloomFilter class and use tricks like [rejection sampling](https://en.wikipedia.org/wiki/Rejection_sampling) to get the best possible distribution for the respective hash function type.
 
 Here is a Box plot overview of how good the different hash functions perform (Intel i7 w/ 4 cores, 8 GB RAM). The configuration is 1000000 hashes using k = 5, m = 1000 averaged over 10 runs. 
 
 <img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/hash-speed.png"/>
 
-Speed of computation doesn't tell much about the quality of hash values. A good hash function is one, which has a discrete uniform distribution of outputs. That means that every bit of the Bloom filter's bit vector is equally likely to bet set. To measure, if and how good the hash functions follow a uniform distribution we did [goodness of fit Chi-Square hypothesis tests](http://en.wikipedia.org/wiki/Pearson%27s_chi-squared_test).
+Speed of computation doesn't tell much about the quality of hash values. A good hash function is one, which has a discrete uniform distribution of outputs. That means that every bit of the Bloom filter's bit vector is equally likely to bet set. To measure if and how good the hash functions follow a uniform distribution [goodness of fit Chi-Square hypothesis tests](http://en.wikipedia.org/wiki/Pearson%27s_chi-squared_test) are the mathematical instrument of choice.
 
 Here are some of the results. The inputs are random strings. The p-value is the probability of getting a statistical result that is at least as extreme as the obtained result. So the usual way of hypothesis testing would be rejecting the null hypothesis ("the hash hash function is uniformly distributed") if the p-value is smaller than 0.05. We did 100 Chi-Square Tests:
 
@@ -322,15 +324,29 @@ Now a real example of inserting random elements in the Bloom filter, ordered by 
 
 In summary, cryptographic hash functions offer the most consistent uniform distribution, but are slightly more expensive to compute. LCGs, for instance Java Random, perform quite well in most cases and are cheap to compute. The best compromise seems to be the [Murmur hash function](https://sites.google.com/site/murmurhash/), which has a good distribution and is quite fast to compute.
 
-Performance
-===========
+It's also possible to provide a custom hash function:
+```java
+BloomFilter<String> bf = new BloomFilter<>(1000, 0.01);
+bf.setCusomHashFunction(new CustomHashFunction() {
+	@Override
+	public int[] hash(byte[] value, int m, int k) {
+		//...
+	}			
+});
+```
+
+
+<a name="a7"/>
+## Performance
 
 Next steps
 ==========
 - Compatible Javascript implementation which can consume the JSON Bloom filter representation
-- *CBloomFilterSharded* which just uses counters as keys without a materialized bit array. It will have no hotspots and use client-side sharding to distribute keys over an 
+- *CBloomFilterSharded* which just uses counters as keys without a materialized bit array. It will have no hotspots and use client-side sharding to distribute keys over an arbitrary amount of Redis instances. The trade-off is unlimited horizontal scalability vs inefficient generation of the flat Bloom filter.
 
-arbitrary amount of Redis instances. The trade-off is unlimited horizontal scalability vs inefficient generation of the flat Bloom filter.
+Other Bloom filter libraries
+============================
+
 
 License
 =======
