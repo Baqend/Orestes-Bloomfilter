@@ -223,7 +223,7 @@ These kind of use-cases are ideal for the Redis-backed Bloom filters of this lib
 Reasons to use these Redis-backed Bloom filters instead of their pure Java brothers are:
 * **Concurrent** or **Distributed** Access to on Bloom filter
 * **Persistence** Requirements (e.g. saving the Bloom filter to disk once every second)
-* **Scalability* of the Bloom Filter beyond one machine (will require either client-side sharding + `CBloomFilterRedis` or [Redis Cluster](http://redis.io/topics/cluster-spec) )
+* **Scalability** of the Bloom Filter beyond one machine ([Redis Cluster](http://redis.io/topics/cluster-spec) or client-side sharding with *CBlommFilterRedisSharded* which is under development )
 
 Using the Redis-backed Bloom filter is straightforward:
 
@@ -287,9 +287,40 @@ JSON is not an ideal format for binary content (Base64 only uses 64 out of 94 po
 ## Hash Functions
 There is a detailed description of the available hash functions in the <a href="http://orestes-bloomfilter-docs.s3-website-eu-west-1.amazonaws.com/orestes/bloomfilter/BloomFilter.html#setHashMethod(orestes.bloomfilter.BloomFilter.HashMethod)">Javadocs of the Bloomfilter.setHashMethod method</a> and the Javadocs of the respective hash function implementations. Hash uniformity (i.e. all bits of the Bloom filter are equally likely) is of great importance for the false positive rate. But there is also an inherent tradeoff between hash uniformity and speed of computation. For instance cryptographic hash functions have very good distribution properties but are very CPU intensive. Pseudorandom number generators like the [linear congruential generator](http://en.wikipedia.org/wiki/Linear_congruential_generator) are easy to compute but do not have perfectly random outputs but rather certain distribution patterns which for some inputs are notable and for others are negligible.
 
-Here is a Box plot overview of how good the different hash functions perform (Intel i7 w/ 4 cores, 8 GB RAM). The configuration is 1 000 000 hashes using k = 5, m = 1000 averaged over 10 runs. 
+Here is a Box plot overview of how good the different hash functions perform (Intel i7 w/ 4 cores, 8 GB RAM). The configuration is 1000000 hashes using k = 5, m = 1000 averaged over 10 runs. 
 
 <img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/hash-speed.png"/>
+
+Speed of computation doesn't tell much about the quality of hash values. A good hash function is one, which has a discrete uniform distribution of outputs. That means that every bit of the Bloom filter's bit vector is equally likely to bet set. To measure, if and how good the hash functions follow a uniform distribution we did [goodness of fit Chi-Square hypothesis tests](http://en.wikipedia.org/wiki/Pearson%27s_chi-squared_test).
+
+Here are some of the results. The inputs are random strings. The p-value is the probability of getting a statistical result that is at least as extreme as the obtained result. So the usual way of hypothesis testing would be rejecting the null hypothesis ("the hash hash function is uniformly distributed") if the p-value is smaller than 0.05. We did 100 Chi-Square Tests:
+
+<img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/chi-strings.png"/>
+
+If about 5 runs fail the test an 95 pass it, we can be very confident that the hash function is indeed uniformly distributed. For random inputs it is relatively easy though, so we also tested other input distribution, e.g. increasing integers:
+
+<img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/chi-ints.png"/>
+
+Here the LCG is too evenly distributed (due to its modulo arithmetics) which is a good thing here, but shows, that LCGs do not have a random uniform distribution. The Carter-Wegman hash function fails because its constants are too small.
+
+Now a real example of inserting random elements in the Bloom filter, ordered by the false postive rate after  n = 30000 inserted elements using m = 300000 bits:
+
+<table>
+<tr><th>Hashfunction</th><th>Speed  (ms)</th><th>f during insert</th><th>f final</th></tr>
+ <tr><td>SimpleLCG</td><td>26,83</td><td>0,0016</td><td>0,0095</td></tr>
+ <tr><td>Cryptographic (MD5)</td><td>247,8</td><td>0,0017</td><td>0,0097</td></tr>
+ <tr><td>Java RNG</td><td>37,05</td><td>0,0013</td><td>0,0101</td></tr>
+ <tr><td>SecureRNG</td><td>263,2</td><td>0,0013</td><td>0,0101</td></tr>
+ <tr><td>CarterWegman</td><td>606,76</td><td>0,0013</td><td>0,0101</td></tr>
+ <tr><td>CRC32</td><td>114,4</td><td>0,0012</td><td>0,0102</td></tr>
+ <tr><td>Cryptographic (SHA-256)</td><td>265,28</td><td>0,0012</td><td>0,0103</td></tr>
+ <tr><td>Murmur</td><td>57,94</td><td>0,0017</td><td>0,0104</td></tr>
+ <tr><td>Cryptographic (SHA1)</td><td>257,99</td><td>0,0016</td><td>0,0105</td></tr>
+ <tr><td>Cryptographic (SHA-512)</td><td>232,22</td><td>0,0015</td><td>0,0111</td></tr>
+ <tr><td>Adler32</td><td>116,73</td><td>0,9282</td><td>0,986</td></tr>
+</table>
+
+In summary, cryptographic hash functions offer the most consistent uniform distribution, but are slightly more expensive to compute. LCGs, for instance Java Random, perform quite well in most cases and are cheap to compute. The best compromise seems to be the [Murmur hash function](https://sites.google.com/site/murmurhash/), which has a good distribution and is quite fast to compute.
 
 Performance
 ===========
