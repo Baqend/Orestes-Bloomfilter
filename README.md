@@ -338,6 +338,26 @@ bf.setCusomHashFunction(new CustomHashFunction() {
 
 <a name="a7"/>
 ## Performance
+To get meaningful results, the Bloom filters should be tested on a machine where there are to be run. The test package contains a benchmark procedure (the test packages relies on the Apache Commons Math library):
+
+```java
+BloomFilter<String> bf = new BloomFilter<>(100_000, 0.01);
+BFTests.benchmark(bf, "My test", 1_000_000);
+```
+This gives over 500000 operations per second (on my machine):
+```
+My test
+k = 7 p = 0.9952950593251605 n = 1000000 m = 958506
+add(): 1.943s, 514668.0391 elements/s
+addAll(): 1.59s, 628930.8176 elements/s
+contains(), existing: 1.429s, 699790.063 elements/s
+contains(), nonexisting: 1.469s, 680735.194 elements/s
+100000 hash() calls: 0.029s, 3448275.8621 elements/s
+Hash Quality (Chi-Squared-Test): p-value = 0.9487628088638604 , Chi-Squared-Statistic = 956245.1584854313
+```
+
+The Redis-backed and Counting Bloom filters can also be tested.
+
 
 Next steps
 ==========
