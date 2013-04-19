@@ -274,7 +274,7 @@ print(cbfr.contains("cow")); //false
 
 <a name="a5"/>
 ## JSON Representation
-To easily transfer a Bloom filter to a client (for instance via an HTTP GET) there is a JSON Converter for the Bloom filters are implemented so that this generation option is very cheap (i.e. just sequntially reading it from memory). It works for all Bloom filters including the ones backed by Redis.
+To easily transfer a Bloom filter to a client (for instance via an HTTP GET) there is a JSON Converter for the Bloom filters. All Bloom filters are implemented so that this generation option is very cheap (i.e. just sequentially reading it from memory). It works for all Bloom filters including the ones backed by Redis.
 ```java
 BloomFilter<String> bf = new BloomFilter<>(50, 0.1);
 bf.add("Ululu");
@@ -283,7 +283,7 @@ print(json); //{"m":240,"k":4,"HashMethod":"Cryptographic","CryptographicHashFun
 BloomFilter<String> otherBf = BloomFilterConverter.fromJson(json);
 print(bf.contains("Ululu")); //true
 ```
-JSON is not an ideal format for binary content (Base64 only uses 64 out of 94 possible characters) it's highly interoperable and easy to read which outweighs the slight waste of space. Combining it with a [Content-Encoding](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) like gzip usually compensates that.
+JSON is not an ideal format for binary content (Base64 only uses 64 out of 94 possible characters) but it's highly interoperable and easy to read which outweighs the slight waste of space. Combining it with a [Content-Encoding](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) like gzip usually compensates the overhead.
 
 <a name="a6"/>
 ## Hash Functions
