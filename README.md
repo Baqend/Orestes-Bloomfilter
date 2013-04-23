@@ -18,10 +18,12 @@ The Javadocs are online [here](http://orestes-bloomfilter-docs.s3-website-eu-wes
 Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
 ```java
 BloomFilter<String> urls = new BloomFilter<>(100_000_000, 0.01); //Expect 100M URLs
-urls.add("http://github.com") //Add millions of URLs
-urls.contains("http://twitter.com") //Know in an instant which ones you have or have not seen before
+urls.add("http://github.com"); //Add millions of URLs
+urls.contains("http://twitter.com"); //Know in an instant which ones you have or have not seen before
 ```
-So what's the catch? Bloom filters allow false positive (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare false positives (false negatives never happen) then Bloom filters are probably for you.
+So what's the catch? Bloom filters allow false positives (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare 
+
+false positives (false negatives never happen) then Bloom filters are probably for you.
 
 ## Features
 There are a many things we addressed as we sorely missed them in other implementations:
@@ -38,9 +40,18 @@ There are a many things we addressed as we sorely missed them in other implement
 * Concurrency: the shared Bloom filter can be accessed by many clients simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
 
 ## Getting started
-Download the [orestes-bf.jar](https://orestes-binaries.s3.amazonaws.com/orestes-bf.jar) and add it your classpath. The jar is also contained in the */build* folder of the repository. Or checkout the repository and build it using ant: `ant build`. For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project.
+Download the [orestes-bf.jar](https://orestes-binaries.s3.amazonaws.com/orestes-bf.jar) and add it your classpath. The jar is also contained in the */build* folder of the repository. Or checkout the repository and build it using ant: `ant build`. For the normal Bloom filters it's even sufficient to only copy the source *.java files to your  project.
 
 ## Usage
+- [Regular Bloom Filter](#a1)
+- [Counting Bloom Filter](#a2)
+- [Redis Bloom Filters](#a3)
+- [Redis Counting Bloom Filters](#a4)
+- [JSON Representation](#a5)
+- [Hash Functions](#a6)
+- [Performance](#a7)
+
+<a name="a1"/>
 ### Regular Bloom Filter
 The regular Bloom filter is very easy to use. It is the base class of all other Bloom filters. Figure out how many elements you expect to have in the Bloom filter ( *n* ) and then which false positive rate is tolerable ( *p* ).
 
@@ -131,9 +142,8 @@ print(one.contains("this")); //true
 print(one.contains("that")); //true
 ```
 
-The good thing about the `union()` operation is, that it returns the exact Bloom filter which would have been created, if all elements were inserted in one Bloom filter.
-
-There is a similar `intersect` operation that ANDs the Bit-Arrays. It does however behave slightly different as it does not return the Bloom filter that only contains the intersection. It guarantees to have all elements of the intersection but the false positive rate might be slightly higher than that of the pure intersection:
+The good thing about the `union()` operation is, that it returns the exact Bloom filter which would have been created, if all elements were inserted in one Bloom filter. There is a similar `intersect` operation that ANDs the Bit-Arrays. It does however behave slightly different as it does not return the Bloom filter that only contains the 
+intersection. It guarantees to have all elements of the intersection but the false positive rate might be slightly higher than that of the pure intersection:
 
 ```java
 other.add("this");
@@ -143,8 +153,9 @@ print(one.contains("this")); //true
 print(one.contains("boggles")); //false
 ```
 
+<a name="a2"/>
 ## Counting Bloom Filter
-The Counting Bloom filter allows object removal. For this purpose it has binary counters instead of simple bits. In `CBloomFilter` the amount of bits *c* per counter can be set. If you expect to insert elements only once, the probability of a Bit overflow is very small for *c = 4* : *1.37 * 10^-15 * m* for up to *n* inserted elements ([details](http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html#SECTION00053000000000000000)).
+The Counting Bloom filter allows object removal. For this purpose it has binary counters instead of simple bits. In `CBloomFilter` the amount of bits *c* per counter can be set. If you expect to insert elements only once, the probability of a Bit overflow is very small for *c = 4* : *1.37 * 10^-15 * m* for up to *n* inserted elements  ([details](http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html#SECTION00053000000000000000)). For most use-cases 4 Bits are the best choice.
 
 ```java
 //Create a Counting Bloom filter that has a FP rate of 0.01 when 1000 are inserted
@@ -156,8 +167,7 @@ print(cbf.contains("http://google.com")); //true
 print(cbf.contains("http://twitter.com")); //true
 ```
 
-If you insert one distinct item multiple times, the same counter always get updated so you should pick a higher *c* so that *2^c > inserted_copies*.
-The Counting Bloom Filter extends the normal Bloom Filter by `remove` and `removeAll` methods:
+If you insert one distinct item multiple times, the same counter always get updated so you should pick a higher *c* so that *2^c > inserted_copies*. The Counting Bloom Filter extends the normal Bloom Filter by `remove` and `removeAll` methods:
 
 ```java
 cbf.remove("http://google.com");
@@ -184,9 +194,7 @@ To understand the inner workings of the Counting Bloom filter lets actually look
 
 ```java
 CBloomFilter<String> small = new CBloomFilter<>(3, 0.2, 4);
-small.add("One");
-small.add("Two");
-small.add("Three");
+small.add("One"); small.add("Two"); small.add("Three");
 print(small.toString());
 ```
 This gives:
@@ -206,6 +214,158 @@ Counting Bloom Filter, Parameters m = 11, k = 3, c = 4
 ```
 
 The Counting Bloom filter thus has a bit size of 11, uses 3 hash functions and 4 bits for counting. The first row is the materialized bit array of all counters > 0. Explcitly saving it makes `contains` calls fast and generation when transferring the Counting Bloom Filter flattened to a Bloom filter.
+
+
+<a name="a3"/>
+## Redis Bloom Filters
+Bloom filters are really intresting beauce they allow very high throughput and minimal latency for adding and querying (and removing). Therefore you might want to use them across the boundaries of a single machine. For instance imagine you run a large scale web site or web service. You have a load balancer distributing the request load over several front-end web servers. You now want to store some information with a natural set structure, say, you want to know if a source IP adress has accessed the requested URL in the past. You could achieve that by either eplicitly storing that information (probably in a database) which will soon be a bottleneck if you serve billions of requests a day. Or you employ a shared Bloom filter and accept a small possibility of false positives.
+
+These kind of use-cases are ideal for the Redis-backed Bloom filters of this library. They have the same Java Interfaces as the normal and Counting Bloom filter but store the Bloom filter bits in the [in-memory key-value store Redis](http://redis.io).
+
+Reasons to use these Redis-backed Bloom filters instead of their pure Java brothers are:
+* **Concurrent** or **Distributed** Access to on Bloom filter
+* **Persistence** Requirements (e.g. saving the Bloom filter to disk once every second)
+* **Scalability** of the Bloom Filter beyond one machine ([Redis Cluster](http://redis.io/topics/cluster-spec) or client-side sharding with *CBlommFilterRedisSharded* which is under development )
+
+Using the Redis-backed Bloom filter is straightforward:
+
+1. Install Redis. This is extremely easy: [see Redis Installation](http://redis.io/download).
+2. Start Redis with `$ redis-server`. The server will listen on port 6379.
+3. In your application (might be on a different machine) instantiate a Redis-backed Bloom filter giving the IP or host name of Redis and its port: `new BloomFilterRedis<>("192.168.44.131", 6379, 10000, 0.01);`
+
+The Redis-backed Bloom filters have the same Interface as the normal Bloom filters:
+
+```java
+//Redis' IP
+String IP = "192.168.44.131";	
+//Open a Redis-backed Bloom filter
+BloomFilterRedis<String> bfr = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
+bfr.add("cow");
+
+//Open a second Redis-backed Bloom filter with a new connection
+BloomFilterRedis<String> bfr2 = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
+bfr2.add("bison");
+
+print(bfr.contains("cow")); //true
+print(bfr.contains("bison")); //true
+```
+
+The Redis-backed Bloom filters are concurrency/thread-safe at the backend. That means you can concurrently insert from any machine without running into anomalies, inconsistencies or lost data. The Redis-backed Bloom filters are implemented using efficient [Redis bit arrays](http://redis.io/commands/getbit). They make heavy use of [pipelining](http://redis.io/topics/pipelining) so that every `add` and `contains` call only needs one round-trip. This is the most performance critical aspect and usually not found in [other implementations](https://github.com/igrigorik/bloomfilter-rb) which need one round-trip for every Bit or worse.
+
+The Redis-backed Bloom filters save their metadata (like number and kind of hash functions) in Redis, too. Thus other clients can easily to connect to a Redis instance that already holds a Bloom filter using `new BloomFilterRedis(new Jedis(ip, port))` or the similar constructors of *CBloomFilterRedis* or *CBloomFilterRedisBits*.
+
+<a name="a4"/>
+## Redis Counting Bloom Filters
+There are two kinds of Redis-backed Counting Bloom filters:
+* **CBloomfilterRedis** saves the counters as separate keys and keeps the materialized flat Bloom filter as bit array. It is comptatible with Redis 2.4 or higher.
+* **CBloomFilterRedisBits** uses a bit array for the counters. This is much more space efficient (~ factor 10) but needs at least Redis 2.6 as it relies on Lua scripting.
+
+```java
+CBloomFilterRedis<String> cbfr = new CBloomFilterRedis<>(IP, 6379, 10000, 0.01);
+cbfr.add("cow");
+CBloomFilterRedis<String> bfr2 = new CBloomFilterRedis<>(IP, 6379, 10000, 0.01);
+bfr2.add("bison");
+bfr2.remove("cow");
+print(cbfr.contains("bison")); //true
+print(cbfr.contains("cow")); //false
+```
+
+*CBloomFilterRedisBits* works similar but you have to provide the counter size *c*. It uses Lua scripts (stored procedures in Redis) to atomically increment and decrement on a bit array. If you use Redis 2.6 or higher and it runs on one machine, you should choose *CBloomFilterRedisBits* as it consumes much less memory.
+
+<a name="a5"/>
+## JSON Representation
+To easily transfer a Bloom filter to a client (for instance via an HTTP GET) there is a JSON Converter for the Bloom filters. All Bloom filters are implemented so that this generation option is very cheap (i.e. just sequentially reading it from memory). It works for all Bloom filters including the ones backed by Redis.
+```java
+BloomFilter<String> bf = new BloomFilter<>(50, 0.1);
+bf.add("Ululu");
+JsonElement json = BloomFilterConverter.toJson(bf);
+print(json); //{"m":240,"k":4,"HashMethod":"Cryptographic","CryptographicHashFunction":"MD5","bits":"AAAAEAAAAACAgAAAAAAAAAAAAAAQ"}
+BloomFilter<String> otherBf = BloomFilterConverter.fromJson(json);
+print(bf.contains("Ululu")); //true
+```
+JSON is not an ideal format for binary content (Base64 only uses 64 out of 94 possible characters) but it's highly interoperable and easy to read which outweighs the slight waste of space. Combining it with a [Content-Encoding](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) like gzip usually compensates the overhead.
+
+<a name="a6"/>
+## Hash Functions
+There is a detailed description of the available hash functions in the <a href="http://orestes-bloomfilter-docs.s3-website-eu-west-1.amazonaws.com/orestes/bloomfilter/BloomFilter.html#setHashMethod(orestes.bloomfilter.BloomFilter.HashMethod)">Javadocs of the Bloomfilter.setHashMethod method</a> and the Javadocs of the respective hash function implementations. Hash uniformity (i.e. all bits of the Bloom filter are equally likely) is of great importance for the false positive rate. But there is also an inherent tradeoff between hash uniformity and speed of computation. For instance cryptographic hash functions have very good distribution properties but are very CPU intensive. Pseudorandom number generators like the [linear congruential generator](http://en.wikipedia.org/wiki/Linear_congruential_generator) are easy to compute but do not have perfectly random outputs but rather certain distribution patterns which for some inputs are notable and for others are negligible. The implementations of all hash functions are part of the BloomFilter class and use tricks like [rejection sampling](https://en.wikipedia.org/wiki/Rejection_sampling) to get the best possible distribution for the respective hash function type.
+
+Here is a Box plot overview of how good the different hash functions perform (Intel i7 w/ 4 cores, 8 GB RAM). The configuration is 1000000 hashes using k = 5, m = 1000 averaged over 10 runs. 
+
+<img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/hash-speed.png"/>
+
+Speed of computation doesn't tell much about the quality of hash values. A good hash function is one, which has a discrete uniform distribution of outputs. That means that every bit of the Bloom filter's bit vector is equally likely to bet set. To measure if and how good the hash functions follow a uniform distribution [goodness of fit Chi-Square hypothesis tests](http://en.wikipedia.org/wiki/Pearson%27s_chi-squared_test) are the mathematical instrument of choice.
+
+Here are some of the results. The inputs are random strings. The p-value is the probability of getting a statistical result that is at least as extreme as the obtained result. So the usual way of hypothesis testing would be rejecting the null hypothesis ("the hash hash function is uniformly distributed") if the p-value is smaller than 0.05. We did 100 Chi-Square Tests:
+
+<img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/chi-strings.png"/>
+
+If about 5 runs fail the test an 95 pass it, we can be very confident that the hash function is indeed uniformly distributed. For random inputs it is relatively easy though, so we also tested other input distribution, e.g. increasing integers:
+
+<img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/chi-ints.png"/>
+
+Here the LCG is too evenly distributed (due to its modulo arithmetics) which is a good thing here, but shows, that LCGs do not have a random uniform distribution. The Carter-Wegman hash function fails because its constants are too small.
+
+Now a real example of inserting random elements in the Bloom filter, ordered by the false postive rate after  n = 30000 inserted elements using m = 300000 bits:
+
+<table>
+<tr><th>Hashfunction</th><th>Speed  (ms)</th><th>f during insert</th><th>f final</th></tr>
+ <tr><td>SimpleLCG</td><td>26,83</td><td>0,0016</td><td>0,0095</td></tr>
+ <tr><td>Cryptographic (MD5)</td><td>247,8</td><td>0,0017</td><td>0,0097</td></tr>
+ <tr><td>Java RNG</td><td>37,05</td><td>0,0013</td><td>0,0101</td></tr>
+ <tr><td>SecureRNG</td><td>263,2</td><td>0,0013</td><td>0,0101</td></tr>
+ <tr><td>CarterWegman</td><td>606,76</td><td>0,0013</td><td>0,0101</td></tr>
+ <tr><td>CRC32</td><td>114,4</td><td>0,0012</td><td>0,0102</td></tr>
+ <tr><td>Cryptographic (SHA-256)</td><td>265,28</td><td>0,0012</td><td>0,0103</td></tr>
+ <tr><td>Murmur</td><td>57,94</td><td>0,0017</td><td>0,0104</td></tr>
+ <tr><td>Cryptographic (SHA1)</td><td>257,99</td><td>0,0016</td><td>0,0105</td></tr>
+ <tr><td>Cryptographic (SHA-512)</td><td>232,22</td><td>0,0015</td><td>0,0111</td></tr>
+ <tr><td>Adler32</td><td>116,73</td><td>0,9282</td><td>0,986</td></tr>
+</table>
+
+In summary, cryptographic hash functions offer the most consistent uniform distribution, but are slightly more expensive to compute. LCGs, for instance Java Random, perform quite well in most cases and are cheap to compute. The best compromise seems to be the [Murmur hash function](https://sites.google.com/site/murmurhash/), which has a good distribution and is quite fast to compute.
+
+It's also possible to provide a custom hash function:
+```java
+BloomFilter<String> bf = new BloomFilter<>(1000, 0.01);
+bf.setCusomHashFunction(new CustomHashFunction() {
+	@Override
+	public int[] hash(byte[] value, int m, int k) {
+		//...
+	}			
+});
+```
+
+
+<a name="a7"/>
+## Performance
+To get meaningful results, the Bloom filters should be tested on a machine where there are to be run. The test package contains a benchmark procedure (the test packages relies on the Apache Commons Math library):
+
+```java
+BloomFilter<String> bf = new BloomFilter<>(100_000, 0.01);
+BFTests.benchmark(bf, "My test", 1_000_000);
+```
+This gives over 500000 operations per second (on my machine):
+```
+My test
+k = 7 p = 0.9952950593251605 n = 1000000 m = 958506
+add(): 1.943s, 514668.0391 elements/s
+addAll(): 1.59s, 628930.8176 elements/s
+contains(), existing: 1.429s, 699790.063 elements/s
+contains(), nonexisting: 1.469s, 680735.194 elements/s
+100000 hash() calls: 0.029s, 3448275.8621 elements/s
+Hash Quality (Chi-Squared-Test): p-value = 0.9487628088638604 , Chi-Squared-Statistic = 956245.1584854313
+```
+
+The Redis-backed and Counting Bloom filters can also be tested.
+
+
+Next steps
+==========
+- Compatible Javascript implementation which can consume the JSON Bloom filter representation
+- *CBloomFilterSharded* which just uses counters as keys without a materialized bit array. It will have no hotspots and use client-side sharding to distribute keys over an arbitrary amount of Redis instances. The trade-off is unlimited horizontal scalability vs inefficient generation of the flat Bloom filter.
+
+Other Bloom filter libraries
+============================
 
 
 License
