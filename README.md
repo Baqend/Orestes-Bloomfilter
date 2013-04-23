@@ -38,7 +38,15 @@ There are a many things we addressed as we sorely missed them in other implement
 * Concurrency: the shared Bloom filter can be accessed by many clients simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
 
 ## Getting started
-Download the [orestes-bf.jar](https://orestes-binaries.s3.amazonaws.com/orestes-bf.jar) and add it your classpath. The jar is also contained in the */build* folder of the repository. Or checkout the repository and build it using ant: `ant build`. For the normal Bloom filters it's even sufficient to only copy the source *.java files to your  project.
+Download the [orestes-bf.jar](https://orestes-binaries.s3.amazonaws.com/orestes-bf.jar) and add it your classpath. The jar is also contained in the */build* folder of the repository. Or checkout the repository and build it using ant:
+```
+ant build
+```
+This creates two jars in the *build* folder:
+- *orestes-bf.jar*, without dependencies to the Json (-> Json conversion) and Redis library (-> Redis-backed Bloom filters). The additional jars (needed when Json conversion and Redis-backing is required) are in the *build/lib* folder.
+- *orestes-bf-with-deps.jar*, with all dependencies contained in the jar.
+
+For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project (not recommended).
 
 ## Usage
 - [Regular Bloom Filter](#a1)
