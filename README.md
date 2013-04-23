@@ -21,9 +21,7 @@ BloomFilter<String> urls = new BloomFilter<>(100_000_000, 0.01); //Expect 100M U
 urls.add("http://github.com"); //Add millions of URLs
 urls.contains("http://twitter.com"); //Know in an instant which ones you have or have not seen before
 ```
-So what's the catch? Bloom filters allow false positives (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare 
-
-false positives (false negatives never happen) then Bloom filters are probably for you.
+So what's the catch? Bloom filters allow false positives (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare false positives (false negatives never happen) then Bloom filters are probably for you.
 
 ## Features
 There are a many things we addressed as we sorely missed them in other implementations:
