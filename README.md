@@ -18,10 +18,10 @@ The Javadocs are online [here](http://orestes-bloomfilter-docs.s3-website-eu-wes
 Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
 ```java
 BloomFilter<String> urls = new BloomFilter<>(100_000_000, 0.01); //Expect 100M URLs
-urls.add("http://github.com") //Add millions of URLs
-urls.contains("http://twitter.com") //Know in an instant which ones you have or have not seen before
+urls.add("http://github.com"); //Add millions of URLs
+urls.contains("http://twitter.com"); //Know in an instant which ones you have or have not seen before
 ```
-So what's the catch? Bloom filters allow false positive (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare 
+So what's the catch? Bloom filters allow false positives (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare 
 
 false positives (false negatives never happen) then Bloom filters are probably for you.
 
