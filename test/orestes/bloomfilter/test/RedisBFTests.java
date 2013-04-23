@@ -1,7 +1,13 @@
-package test;
+package orestes.bloomfilter.test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CBloomFilter;
@@ -10,7 +16,6 @@ import orestes.bloomfilter.redis.CBloomFilterRedis;
 import orestes.bloomfilter.redis.CBloomFilterRedisBits;
 import orestes.bloomfilter.redis.RedisBitSet;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import redis.clients.jedis.Jedis;
@@ -125,6 +130,42 @@ public class RedisBFTests {
 
 	private Jedis jedis() {
 		return new Jedis(host, port);
+	}
+	
+	public static void concurrentBenchmark(List<BloomFilter<String>> bfs, final int opsPerThread) {
+		ExecutorService pool = Executors.newFixedThreadPool(bfs.size());
+		List<Runnable> threads = new ArrayList<>(bfs.size());
+		final List<String> items = new ArrayList<>(opsPerThread);
+		for (int i = 0; i < opsPerThread; i++) {
+			items.add(String.valueOf(i));
+		}
+		for(final BloomFilter<String> bf : bfs) {
+			threads.add(new Runnable() {
+				
+				@Override
+				public void run() {
+					for (int i = 0; i < opsPerThread; i++) {
+						bf.add(String.valueOf(i));
+					}
+//					for (int i = 0; i < opsPerThread; i++) {
+//						bf.contains(String.valueOf(i));
+//					}
+//					bf.addAll(items);
+				}
+			});
+		}
+		long start = System.nanoTime();
+		for(Runnable r : threads) {
+			pool.execute(r);
+		}
+		pool.shutdown();
+		try {
+			pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			long end = System.nanoTime();
+			System.out.println("Concurrent Benchmark, " + opsPerThread + " ops * " + bfs.size() + " threads = " + opsPerThread * bfs.size()  + " total ops: " + ((double) (end - start)) / 1000000 + " ms");
+		} catch (InterruptedException e) {
+			//...
+		}
 	}
 
 }

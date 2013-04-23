@@ -1,4 +1,4 @@
-package test;
+package orestes.bloomfilter.test;
 
 import static org.junit.Assert.assertTrue;
 

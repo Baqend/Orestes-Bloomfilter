@@ -1,23 +1,28 @@
-package test;
+package orestes.bloomfilter.test;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import orestes.bloomfilter.BloomFilter;
+import orestes.bloomfilter.BloomFilter.CustomHashFunction;
 import orestes.bloomfilter.BloomFilter.HashMethod;
 import orestes.bloomfilter.CBloomFilter;
 import orestes.bloomfilter.CBloomFilter.OverflowHandler;
 import orestes.bloomfilter.json.BloomFilterConverter;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CBloomFilterRedis;
+import redis.clients.jedis.Jedis;
 
 import com.google.gson.JsonElement;
 
 public class Tutorial {
 	
-	public static void main(String[] args) throws MalformedURLException {
-		jsonBF();
+	public static void main(String[] args) throws Exception {
+		testPerformance();
 	}
 	
 	public static void regularBF() {
@@ -127,7 +132,7 @@ public class Tutorial {
 	
 	public static void redisBF() {
 		//Redis' IP
-		String IP = "192.168.44.131";	
+		String IP = "192.168.44.132";	
 		//Open a Redis-backed Bloom filter
 		BloomFilterRedis<String> bfr = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
 		bfr.add("cow");
@@ -142,7 +147,7 @@ public class Tutorial {
 	
 	public static void redisCBF() {
 		//Redis' IP
-		String IP = "192.168.44.131";	
+		String IP = "192.168.44.132";	
 		//Open a Redis-backed Bloom filter
 		CBloomFilterRedis<String> cbfr = new CBloomFilterRedis<>(IP, 6379, 10000, 0.01);
 		cbfr.add("cow");
@@ -163,6 +168,37 @@ public class Tutorial {
 		print(json); //{"m":240,"k":4,"HashMethod":"Cryptographic","CryptographicHashFunction":"MD5","bits":"AAAAEAAAAACAgAAAAAAAAAAAAAAQ"}
 		BloomFilter<String> otherBf = BloomFilterConverter.fromJson(json);
 		print(bf.contains("Ululu")); //true
+	}
+	
+	public static void customHash() {
+		BloomFilter<String> bf = new BloomFilter<>(1000, 0.01);
+		bf.setCusomHashFunction(new CustomHashFunction() {
+			@Override
+			public int[] hash(byte[] value, int m, int k) {
+				//...
+				return null;
+			}			
+		});
+	}
+	
+	public static void testPerformance() throws UnknownHostException, IOException {
+//		//Test the performance of the in-memory Bloom filter
+//		BloomFilter<String> bf = new BloomFilter<>(100_000, 0.01);
+//		BFTests.benchmark(bf, "My test", 1_000_000);
+//		
+		//And the Redis-backed BF
+		String IP = "192.168.44.132";	
+//		//Open a Redis-backed Bloom filter
+//		CBloomFilterRedisBits<String> cbfr = new CBloomFilterRedisBits<>(IP, 6379, 10000, 0.01, 4);
+//		BFTests.benchmark(cbfr, "Redis Test", 10_000);
+		
+		List<BloomFilter<String>> bfs = new ArrayList<>();
+		BloomFilterRedis<String> first = new BloomFilterRedis<String>(IP, 6379, 1000, 0.01);
+		bfs.add(first);
+		for (int i = 1; i < 40; i++) {
+			bfs.add(new BloomFilterRedis<String>(new Jedis(IP, 6379)));
+		}
+		RedisBFTests.concurrentBenchmark(bfs, 2000);
 	}
 	
 	private static <T> void print(T msg) {

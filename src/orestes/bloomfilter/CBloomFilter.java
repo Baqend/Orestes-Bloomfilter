@@ -52,6 +52,10 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 		this.counts = counts;
 		this.c = c;
 	}
+	
+	protected CBloomFilter() {
+		
+	}
 
 	/**
 	 * Set an overflow hand which is called every time a counter has an overflow. This only happens if much more object

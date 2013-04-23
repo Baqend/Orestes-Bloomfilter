@@ -1,4 +1,4 @@
-package test;
+package orestes.bloomfilter.test;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;

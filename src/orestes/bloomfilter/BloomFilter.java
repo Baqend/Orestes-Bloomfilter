@@ -87,11 +87,19 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 		this(new BitSet(m), m, k);
 	}
 
+	
 	protected BloomFilter(BitSet bloom, int m, int k) {
 		this.m = m;
 		this.bloom = bloom;
 		this.k = k;
 		setCryptographicHashFunction("MD5");
+	}
+	
+	/**
+	 * For lazy initialization in subclasses.
+	 */
+	protected BloomFilter() {
+		
 	}
 
 	/**
@@ -183,7 +191,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 * @param chf
 	 *            the custom hash function
 	 */
-	public void setCusomtHashFunction(CustomHashFunction chf) {
+	public void setCusomHashFunction(CustomHashFunction chf) {
 		this.hashMethod = HashMethod.Custom;
 		this.customHashFunction = chf;
 	}

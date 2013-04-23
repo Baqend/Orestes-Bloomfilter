@@ -41,6 +41,12 @@ public class CBloomFilterRedisBits<T> extends CBloomFilter<T> {
 		incr = jedis.scriptLoad(SETANDINCR);
 		decr = jedis.scriptLoad(SETANDDECR);
 	}
+	
+	public CBloomFilterRedisBits(Jedis jedis) {
+		this(jedis.getClient().getHost(), jedis.getClient().getPort(), Integer.parseInt(jedis.get(M)), Integer
+				.parseInt(jedis.get(K)), Integer.parseInt(jedis.get(C)));
+		setCryptographicHashFunction(jedis.get(HASH));
+	}
 
 	@Override
 	public void remove(byte[] value) {

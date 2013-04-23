@@ -1,4 +1,4 @@
-package test;
+package orestes.bloomfilter.test;
 
 import java.util.HashSet;
 import java.util.Random;

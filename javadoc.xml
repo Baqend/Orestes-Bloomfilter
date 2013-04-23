@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project default="javadoc">
-    <target name="javadoc">
-        <javadoc access="public" author="true" classpath="lib/jedis-2.1.0.jar;C:\eclipse-4\plugins\org.hamcrest.core_1.1.0.v20090501071000.jar;lib/commons-math-2.2.jar;lib/gson-1.6.jar;lib/jetty-util-9.0.0.RC2.jar;C:\eclipse-4\plugins\org.junit_4.10.0.v4_10_0_v20120426-0900\junit.jar" destdir="doc" doctitle="Orestes Bloom Filter Javadocs" nodeprecated="false" nodeprecatedlist="false" noindex="false" nonavbar="false" notree="false" overview="overview.html" packagenames="orestes.bloomfilter.redis,orestes.bloomfilter.json,orestes.bloomfilter" source="1.7" sourcepath="src" splitindex="true" use="true" version="true"/>
-    </target>
-</project>

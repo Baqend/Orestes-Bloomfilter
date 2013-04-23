@@ -64,7 +64,7 @@ public class BloomFilterRedis<T> extends BloomFilter<T> {
 
 	@Override
 	public boolean add(byte[] value) {
-		begin(BLOOM);
+		begin();
 		super.add(value);
 		if (commit() == null)
 			return add(value);
@@ -74,7 +74,7 @@ public class BloomFilterRedis<T> extends BloomFilter<T> {
 
 	@Override
 	public void addAll(Collection<T> values) {
-		begin(BLOOM);
+		begin();
 		for (T val : values) {
 			super.add(val.toString().getBytes(defaultCharset));
 		}
@@ -87,9 +87,8 @@ public class BloomFilterRedis<T> extends BloomFilter<T> {
 		return getBloom().allSet(hash(value));
 	}
 
-	private void begin(String... watched) {
+	private void begin() {
 		p = jedis.pipelined();
-		p.watch(watched);
 		p.multi();
 		getBloom().useContext(p);
 	}
