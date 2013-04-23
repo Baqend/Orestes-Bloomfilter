@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="bloom-filter" default="build" basedir=".">
+	
+    <property name="buildPath" value="build" />
+
+    <path id="cp.path">
+        <fileset dir="${buildPath}/lib"/>
+        <fileset dir="${buildPath}"/>
+    </path>
+
+    <target name="init">
+        <mkdir dir="${buildPath}/lib"/>
+        <mkdir dir="${buildPath}/classes"/>
+    </target>
+
+    <target name="clean">
+        <delete dir="${buildPath}"/>
+    </target>
+	
+	<target name="build" depends="compile" description="Create jar">
+		<manifestclasspath jarfile="orestes-bf.jar" property="cp.manifest">
+			<classpath refid="cp.path"></classpath>
+		</manifestclasspath>
+		
+		<jar jarfile="${buildPath}/orestes-bf.jar">
+            <fileset dir="${buildPath}/classes"/>
+			<manifest>
+				<attribute name="Class-Path" value="${cp.manifest}"/>
+			</manifest>
+        </jar>
+        
+        <jar jarfile="${buildPath}/orestes-bf-with-all-deps.jar">
+            <zipgroupfileset dir="lib" includes="*.jar" />
+            <fileset dir="${buildPath}/classes"/>
+			<manifest>
+				<attribute name="Class-Path" value="${cp.manifest}"/>
+			</manifest>
+        </jar>
+        
+	</target>
+
+    <target name="compile" depends="init" description="Compile all sources">
+    	<copy todir="${buildPath}/lib">
+    		<fileset dir="lib" includes="*.jar" excludes="commons-math-2.2.jar"/>
+    	</copy>
+    	
+        <javac destdir="${buildPath}/classes"
+            source="1.7"
+            target="1.7"
+            debug="on" 
+        	classpathref="cp.path"
+        	includeantruntime="false">
+    		<src path="src"/>
+        </javac>
+    </target>
+    
+    <target depends="javadoc" description="bundle javadoc in a jar" name="package-doc">
+	    <jar basedir="doc" destfile="build/orestes-bf-javadoc.jar"/>
+    </target>
+    
+    <target name="javadoc">
+        <javadoc access="public" author="true" classpath="lib/jedis-2.1.0.jar;C:\eclipse-4\plugins\org.hamcrest.core_1.1.0.v20090501071000.jar;lib/commons-math-2.2.jar;lib/gson-1.6.jar;lib/jetty-util-9.0.0.RC2.jar;C:\eclipse-4\plugins\org.junit_4.10.0.v4_10_0_v20120426-0900\junit.jar" destdir="doc" doctitle="Orestes Bloom Filter Javadocs" nodeprecated="false" nodeprecatedlist="false" noindex="false" nonavbar="false" notree="false" overview="overview.html" packagenames="orestes.bloomfilter.redis,orestes.bloomfilter.json,orestes.bloomfilter" source="1.7" sourcepath="src" splitindex="true" use="true" version="true"/>
+    </target>
+	
+</project>
