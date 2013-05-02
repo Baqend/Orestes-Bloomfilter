@@ -1,0 +1,44 @@
+<html>
+<head><title>JS Bloomfilter</title>
+<script type="text/javascript" src="lib/jquery.js"></script>
+<script>
+var BloomFilter = function(){
+	this.n = 10;
+	this.m = 128;
+	this.k = 7; 
+	this.bits = Uint8Array(128);
+	this.hash = function() {
+		// Java constants
+		var multiplier = 0x5DEECE66DL;
+		var addend = 0xBL;
+		var mask = (1L << 48) - 1;
+
+		// Generate int from byte Array using the FNV hash
+		var reduced = Math.abs(hashBytes(value));
+		// Make number positive
+		// Handle the special case: smallest negative number is itself as the
+		// absolute value
+		if (reduced == Integer.MIN_VALUE)
+			reduced = 42;
+
+		// Calculate k numbers iterativeley
+		int[] positions = new int[k];
+		long seed = reduced;
+		for (int i = 0; i < k; i++) {
+			// LCG formula: x_i+1 = (multiplier * x_i + addend) mod mask
+			seed = (seed * multiplier + addend) & mask;
+			positions[i] = (int) (seed >>> (48 - 30)) % m;
+		}
+		return positions;
+	}
+};
+
+BloomFilter.prototype.add = function(element) {
+	bits
+};
+</script>
+</head>
+<body>
+<div id="out"></div>
+</body>
+</html>
