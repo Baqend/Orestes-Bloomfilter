@@ -2,9 +2,7 @@ package orestes.bloomfilter.test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +20,7 @@ import redis.clients.jedis.Jedis;
 
 public class RedisBFTests {
 
-	public static String host = "192.168.44.131";
+	public static String host = "localhost";
 	public static int port = 6379;
 
 	@Test
@@ -106,7 +104,7 @@ public class RedisBFTests {
 						String between = ((RedisBitSet)cbfr.getBitSet()).asBitSet().toString();
 						if (!cbfr.contains(str)) {
 							//False Negative
-							System.out.println("[Thread " + id + "]: ooops " + str + " not contained");
+							System.out.println("[Thread " + id + "]: False Negative: " + str + " not contained");
 							System.out.println("Before: " + before);
 							System.out.println("Between: " + between);
 							System.out.println(Arrays.toString(cbfr.hash(str)));
@@ -114,7 +112,7 @@ public class RedisBFTests {
 						cbfr.remove(str);
 						if (cbfr.contains(str)) {
 							//False Positive
-							System.out.println("[Thread " + id + "]: ooops " + str + " still contained");
+							System.out.println("[Thread " + id + "]: False Positive: " + str + " still contained");
 						}
 					}
 				}

@@ -69,7 +69,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	}
 
 	@Override
-	public synchronized boolean add(byte[] value) {
+	public boolean add(byte[] value) {
 		for (int position : hash(value)) {
 			setBit(position);
 			increment(position);
@@ -84,7 +84,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	 * @param value
 	 *            object to be deleted
 	 */
-	public synchronized void remove(byte[] value) {
+	public void remove(byte[] value) {
 		if (contains(value)) {
 			for (int position : hash(value)) {
 				decrement(position);
@@ -98,7 +98,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	 * @param value
 	 *            object to be deleted
 	 */
-	public synchronized void remove(T value) {
+	public void remove(T value) {
 		remove(value.toString().getBytes(defaultCharset));
 	}
 
@@ -108,7 +108,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	 * @param values
 	 *            objects to be deleted
 	 */
-	public synchronized void removeAll(Collection<T> values) {
+	public void removeAll(Collection<T> values) {
 		for (T value : values)
 			remove(value);
 	}
@@ -190,13 +190,13 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	}
 
 	@Override
-	public synchronized boolean union(BloomFilter<T> other) {
+	public boolean union(BloomFilter<T> other) {
 		// FIXME
 		return false;
 	}
 
 	@Override
-	public synchronized boolean intersect(BloomFilter<T> other) {
+	public boolean intersect(BloomFilter<T> other) {
 		// FIXME
 		return false;
 	}
@@ -223,7 +223,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public synchronized Object clone() {
+	public Object clone() {
 		CBloomFilter<T> o = (CBloomFilter<T>) super.clone();
 		if(this.counts != null)
 			o.counts = (BitSet) this.counts.clone();
@@ -233,7 +233,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	}
 
 	@Override
-	public synchronized int hashCode() {
+	public int hashCode() {
 		final int prime = 31;
 		int result = super.hashCode();
 		result = prime * result + c;
@@ -243,7 +243,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	}
 
 	@Override
-	public synchronized boolean equals(Object obj) {
+	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
 		if (!super.equals(obj))
@@ -267,7 +267,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	}
 
 	@Override
-	public synchronized void clear() {
+	public void clear() {
 		super.clear();
 		counts.clear();
 	}
