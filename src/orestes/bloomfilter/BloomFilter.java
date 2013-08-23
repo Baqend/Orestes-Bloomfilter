@@ -16,11 +16,12 @@ import java.util.zip.Checksum;
 
 public class BloomFilter<T> implements Cloneable, Serializable {
 	protected BitSet bloom;
-	protected MessageDigest hashFunction;
+	protected transient MessageDigest hashFunction;
 	protected String hashFunctionName;
 	protected int k;
 	protected int m;
-	protected Charset defaultCharset = Charset.forName("UTF-8");
+	private transient Charset defaultCharset;
+	protected String defaultCharsetName = "UTF-8";
 	protected HashMethod hashMethod = HashMethod.Cryptographic;
 	private CustomHashFunction customHashFunction;
 	protected final static int seed32 = 89478583;
@@ -184,6 +185,20 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	}
 
 	/**
+	 * Gets {@link hashFunction}
+	 *
+	 * @return
+	 */
+	public MessageDigest getCryptographicHashFunction() {
+
+        if (this.hashFunction == null) {
+            setCryptographicHashFunction(hashFunctionName);
+        }
+
+        return this.hashFunction;
+	}
+
+	/**
 	 * Uses a given custom hash function. Note that all previously inserted
 	 * elements become invalid and the bloom filter should be reset using
 	 * {@link #clear()} before being used again.
@@ -204,7 +219,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	}
 
 	public boolean add(T value) {
-		return add(value.toString().getBytes(defaultCharset));
+		return add(value.toString().getBytes(getDefaultCharset()));
 	}
 
 	public void addAll(Collection<T> values) {
@@ -224,7 +239,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	}
 
 	public boolean contains(T value) {
-		return contains(value.toString().getBytes(defaultCharset));
+		return contains(value.toString().getBytes(getDefaultCharset()));
 	}
 
 	public boolean containsAll(Collection<T> values) {
@@ -236,6 +251,20 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 
 	protected boolean getBit(int index) {
 		return bloom.get(index);
+	}
+
+	/**
+	 * Gets {@link defaultCharset}
+	 *
+	 * @return
+	 */
+	protected Charset getDefaultCharset() {
+
+        if (this.defaultCharset == null) {
+            this.defaultCharset = Charset.forName(defaultCharsetName);
+        }
+
+        return this.defaultCharset;
 	}
 
 	protected void setBit(int index) {
@@ -261,7 +290,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 *         <i>[0,m)</i>
 	 */
 	public int[] hash(String value) {
-		return hash(value.getBytes(defaultCharset));
+		return hash(value.getBytes(getDefaultCharset()));
 	}
 
 	/**
@@ -586,8 +615,8 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 		while (computedHashes < k) {
 			// byte[] saltBytes =
 			// ByteBuffer.allocate(4).putInt(r.nextInt()).array();
-			hashFunction.update(digest);
-			digest = hashFunction.digest(value);
+			getCryptographicHashFunction().update(digest);
+			digest = getCryptographicHashFunction().digest(value);
 			BitSet hashed = BitSet.valueOf(digest);
 
 			// Convert the hash to numbers in the range [0,m)
@@ -882,7 +911,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	/**
 	 * An interface which can be implemented to provide custom hash functions.
 	 */
-	public static interface CustomHashFunction {
+	public static interface CustomHashFunction extends Serializable {
 		/**
 		 * Computes hash values.
 		 * 

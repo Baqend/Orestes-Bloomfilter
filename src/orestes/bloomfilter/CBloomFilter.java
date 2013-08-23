@@ -99,7 +99,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 	 *            object to be deleted
 	 */
 	public void remove(T value) {
-		remove(value.toString().getBytes(defaultCharset));
+		remove(value.toString().getBytes(getDefaultCharset()));
 	}
 
 	/**
