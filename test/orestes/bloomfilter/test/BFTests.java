@@ -2,6 +2,14 @@ package orestes.bloomfilter.test;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 
 import orestes.bloomfilter.BloomFilter;
@@ -313,5 +321,41 @@ public class BFTests {
 		System.out.println("Total time for " + inserts
 				+ " add operations in both a counting and a normal bloom filter: " + (end - begin) * 1.0 / 1000000000
 				+ " s");
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void serializeBloomFilter() throws IOException, ClassNotFoundException {
+            BloomFilter<String> b     = new BloomFilter<String>(1000, 0.02);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutput out          = new ObjectOutputStream(bos);
+
+            b.add("foo");
+            b.add("bar");
+
+            assertTrue(b instanceof Serializable);
+            assertTrue(b.contains("foo"));
+            assertTrue(b.contains("bar"));
+
+            out.writeObject(b);
+
+            byte[] byteArray = bos.toByteArray();
+
+            out.close();
+            bos.close();
+
+            ByteArrayInputStream bis = new ByteArrayInputStream(byteArray);
+            ObjectInput in           = new ObjectInputStream(bis);
+            Object object            = in.readObject();
+
+            bis.close();
+            in.close();
+
+            assertTrue(object instanceof BloomFilter);
+
+            b = (BloomFilter<String>) object;
+
+            assertTrue(b.contains("foo"));
+            assertTrue(b.contains("bar"));
 	}
 }

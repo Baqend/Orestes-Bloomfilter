@@ -143,7 +143,7 @@ public class CBloomFilterRedis<T> extends CBloomFilter<T> {
 	public void addAll(Collection<T> values) {
 		begin();
 		for (T val : values) {
-			super.add(val.toString().getBytes(defaultCharset));
+			super.add(val.toString().getBytes(getDefaultCharset()));
 		}
 		if (commit() == null)
 			addAll(values);

@@ -76,7 +76,7 @@ public class BloomFilterRedis<T> extends BloomFilter<T> {
 	public void addAll(Collection<T> values) {
 		begin();
 		for (T val : values) {
-			super.add(val.toString().getBytes(defaultCharset));
+			super.add(val.toString().getBytes(getDefaultCharset()));
 		}
 		if (commit() == null)
 			addAll(values);
