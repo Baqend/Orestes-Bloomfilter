@@ -15,9 +15,9 @@ import orestes.bloomfilter.CBloomFilter.OverflowHandler;
 import orestes.bloomfilter.json.BloomFilterConverter;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CBloomFilterRedis;
-import redis.clients.jedis.Jedis;
 
 import com.google.gson.JsonElement;
+import redis.clients.jedis.Jedis;
 
 public class Tutorial {
 	
@@ -132,13 +132,16 @@ public class Tutorial {
 	
 	public static void redisBF() {
 		//Redis' IP
-		String IP = "192.168.44.132";	
+		String IP = "192.168.44.132";
+        String filterName = "normalbloomfilter";
 		//Open a Redis-backed Bloom filter
-		BloomFilterRedis<String> bfr = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
+		BloomFilterRedis<String> bfr = // new BloomFilterRedis<>(filterName, IP, 6379, 10000, 0.01);
+        BloomFilterRedis.createFilter(getConnection(), filterName,  1000, 0.01, HashMethod.Murmur);
 		bfr.add("cow");
 		
 		//Open a second Redis-backed Bloom filter with a new connection
-		BloomFilterRedis<String> bfr2 = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
+		BloomFilterRedis<String> bfr2 = //new BloomFilterRedis<>(filterName, IP, 6379, 10000, 0.01);
+               BloomFilterRedis.createFilter(getConnection(), filterName,  1000, 0.01, HashMethod.Murmur);
 		bfr2.add("bison");
 		
 		print(bfr.contains("cow")); //true
@@ -149,11 +152,11 @@ public class Tutorial {
 		//Redis' IP
 		String IP = "192.168.44.132";	
 		//Open a Redis-backed Bloom filter
-		CBloomFilterRedis<String> cbfr = new CBloomFilterRedis<>(IP, 6379, 10000, 0.01);
+		CBloomFilterRedis<String> cbfr = new CBloomFilterRedis<>(getConnection(), 10000, 0.01);
 		cbfr.add("cow");
 		
 		//Open a second Redis-backed Bloom filter with a new connection
-		CBloomFilterRedis<String> bfr2 = new CBloomFilterRedis<>(IP, 6379, 10000, 0.01);
+		CBloomFilterRedis<String> bfr2 = new CBloomFilterRedis<>(getConnection(), 10000, 0.01);
 		bfr2.add("bison");
 		bfr2.remove("cow");
 		
@@ -172,13 +175,13 @@ public class Tutorial {
 	
 	public static void customHash() {
 		BloomFilter<String> bf = new BloomFilter<>(1000, 0.01);
-		bf.setCusomHashFunction(new CustomHashFunction() {
-			@Override
-			public int[] hash(byte[] value, int m, int k) {
-				//...
-				return null;
-			}			
-		});
+		bf.setCustomHashFunction(new CustomHashFunction() {
+            @Override
+            public int[] hash(byte[] value, int m, int k) {
+                //...
+                return null;
+            }
+        });
 	}
 	
 	public static void testPerformance() throws UnknownHostException, IOException {
@@ -187,19 +190,25 @@ public class Tutorial {
 //		BFTests.benchmark(bf, "My test", 1_000_000);
 //		
 		//And the Redis-backed BF
-		String IP = "192.168.44.132";	
+		String IP = "192.168.44.132";
+        String filterName = "normalbloomfilter";
 //		//Open a Redis-backed Bloom filter
 //		CBloomFilterRedisBits<String> cbfr = new CBloomFilterRedisBits<>(IP, 6379, 10000, 0.01, 4);
 //		BFTests.benchmark(cbfr, "Redis Test", 10_000);
-		
+
+        // TODO - change how a existing filter in Redis is loaded, just using Jedis w/o a name won't work
 		List<BloomFilter<String>> bfs = new ArrayList<>();
-		BloomFilterRedis<String> first = new BloomFilterRedis<String>(IP, 6379, 1000, 0.01);
+		BloomFilterRedis<String> first =  BloomFilterRedis.createFilter(getConnection(), filterName,  1000, 0.01, HashMethod.Murmur);
 		bfs.add(first);
-		for (int i = 1; i < 40; i++) {
-			bfs.add(new BloomFilterRedis<String>(new Jedis(IP, 6379)));
-		}
-		RedisBFTests.concurrentBenchmark(bfs, 2000);
+//		for (int i = 1; i < 40; i++) {
+//			bfs.add(new BloomFilterRedis<String>(new Jedis(IP, 6379)));
+//		}
+//		RedisBFTests.concurrentBenchmark(bfs, 2000);
 	}
+
+    private static Jedis getConnection() {
+        return new Jedis("localhost", 6379);
+    }
 	
 	private static <T> void print(T msg) {
 		System.out.println(msg);

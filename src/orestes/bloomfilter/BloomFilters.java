@@ -2,6 +2,7 @@ package orestes.bloomfilter;
 
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.List;
 
 public class BloomFilters {
 	
@@ -40,8 +41,8 @@ public class BloomFilters {
 		}
 
 		@Override
-		public synchronized void setCusomHashFunction(orestes.bloomfilter.BloomFilter.CustomHashFunction chf) {
-			bf.setCusomHashFunction(chf);
+		public synchronized void setCustomHashFunction(orestes.bloomfilter.BloomFilter.CustomHashFunction chf) {
+			bf.setCustomHashFunction(chf);
 		}
 
 		@Override
@@ -55,8 +56,8 @@ public class BloomFilters {
 		}
 
 		@Override
-		public synchronized void addAll(Collection<T> values) {
-			bf.addAll(values);
+		public synchronized List<Boolean> addAll(Collection<T> values) {
+			return bf.addAll(values);
 		}
 
 		@Override
@@ -253,9 +254,9 @@ public class BloomFilters {
 		}
 
 		@Override
-		public synchronized void setCusomHashFunction(
-				orestes.bloomfilter.BloomFilter.CustomHashFunction chf) {
-			cbf.setCusomHashFunction(chf);
+		public synchronized void setCustomHashFunction(
+                orestes.bloomfilter.BloomFilter.CustomHashFunction chf) {
+			cbf.setCustomHashFunction(chf);
 		}
 
 		@Override
@@ -269,8 +270,8 @@ public class BloomFilters {
 		}
 
 		@Override
-		public synchronized void addAll(Collection<T> values) {
-			cbf.addAll(values);
+		public synchronized List<Boolean> addAll(Collection<T> values) {
+			return cbf.addAll(values);
 		}
 
 		@Override

@@ -24,19 +24,14 @@ public class RedisBitSet extends BitSet {
 
 	/**
 	 * Constructs an new RedisBitSet. It uses a new Redis connection with same host and port as the provided connection.
-	 * 
-	 * @param host
-	 *            the Redis host
-	 * @param port
-	 *            the Redis Port
+	 *
 	 * @param name
 	 *            the name used as key in the database
 	 * @param size
 	 *            the initial size of the RedisBitSet
 	 */
-	public RedisBitSet(String host, int port, String name, int size) {
-		// Create own connection
-		this.jedis = new Jedis(host, port);
+	public RedisBitSet(Jedis jedis, String name, int size) {
+		this.jedis = jedis;
 		this.name = name;
 		this.size = size;
 		// Handle concurrent creation RedisBitSet backed by the Redis bitset
@@ -48,6 +43,10 @@ public class RedisBitSet extends BitSet {
 		}
 		jedis.unwatch();
 	}
+
+    public void useConnection(Jedis a_jedis) {
+        jedis = a_jedis;
+    }
 
 	/**
 	 * Uses an external Redis pipeline context for all subsequent modifying operations (like {@link #set(int)}) until
@@ -198,8 +197,8 @@ public class RedisBitSet extends BitSet {
 	 * @param bitSet
 	 *            a regular BitSet used to overwrite this RedisBitSet
 	 */
-	public void overwrite(BitSet bitSet) {
-		jedis.set(SafeEncoder.encode(name), bitSet.toByteArray());
+	public void overwrite(Jedis connection, BitSet bitSet) {
+		connection.set(SafeEncoder.encode(name), bitSet.toByteArray());
 	}
 
 	@Override

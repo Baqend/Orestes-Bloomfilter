@@ -6,10 +6,7 @@ import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.Random;
+import java.util.*;
 import java.util.zip.Adler32;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -26,6 +23,8 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	private CustomHashFunction customHashFunction;
 	protected final static int seed32 = 89478583;
 
+    protected long population = 0;
+
 	/**
 	 * Calculates the optimal size <i>m</i> of the bloom filter in bits given
 	 * <i>n</i> (expected number of elements in bloom filter) and <i>p</i>
@@ -35,7 +34,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 *            Expected number of elements inserted in the bloom filter
 	 * @param p
 	 *            Tolerable false positive rate
-	 * @return the optimale size <i>m</i> of the bloom filter in bits
+	 * @return the optimal size <i>m</i> of the bloom filter in bits
 	 */
 	public static int optimalM(double n, double p) {
 		return (int) Math.ceil(-1 * n * Math.log(p) / Math.pow(Math.log(2), 2));
@@ -119,12 +118,35 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 */
 	public BloomFilter(BitSet bloomFilter, int m, int k, HashMethod hashMethod,
 			String hashFunctionName) {
-		this.bloom = bloomFilter;
-		this.k = k;
-		this.m = m;
-		setHashMethod(hashMethod);
-		setCryptographicHashFunction(hashFunctionName);
+		this(bloomFilter, m, k, hashMethod, hashFunctionName, 0);
 	}
+
+    /**
+     * Constructs a new bloom filter by using the provided bit vector
+     * <i>bloomFilter</i>.
+     *
+     * @param bloomFilter
+     *            the bit vector used to construct the bloom filter
+     * @param k
+     *            the number of hash functions used
+     * @param hashMethod
+     *            hash function type
+     * @param hashFunctionName
+     *            name of the hash function to be used for the cryptographic
+     *            HashMethod, i.e. MD2, MD5, SHA-1, SHA-256, SHA-384 or SHA-512
+     *
+     * @param population
+     *            the current population count for the provided filter
+     */
+    public BloomFilter(BitSet bloomFilter, int m, int k, HashMethod hashMethod,
+                       String hashFunctionName, long population) {
+        this.bloom = bloomFilter;
+        this.k = k;
+        this.m = m;
+        this.population = population;
+        setHashMethod(hashMethod);
+        setCryptographicHashFunction(hashFunctionName);
+    }
 
 	/**
 	 * Sets the method used to generate hash values. Note that all previously
@@ -132,27 +154,27 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 * filter should be reset using {@link #clear()} before being used again.
 	 * Possible hash methods are: <br>
 	 * <ul>
-	 * <li></li><tt>Hashmethod.Cryptographic</tt> is the default. It uses a
+	 * <li></li><tt>HashMethod.Cryptographic</tt> is the default. It uses a
 	 * cryptographic hash function (e.g. MD5, SHA-512, default is MD5) which can be set using
 	 * {@link #setCryptographicHashFunction(String)}. It slices the digest in
 	 * bit ranges of x with 2^x > m and does rejection sampling for each slice.
 	 * It is fast and very well distributed.</li>
-	 * <li><tt>Hashmethod.RNG</tt> uses the random number generator of Java,
-	 * which is a Linear Congruant Generator (LCG). It is very fast but doesn't
+	 * <li><tt>HashMethod.RNG</tt> uses the random number generator of Java,
+	 * which is a Linear Congruent Generator (LCG). It is very fast but doesn't
 	 * distribute hash values very uniformly.</li>
-	 * <li><tt>Hashmethod.SecureRNG</tt> uses the secure random number generator
-	 * of Java, which statifies a high degree of randomness at the cost of CPU
+	 * <li><tt>HashMethod.SecureRNG</tt> uses the secure random number generator
+	 * of Java, which satisfies a high degree of randomness at the cost of CPU
 	 * time.</li>
-	 * <li></li><tt>Hashmethod.CarterWegman</tt> implements the Carter Wegman
+	 * <li></li><tt>HashMethod.CarterWegman</tt> implements the Carter Wegman
 	 * Universal Hashing Function. It has very good theoretical guarantees for
-	 * the uniform disitribution of hash values but can be ~10 times slower than
+	 * the uniform distribution of hash values but can be ~10 times slower than
 	 * other methods, as it has to perform arithmetic operations on potentially
 	 * large numbers.
-	 * <li><tt>Hashmethod.CRC32</tt> uses a CRC32 checksum. It is rather fast an
+	 * <li><tt>HashMethod.CRC32</tt> uses a CRC32 checksum. It is rather fast an
 	 * offers a good distribution.</li>
-	 * <li><tt>Hashmethod.Adler32</tt> uses the Adler32 checksum. Adler32 is
+	 * <li><tt>HashMethod.Adler32</tt> uses the Adler32 checksum. Adler32 is
 	 * faster than CRC32 but offers a slightly less uniform distribution.</li>
-	 * <li><tt>Hashmethod.Murmur</tt> uses the Murmur 2 hash function. It is a
+	 * <li><tt>HashMethod.Murmur</tt> uses the Murmur 2 hash function. It is a
 	 * new and increasingly popular hash function that is fast and very
 	 * uniformly distributed.</li>
 	 * </ul>
@@ -162,6 +184,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 */
 	public void setHashMethod(HashMethod hashMethod) {
 		this.hashMethod = hashMethod;
+        this.hashFunctionName = hashMethod.toString();
 	}
 
 	/**
@@ -185,9 +208,9 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	}
 
 	/**
-	 * Gets {@link hashFunction}
+	 * Gets {@link MessageDigest}
 	 *
-	 * @return
+	 * @return Digest being used
 	 */
 	public MessageDigest getCryptographicHashFunction() {
 
@@ -206,29 +229,44 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 * @param chf
 	 *            the custom hash function
 	 */
-	public void setCusomHashFunction(CustomHashFunction chf) {
+	public void setCustomHashFunction(CustomHashFunction chf) {
 		this.hashMethod = HashMethod.Custom;
 		this.customHashFunction = chf;
 	}
 
+    /**
+     * Add the passed value to the filter.
+     * @param value   key to add
+     * @return true if the value does not exist in the filter. Note a false positive may occur, thus the value may
+     *      not have already been in the filter, but it hashed to a set of bits already in the filter
+     *
+     */
 	public boolean add(byte[] value) {
+        boolean added = false;
 		for (int position : hash(value)) {
-			setBit(position);
+            if (!getBit(position)) {
+                added = true;
+			    setBit(position);
+            }
 		}
-		return true;
+        if (added) population++;
+		return added;
 	}
 
 	public boolean add(T value) {
 		return add(value.toString().getBytes(getDefaultCharset()));
 	}
 
-	public void addAll(Collection<T> values) {
+	public List<Boolean> addAll(Collection<T> values) {
+        List<Boolean> added = new ArrayList<>();
 		for (T value : values)
-			add(value);
+			added.add (add(value));
+        return added;
 	}
 
 	public void clear() {
 		bloom.clear();
+        population = 0;
 	}
 
 	public boolean contains(byte[] value) {
@@ -241,6 +279,14 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	public boolean contains(T value) {
 		return contains(value.toString().getBytes(getDefaultCharset()));
 	}
+
+    public List<Boolean> contains(Collection<T> values) {
+        List<Boolean> does = new ArrayList<>();
+        for (T value: values) {
+            does.add(contains(value));
+        }
+        return does;
+    }
 
 	public boolean containsAll(Collection<T> values) {
 		for (T value : values)
@@ -256,7 +302,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	/**
 	 * Gets {@link defaultCharset}
 	 *
-	 * @return
+	 * @return default Charset for encoding the bits
 	 */
 	protected Charset getDefaultCharset() {
 
@@ -322,8 +368,8 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	}
 
 	/**
-	 * Generates hash values using the Carter Wegman function ({@link http
-	 * ://en.wikipedia.org/wiki/Universal_hashing}), which is a universal
+	 * Generates hash values using the Carter Wegman function ({@link
+	 * http://en.wikipedia.org/wiki/Universal_hashing}), which is a universal
 	 * hashing function. It thus has optimal guarantees for the uniformity of
 	 * generated hash values. On the downside, the performance is not optimal,
 	 * as arithmetic operations on large numbers have to be performed.
@@ -357,7 +403,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 * formula: <br/>
 	 * <code>number_i+1 = (a * number_i + c) mod m</code><br/>
 	 * <br/>
-	 * The RNG is intialized using the value to be hashed.
+	 * The RNG is initialized using the value to be hashed.
 	 * 
 	 * @param value
 	 *            the value to be hashed
@@ -376,7 +422,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	/**
 	 * Generates a hash value using the Secure Java Random Number Generator
 	 * (RNG). It is more random than the normal RNG but more CPU intensive. The
-	 * RNG is intialized using the value to be hashed.
+	 * RNG is initialized using the value to be hashed.
 	 * 
 	 * @param value
 	 *            the value to be hashed
@@ -579,7 +625,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	 * 
 	 * @param random
 	 *            int
-	 * @return the number downsampled to interval [0, m]. Or -1 if it has to be
+	 * @return the number down-sampled to interval [0, m]. Or -1 if it has to be
 	 *         rejected.
 	 */
 	protected int rejectionSample(int random) {
@@ -620,7 +666,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 			BitSet hashed = BitSet.valueOf(digest);
 
 			// Convert the hash to numbers in the range [0,m)
-			// Size of the Bloomfilter rounded to the next power of two
+			// Size of the BloomFilter rounded to the next power of two
 			int filterSize = 32 - Integer.numberOfLeadingZeros(m);
 			// Computed hash bits
 			int hashBits = digest.length * 8;
@@ -925,5 +971,9 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 		 */
 		public int[] hash(byte[] value, int m, int k);
 	}
+
+    public long getPopulation() {
+        return population;
+    }
 
 }

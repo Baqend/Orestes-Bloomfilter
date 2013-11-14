@@ -1,9 +1,6 @@
 package orestes.bloomfilter.redis;
 
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import orestes.bloomfilter.CBloomFilter;
 
@@ -30,17 +27,17 @@ public class CBloomFilterRedis<T> extends CBloomFilter<T> {
 	protected Pipeline p;
 	protected int ttl = 0;
 
-	public CBloomFilterRedis(String host, int port, double n, double p) {
-		this(host, port, optimalM(n, p), optimalK(n, optimalM(n, p)));
+	public CBloomFilterRedis(Jedis jedis, double n, double p) {
+		this(jedis, optimalM(n, p), optimalK(n, optimalM(n, p)));
 	}
 
-	public CBloomFilterRedis(String host, int port, int m, int k) {
-		this(host, port, null, new RedisBitSet(host, port, BLOOM, m), m, k, 32);
+	public CBloomFilterRedis(Jedis jedis, int m, int k) {
+		this(jedis, null, new RedisBitSet(jedis, BLOOM, m), m, k, 32);
 	}
 
-	protected CBloomFilterRedis(String host, int port, BitSet counts, BitSet bloom, int m, int k, int c) {
+	protected CBloomFilterRedis(Jedis jedis, BitSet counts, BitSet bloom, int m, int k, int c) {
 		super(counts, bloom, m, k, c);
-		this.jedis = new Jedis(host, port);
+		this.jedis = jedis;
 		// Create the bloomfilter metadata in Redis. If it is done concurrently --> abort
 		jedis.watch(M);
 		if (!jedis.exists(M)) {
@@ -54,11 +51,11 @@ public class CBloomFilterRedis<T> extends CBloomFilter<T> {
 		jedis.unwatch();
 	}
 
-	public CBloomFilterRedis(Jedis jedis) {
-		this(jedis.getClient().getHost(), jedis.getClient().getPort(), Integer.parseInt(jedis.get(M)), Integer
-				.parseInt(jedis.get(K)));
-		setCryptographicHashFunction(jedis.get(HASH));
-	}
+//	public CBloomFilterRedis(Jedis jedis) {
+//		this(jedis.getClient().getHost(), jedis.getClient().getPort(), Integer.parseInt(jedis.get(M)), Integer
+//				.parseInt(jedis.get(K)));
+//		setCryptographicHashFunction(jedis.get(HASH));
+//	}
 
 	/**
 	 * Allows Redis to discard inserted objects after <tt>ttl</tt> seconds. However, there is no guarantee that the
@@ -140,13 +137,16 @@ public class CBloomFilterRedis<T> extends CBloomFilter<T> {
 	}
 
 	@Override
-	public void addAll(Collection<T> values) {
+	public List<Boolean> addAll(Collection<T> values) {
+        List<Boolean> added = new ArrayList<>();
 		begin();
 		for (T val : values) {
 			super.add(val.toString().getBytes(getDefaultCharset()));
 		}
 		if (commit() == null)
 			addAll(values);
+
+        return added;    // TODO - implement the check (and tests!)
 	}
 
 	@Override

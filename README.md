@@ -5,10 +5,11 @@ This is a set of Bloom filters we implemented as we found all existing open-sour
 
 The Bloom filter is a probabilistic set data structure which is very small. This is achieved by allowing false positives with some probability *p*. It has an `add` and `contains` operation which both are very fast (time complexity *O(1)*). The Counting Bloom filter is an extension of the Bloom filter with a `remove` operation at the cost of incurring an additional space overhead for counting. There are many good introductions to Bloom filters: the [Wikipedia article](http://en.wikipedia.org/wiki/Bloom_filter) is excellent, and even better is a [survey by Broder and Mitzenmacher](http://www.cs.utexas.edu/~yzhang/teaching/cs386m-f8/Readings/im2005b.pdf). Typical use cases of Bloom filters are content summaries and sets that would usually grow too large in fields such as networking, distributed systems, databases and analytics.
 
-There are 4 types of Bloom filters in the Orestes Bloom filter library:
+There are 5 types of Bloom filters in the Orestes Bloom filter library:
 * **Regular Bloom filter**, a regular in-memory Java Bloom filter (`BloomFilter`)
 * **Counting Bloom filter**, a Counting Bloom Filter which supports element removal (`CBloomFilter`)
 * **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`BloomFilterRedis`)
+* **Redis Population Count Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications, it keeps track of the number of keys added to the filter (`BloomFilterRedis`)
 * **Redis Counting Bloom Filter**, a Redis-backed, concurrency-safe Counting Bloom filter in two variants: one that holds a pregenerated regular Bloom filter and relies on Redis Lua scripting (`CBloomFilterRedisBits`) and one that can be distributed through client side consistent hasing or Redis Cluster (`CBloomFilterRedis`)
 
 ### Docs
@@ -242,23 +243,36 @@ Using the Redis-backed Bloom filter is straightforward:
 The Redis-backed Bloom filters have the same Interface as the normal Bloom filters:
 
 ```java
-//Redis' IP
-String IP = "192.168.44.131";	
-//Open a Redis-backed Bloom filter
-BloomFilterRedis<String> bfr = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
-bfr.add("cow");
+        int n = 1000;
+        double p = 0.01;
+        String host = "localhost";
+        int port = 6379;
 
-//Open a second Redis-backed Bloom filter with a new connection
-BloomFilterRedis<String> bfr2 = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
-bfr2.add("bison");
+        String name = "loadExistingTest";
+        String testString = "simpletest";
+        String testString2 = "simpletest2";
 
-print(bfr.contains("cow")); //true
-print(bfr.contains("bison")); //true
+        BloomFilterRedis<String> first =  BloomFilterRedis.createPopulationFilter(new Jedis(host, port), name,  n, p, BloomFilter.HashMethod.Murmur);
+        first.useConnection(new Jedis(host, port));
+        first.add(testString);
+
+        BloomFilterRedis<String> loaded = BloomFilterRedis.loadFilter(jedis(), name );
+        loaded.useConnection(new Jedis(host, port));
+        assert(loaded.contains(testString));
+        assert(loaded.getN() == n);
+
+        loaded.add(testString2);
+
+        assert(first.contains(testString2));
 ```
 
 The Redis-backed Bloom filters are concurrency/thread-safe at the backend. That means you can concurrently insert from any machine without running into anomalies, inconsistencies or lost data. The Redis-backed Bloom filters are implemented using efficient [Redis bit arrays](http://redis.io/commands/getbit). They make heavy use of [pipelining](http://redis.io/topics/pipelining) so that every `add` and `contains` call only needs one round-trip. This is the most performance critical aspect and usually not found in [other implementations](https://github.com/igrigorik/bloomfilter-rb) which need one round-trip for every Bit or worse.
 
 The Redis-backed Bloom filters save their metadata (like number and kind of hash functions) in Redis, too. Thus other clients can easily to connect to a Redis instance that already holds a Bloom filter using `new BloomFilterRedis(new Jedis(ip, port))` or the similar constructors of *CBloomFilterRedis* or *CBloomFilterRedisBits*.
+
+The Redis-backed Population Bloom Filters determine if a key has been added to a Bloom Filter and updates a population count, also stored in Redis if not.
+
+There are several static methods in the  (`BloomFilterRedis`) class to make creating Bloom Filters easy.
 
 <a name="a4"/>
 ## Redis Counting Bloom Filters
