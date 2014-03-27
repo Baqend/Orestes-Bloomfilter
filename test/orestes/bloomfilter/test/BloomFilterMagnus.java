@@ -198,7 +198,7 @@ public class BloomFilterMagnus<E> implements Serializable {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final BloomFilterMagnus<E> other = (BloomFilterMagnus<E>) obj;        
+        final BloomFilterMagnus<?> other = (BloomFilterMagnus<?>) obj;
         if (this.expectedNumberOfFilterElements != other.expectedNumberOfFilterElements) {
             return false;
         }

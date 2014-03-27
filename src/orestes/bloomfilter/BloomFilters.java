@@ -232,8 +232,8 @@ public class BloomFilters {
 		}
 
 		@Override
-		public synchronized Object clone() {
-			return cbf.clone();
+		public synchronized SynchronizedCBloomFilter<T> clone() {
+			return new SynchronizedCBloomFilter<T>(cbf.clone());
 		}
 
 		@Override

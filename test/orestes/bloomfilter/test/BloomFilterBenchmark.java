@@ -1,10 +1,10 @@
 package orestes.bloomfilter.test;
 
+import orestes.bloomfilter.BloomFilter;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
-import orestes.bloomfilter.BloomFilter;
 
 /**
  * A (very) simple benchmark to evaluate the performance of the Bloom filter class.
@@ -28,14 +28,14 @@ public class BloomFilterBenchmark {
         final Random r = new Random();
 
         // Generate elements first
-        List<String> existingElements = new ArrayList(elementCount);
+        List<String> existingElements = new ArrayList<>(elementCount);
         for (int i = 0; i < elementCount; i++) {
             byte[] b = new byte[200];
             r.nextBytes(b);
             existingElements.add(new String(b));
         }
         
-        List<String> nonExistingElements = new ArrayList(elementCount);
+        List<String> nonExistingElements = new ArrayList<>(elementCount);
         for (int i = 0; i < elementCount; i++) {
             byte[] b = new byte[200];
             r.nextBytes(b);
@@ -43,7 +43,7 @@ public class BloomFilterBenchmark {
         }
 
         //Mine
-        BloomFilter<String> bf = new BloomFilter<String>(elementCount, 0.001);
+        BloomFilter<String> bf = new BloomFilter<>(elementCount, 0.001);
 //        bf.setCryptographicHashFunction("SHA-512");
         //Counting
 //        CountingBloomFilter<String> bf = new CountingBloomFilter<String>(elementCount, 0.001, 4);

@@ -223,7 +223,7 @@ public class CBloomFilter<T> extends BloomFilter<T> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Object clone() {
+	public CBloomFilter<T> clone() {
 		CBloomFilter<T> o = (CBloomFilter<T>) super.clone();
 		if(this.counts != null)
 			o.counts = (BitSet) this.counts.clone();
