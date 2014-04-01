@@ -1,24 +1,16 @@
 package orestes.bloomfilter.test;
 
-import static org.junit.Assert.assertTrue;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.util.ArrayList;
-
 import orestes.bloomfilter.BloomFilter;
-import orestes.bloomfilter.CBloomFilter;
 import orestes.bloomfilter.BloomFilter.HashMethod;
-
+import orestes.bloomfilter.CBloomFilter;
 import org.apache.commons.math.stat.inference.ChiSquareTestImpl;
 import org.junit.Ignore;
 import org.junit.Test;
+
+import java.io.*;
+import java.util.ArrayList;
+
+import static org.junit.Assert.assertTrue;
 
 public class BFTests {
 
@@ -299,7 +291,7 @@ public class BFTests {
 		assertTrue(b.contains("Schnitte"));
 		b.remove("Schnitte");
 		assertTrue(!b.contains("Schnitte"));
-		CBloomFilter<String> bc = (CBloomFilter<String>) b.clone();
+		CBloomFilter<String> bc = b.clone();
 		assertTrue(b.equals(bc));
 	}
 
