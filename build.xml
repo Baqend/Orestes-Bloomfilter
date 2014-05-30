@@ -1,65 +1,98 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project name="bloom-filter" default="build" basedir=".">
-	
-    <property name="buildPath" value="build" />
+<project name="bloom-filter" default="dist" basedir=".">
+    <description>
+        Project Description
+    </description>
 
-    <path id="cp.path">
-        <fileset dir="${buildPath}/lib"/>
-        <fileset dir="${buildPath}"/>
+    <!-- set global properties for this build -->
+    <property name="projectName" value="${ant.project.name}"/>
+    <property name="src" location="src"/>
+    <property name="src.test" location="test"/>
+    <property name="res" location="res"/>
+    <property name="res.test" location="res-test"/>
+    <property name="lib" location="lib"/>
+    <property name="build" location="build"/>
+    <property name="build.test" location="build-test"/>
+    <property name="dist"  location="dist"/>
+
+    <!-- define the project classpath -->
+    <path id="project.classpath">
+        <pathelement location="${build}"/>
+        <fileset dir="${lib}" includes="**/*.jar" excludes="*source*"/>
     </path>
 
     <target name="init">
-        <mkdir dir="${buildPath}/lib"/>
-        <mkdir dir="${buildPath}/classes"/>
+        <!-- Get the current git revision short hash -->
+        <exec executable="git" outputproperty="git.revision">
+            <arg value="log"/>
+            <arg value="-1"/>
+            <arg value="--pretty=format:%h"/>
+        </exec>
+
+        <!-- Create the build directory structure used by compile -->
+        <mkdir dir="${build}"/>
     </target>
 
-    <target name="clean">
-        <delete dir="${buildPath}"/>
+    <target name="compile" depends="init" description="compile the source " >
+        <!-- Compile the java code from ${src} into ${build} -->
+        <javac srcdir="${src}" destdir="${build}" classpathref="project.classpath" includeantruntime="false"/>
+        <!-- copy project and test resources to the build folders -->
+        <copy todir="${build}" failonerror="false">
+            <fileset dir="${res}"/>
+        </copy>
     </target>
-	
-	<target name="build" depends="compile" description="Create jar">
-		<manifestclasspath jarfile="orestes-bf.jar" property="cp.manifest">
-			<classpath refid="cp.path"></classpath>
-		</manifestclasspath>
-		
-		<jar jarfile="${buildPath}/orestes-bf.jar">
-            <fileset dir="${buildPath}/classes"/>
-			<manifest>
-				<attribute name="Class-Path" value="${cp.manifest}"/>
-			</manifest>
-        </jar>
-        
-        <jar jarfile="${buildPath}/orestes-bf-with-all-deps.jar">
-            <zipgroupfileset dir="lib" includes="*.jar" />
-            <fileset dir="${buildPath}/classes"/>
-			<manifest>
-				<attribute name="Class-Path" value="${cp.manifest}"/>
-			</manifest>
-        </jar>
-        
-	</target>
 
-    <target name="compile" depends="init" description="Compile all sources">
-    	<copy todir="${buildPath}/lib">
-    		<fileset dir="lib" includes="*.jar" excludes="commons-math-2.2.jar"/>
-    	</copy>
-    	
-        <javac destdir="${buildPath}/classes"
-            source="1.7"
-            target="1.7"
-            debug="on" 
-        	classpathref="cp.path"
-        	includeantruntime="false">
-    		<src path="src"/>
-        </javac>
+    <target name="compile-test" depends="init" description="compile test files">
+        <mkdir dir="${build.test}"/>
+        <!-- Compile the java code from ${src.test} into ${build.test} -->
+        <javac srcdir="${src.test}" destdir="${build.test}" classpathref="project.classpath" includeantruntime="false"/>
+        <!-- copy project and test resources to the build folders -->
+        <copy todir="${build.test}" failonerror="false">
+            <fileset dir="${res.test}"/>
+        </copy>
     </target>
-    
-    <target depends="javadoc" description="bundle javadoc in a jar" name="package-doc">
-	    <jar basedir="doc" destfile="build/orestes-bf-javadoc.jar"/>
+
+    <target name="test" depends="compile, compile-test" description="test the compiled sources">
+        <junit printsummary="true">
+            <classpath>
+                <path refid="project.classpath"/>
+                <pathelement location="${build.test}"/>
+            </classpath>
+
+            <formatter type="xml"/>
+
+            <batchtest fork="yes" todir="${build.test}">
+                <fileset dir="${src.test}" includes="**/*Test.java" />
+            </batchtest>
+        </junit>
     </target>
-    
-    <target name="javadoc">
-        <javadoc access="public" author="true" classpath="lib/jedis-2.1.0.jar;C:\eclipse-4\plugins\org.hamcrest.core_1.1.0.v20090501071000.jar;lib/commons-math-2.2.jar;lib/gson-1.6.jar;lib/jetty-util-9.0.0.RC2.jar;C:\eclipse-4\plugins\org.junit_4.10.0.v4_10_0_v20120426-0900\junit.jar" destdir="doc" doctitle="Orestes Bloom Filter Javadocs" nodeprecated="false" nodeprecatedlist="false" noindex="false" nonavbar="false" notree="false" overview="overview.html" packagenames="orestes.bloomfilter.redis,orestes.bloomfilter.json,orestes.bloomfilter" source="1.7" sourcepath="src" splitindex="true" use="true" version="true"/>
+
+    <target name="dist" depends="compile" description="generate the distribution" >
+        <!-- Create the distribution directory -->
+        <mkdir dir="${dist}"/>
+
+        <copy todir="${dist}">
+            <path refid="project.classpath" />
+        </copy>
+
+        <manifestclasspath property="jar.classpath" jarfile="${dist}/${projectName}-${git.revision}.jar">
+            <classpath refid="project.classpath" />
+        </manifestclasspath>
+
+        <!-- Put everything in ${build} into the {$projectName}-${DSTAMP}.jar file -->
+        <jar jarfile="${dist}/${projectName}-${git.revision}.jar" basedir="${build}">
+            <manifest>
+                <!-- <attribute name="Main-Class" value="${main.class}"/> -->
+                <attribute name="Class-Path" value="${jar.classpath}"/>
+            </manifest>
+        </jar>
     </target>
-	
+
+    <target name="clean"
+            description="clean up" >
+
+        <!-- Delete the ${build} and ${dist} directory trees -->
+        <delete dir="${build}"/>
+        <delete dir="${build.test}"/>
+        <delete dir="${dist}"/>
+    </target>
 </project>
