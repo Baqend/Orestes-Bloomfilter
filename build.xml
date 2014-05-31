@@ -31,7 +31,7 @@
         <fileset dir="${lib.test}" includes="**/*.jar" excludes="*source*"/>
     </path>
 
-    <target name="dep" unless="env.NO_DEPENDENCIES">
+    <target name="dep">
     </target>
 
     <target name="init" depends="dep">
