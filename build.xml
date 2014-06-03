@@ -3,39 +3,45 @@
         Project Description
     </description>
 
-    <property environment="env"/>
-
     <!-- set global properties for this build -->
     <property name="projectName" value="${ant.project.name}"/>
     <property name="src" location="src"/>
     <property name="src.test" location="test"/>
     <property name="res" location="res"/>
     <property name="res.test" location="res-test"/>
+    <property name="res.jar" location="res-jar"/>
     <property name="lib" location="lib"/>
     <property name="lib.test" location="lib-test"/>
     <property name="build" location="build"/>
-    <property name="build.test" location="build-test"/>
     <property name="dist" location="dist"/>
     <property name="main.class" value=""/>
 
+    <!-- project dependencies -->
+    <target name="dep" depends="init"/>
+    <target name="dep-test" depends="init"/>
+
+    <!-- internal properties -->
+    <property name="build.classes" location="${build}/classes"/>
+    <property name="build.dependencies" location="${build}/dep"/>
+    <property name="build.classes.test" location="${build}/classes-test"/>
+    <property name="build.dependencies.test" location="${build}/dep-test"/>
+
     <!-- define the project classpath -->
     <path id="project.classpath">
-        <pathelement location="${build}"/>
-        <fileset dir="${lib}" includes="**/*.jar" excludes="*source*"/>
+        <fileset dir="${build.dependencies}" includes="**/*.jar"/>
+        <pathelement location="${build.dependencies}"/>
+        <pathelement location="${build.classes}"/>
     </path>
 
     <!-- define the project test classpath -->
     <path id="project.classpath.test">
         <path refid="project.classpath"/>
-        <pathelement location="${build.test}"/>
-        <fileset dir="${lib.test}" includes="**/*.jar" excludes="*source*"/>
+        <fileset dir="${build.dependencies.test}" includes="**/*.jar"/>
+        <pathelement location="${build.dependencies.test}"/>
+        <pathelement location="${build.classes.test}"/>
     </path>
 
-    <target name="dep">
-    </target>
-
-    <target name="init" depends="dep">
-
+    <target name="init">
         <!-- Get the current git revision short hash -->
         <exec executable="git" outputproperty="git.revision">
             <arg value="log"/>
@@ -43,61 +49,69 @@
             <arg value="--pretty=format:%h"/>
         </exec>
 
-        <!-- Create the build directory structure used by compile -->
+        <!-- create build folders -->
         <mkdir dir="${build}"/>
+        <mkdir dir="${build.classes}"/>
+        <mkdir dir="${build.dependencies}"/>
+        <mkdir dir="${build.classes.test}"/>
+        <mkdir dir="${build.dependencies.test}"/>
     </target>
 
-    <target name="compile" depends="init" description="compile the source " >
+    <target name="compile" depends="dep" description="compile the source " >
+        <!-- copy project libs and resources to the dependency folder -->
+        <copy todir="${build.dependencies}">
+            <fileset dir="${lib}" includes="*.jar" excludes="*source*" erroronmissingdir="false"/>
+            <fileset dir="${res}" erroronmissingdir="false"/>
+        </copy>
+
         <!-- Compile the java code from ${src} into ${build} -->
-        <javac srcdir="${src}" destdir="${build}" classpathref="project.classpath" includeantruntime="false"/>
-        <!-- copy project and test resources to the build folders -->
-        <copy todir="${build}" failonerror="false">
-            <fileset dir="${res}"/>
+        <javac srcdir="${src}" destdir="${build.classes}" classpathref="project.classpath" includeantruntime="false"/>
+
+        <!-- Copy jar resources to the build folder -->
+        <copy todir="${build.classes}">
+            <fileset dir="${res.jar}" erroronmissingdir="false"/>
         </copy>
     </target>
 
-    <target name="compile-test" depends="init" description="compile test files">
-        <mkdir dir="${build.test}"/>
-        <!-- Compile the java code from ${src.test} into ${build.test} -->
-        <javac srcdir="${src.test}" destdir="${build.test}" classpathref="project.classpath.test" includeantruntime="false"/>
-        <!-- copy project and test resources to the build folders -->
-        <copy todir="${build.test}" failonerror="false">
-            <fileset dir="${res.test}"/>
+    <target name="compile-test" depends="dep-test" description="compile test files">
+        <!-- copy project test libs and resources to the test dependency folder -->
+        <copy todir="${build.dependencies.test}">
+            <fileset dir="${lib.test}" includes="*.jar" excludes="*source*" erroronmissingdir="false"/>
+            <fileset dir="${res.test}" erroronmissingdir="false"/>
         </copy>
+
+        <!-- Compile the java code from ${src.test} into ${build.test} -->
+        <javac srcdir="${src.test}" destdir="${build.classes.test}" classpathref="project.classpath.test" includeantruntime="false"/>
     </target>
 
     <target name="test" depends="compile, compile-test" description="test the compiled sources">
         <junit printsummary="true">
-            <classpath>
-                <path refid="project.classpath.test"/>
-                <pathelement location="${build.test}"/>
-            </classpath>
+            <classpath refid="project.classpath.test"/>
 
             <formatter type="xml"/>
 
-            <batchtest fork="yes" todir="${build.test}">
-                <fileset dir="${src.test}" includes="**/*Test.java" />
+            <batchtest fork="yes" todir="${build}">
+                <fileset dir="${build.classes.test}" includes="**/*Test.class"/>
             </batchtest>
         </junit>
     </target>
 
     <target name="dist" depends="compile" description="generate the distribution" >
         <!-- Create the distribution directory -->
-        <delete dir="${dist}"/>
         <mkdir dir="${dist}"/>
 
         <copy todir="${dist}">
-            <path refid="project.classpath" />
+            <fileset dir="${build.dependencies}"/>
         </copy>
 
         <manifestclasspath property="jar.classpath" jarfile="${dist}/${projectName}-${git.revision}.jar">
             <classpath>
-                <fileset dir="${dist}" />
+                <fileset dir="${dist}" includes="*.jar" />
             </classpath>
         </manifestclasspath>
 
         <!-- Put everything in ${build} into the {$projectName}-${DSTAMP}.jar file -->
-        <jar jarfile="${dist}/${projectName}-${git.revision}.jar" basedir="${build}">
+        <jar jarfile="${dist}/${projectName}-${git.revision}.jar" basedir="${build.classes}">
             <manifest>
                 <attribute name="Main-Class" value="${main.class}"/>
                 <attribute name="Class-Path" value="${jar.classpath}"/>
@@ -109,7 +123,6 @@
 
         <!-- Delete the ${build} and ${dist} directory trees -->
         <delete dir="${build}"/>
-        <delete dir="${build.test}"/>
         <delete dir="${dist}"/>
     </target>
 </project>
