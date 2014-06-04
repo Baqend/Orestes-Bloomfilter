@@ -1,20 +1,14 @@
 package orestes.bloomfilter.test;
 
-import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Random;
-import java.util.Set;
-
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.BloomFilter.HashMethod;
-
 import org.apache.commons.math.MathException;
 import org.apache.commons.math.distribution.ChiSquaredDistributionImpl;
 import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math.stat.inference.ChiSquareTestImpl;
+
+import java.text.NumberFormat;
+import java.util.*;
 
 public class BFHashUniformity {
 	public static int RAND = 0;
@@ -288,13 +282,12 @@ public class BFHashUniformity {
 		}
 
 		for (int i = 0; i < rounds; i++) {
-
 			List<String> data = hashData.get(i);
 			for (int j = 0; j < hashRounds; j++) {
 				data.add("Objectid " + i + "" + j);
 			}
-
 		}
+
 		return hashData;
 	}
 

@@ -198,7 +198,7 @@ public class Tutorial {
 		for (int i = 1; i < 40; i++) {
 			bfs.add(new BloomFilterRedis<String>(new Jedis(IP, 6379)));
 		}
-		RedisBFTests.concurrentBenchmark(bfs, 2000);
+		RedisBFTest.concurrentBenchmark(bfs, 2000);
 	}
 	
 	private static <T> void print(T msg) {

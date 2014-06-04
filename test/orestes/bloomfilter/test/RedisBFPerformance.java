@@ -1,16 +1,16 @@
 package orestes.bloomfilter.test;
 
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
-
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.BloomFilter.HashMethod;
 import orestes.bloomfilter.redis.CBloomFilterRedisBits;
 
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
+
 public class RedisBFPerformance {
 	public static void main(String[] args) {
-		String host = RedisBFTests.host;
+		String host = RedisBFTest.host;
 		if(args.length > 0)
 			host = args[0];
 		int items = 100_000_000;
@@ -23,7 +23,7 @@ public class RedisBFPerformance {
 	private static void compareToRuby(String host, int count, int m, int k, int items) {
 		long start = System.currentTimeMillis();
 		//BloomFilter<String> b = new BloomFilter<String>(m, k);
-		BloomFilter<String> b = new CBloomFilterRedisBits<String>(host, RedisBFTests.port, m, k, 4);
+		BloomFilter<String> b = new CBloomFilterRedisBits<String>(host, RedisBFTest.port, m, k, 4);
 		//BloomFilter<String> b = new CBloomFilterRedis<String>(RedisBFTests.host, RedisBFTests.port, m, k, 4);
 		b.clear();
 		b.setHashMethod(HashMethod.Murmur);
@@ -41,7 +41,7 @@ public class RedisBFPerformance {
 		double fprate = 100.0 * fp / count;
 		System.out.println("False Positives = " + fp + ", FP-Rate = " + fprate);
 		long end = System.currentTimeMillis();
-		BFTests.printStat(start, end, count);
+		BFTest.printStat(start, end, count);
 	}
 
 }

@@ -6,8 +6,8 @@ import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
 @SuiteClasses({
-	BFTests.class,
-	RedisBFTests.class })
+	BFTest.class,
+	RedisBFTest.class })
 public class AllBFTests {
 
 }
