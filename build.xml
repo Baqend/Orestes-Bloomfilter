@@ -107,6 +107,7 @@
         <manifestclasspath property="jar.classpath" jarfile="${dist}/${projectName}-${git.revision}.jar">
             <classpath>
                 <fileset dir="${dist}" includes="*.jar" />
+                <dirset dir="."/>
             </classpath>
         </manifestclasspath>
 
