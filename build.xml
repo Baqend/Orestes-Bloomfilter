@@ -118,6 +118,10 @@
                 <attribute name="Class-Path" value="${jar.classpath}"/>
             </manifest>
         </jar>
+
+        <jar destfile="${dist}/${projectName}-sources-${git.revision}.jar">
+            <fileset dir="${src}" includes="**/*.java"/>
+        </jar>
     </target>
 
     <target name="clean" description="clean up" >
