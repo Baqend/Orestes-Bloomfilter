@@ -3,6 +3,8 @@ apply plugin: 'maven'
 apply plugin: 'java-library-distribution'
 
 def distFolder = file("dist")
+def projectName = 'bloom-filter'
+
 
 repositories {
     mavenCentral()
@@ -48,8 +50,10 @@ distributions {
 }
 
 distZip.destinationDir = distFolder
+distZip.baseName = projectName
 
 task dist(dependsOn: distZip, type:Jar){
+    baseName = projectName
     from sourceSets.main.allSource
     destinationDir distFolder
     classifier = 'source'
