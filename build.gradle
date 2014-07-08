@@ -49,6 +49,7 @@ distributions {
     }
 }
 
+jar.baseName = projectName
 distZip.baseName = projectName
 distZip.destinationDir = distFolder
 
