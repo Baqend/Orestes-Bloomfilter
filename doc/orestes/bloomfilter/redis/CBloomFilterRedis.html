@@ -113,7 +113,7 @@
 <br>
 <pre>public class <span class="strong">CBloomFilterRedis&lt;T&gt;</span>
 extends <a href="../../../orestes/bloomfilter/CBloomFilter.html" title="class in orestes.bloomfilter">CBloomFilter</a>&lt;T&gt;</pre>
-<div class="block">Uses regular key-value pairs for counting instead of a bitarray. This introduces a space overhead but allows
+<div class="block">Uses regular key-message pairs for counting instead of a bitarray. This introduces a space overhead but allows
  distribution of keys, thus increasing throughput. Pipelining can also be leveraged in this approach to minimize
  network latency.</div>
 <dl><dt><span class="strong">See Also:</span></dt><dd><a href="../../../serialized-form.html#orestes.bloomfilter.redis.CBloomFilterRedis">Serialized Form</a></dd></dl>
@@ -188,7 +188,7 @@ extends <a href="../../../orestes/bloomfilter/CBloomFilter.html" title="class in
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><strong><a href="../../../orestes/bloomfilter/redis/CBloomFilterRedis.html#add(byte[])">add</a></strong>(byte[]&nbsp;value)</code>&nbsp;</td>
+<td class="colLast"><code><strong><a href="../../../orestes/bloomfilter/redis/CBloomFilterRedis.html#add(byte[])">add</a></strong>(byte[]&nbsp;message)</code>&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
@@ -200,7 +200,7 @@ extends <a href="../../../orestes/bloomfilter/CBloomFilter.html" title="class in
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><strong><a href="../../../orestes/bloomfilter/redis/CBloomFilterRedis.html#contains(byte[])">contains</a></strong>(byte[]&nbsp;value)</code>&nbsp;</td>
+<td class="colLast"><code><strong><a href="../../../orestes/bloomfilter/redis/CBloomFilterRedis.html#contains(byte[])">contains</a></strong>(byte[]&nbsp;message)</code>&nbsp;</td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>void</code></td>
@@ -210,7 +210,7 @@ extends <a href="../../../orestes/bloomfilter/CBloomFilter.html" title="class in
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><strong><a href="../../../orestes/bloomfilter/redis/CBloomFilterRedis.html#remove(byte[])">remove</a></strong>(byte[]&nbsp;value)</code>
+<td class="colLast"><code><strong><a href="../../../orestes/bloomfilter/redis/CBloomFilterRedis.html#remove(byte[])">remove</a></strong>(byte[]&nbsp;message)</code>
 <div class="block">Removes the object from the counting bloom filter.</div>
 </td>
 </tr>
@@ -309,13 +309,13 @@ extends <a href="../../../orestes/bloomfilter/CBloomFilter.html" title="class in
 <ul class="blockList">
 <li class="blockList">
 <h4>remove</h4>
-<pre>public&nbsp;void&nbsp;remove(byte[]&nbsp;value)</pre>
+<pre>public&nbsp;void&nbsp;remove(byte[]&nbsp;message)</pre>
 <div class="block"><strong>Description copied from class:&nbsp;<code><a href="../../../orestes/bloomfilter/CBloomFilter.html#remove(byte[])">CBloomFilter</a></code></strong></div>
 <div class="block">Removes the object from the counting bloom filter.</div>
 <dl>
 <dt><strong>Overrides:</strong></dt>
 <dd><code><a href="../../../orestes/bloomfilter/CBloomFilter.html#remove(byte[])">remove</a></code>&nbsp;in class&nbsp;<code><a href="../../../orestes/bloomfilter/CBloomFilter.html" title="class in orestes.bloomfilter">CBloomFilter</a>&lt;<a href="../../../orestes/bloomfilter/redis/CBloomFilterRedis.html" title="type parameter in CBloomFilterRedis">T</a>&gt;</code></dd>
-<dt><span class="strong">Parameters:</span></dt><dd><code>value</code> - object to be deleted</dd></dl>
+<dt><span class="strong">Parameters:</span></dt><dd><code>message</code> - object to be deleted</dd></dl>
 </li>
 </ul>
 <a name="clear()">
@@ -337,7 +337,7 @@ extends <a href="../../../orestes/bloomfilter/CBloomFilter.html" title="class in
 <ul class="blockList">
 <li class="blockList">
 <h4>add</h4>
-<pre>public&nbsp;boolean&nbsp;add(byte[]&nbsp;value)</pre>
+<pre>public&nbsp;boolean&nbsp;add(byte[]&nbsp;message)</pre>
 <dl>
 <dt><strong>Overrides:</strong></dt>
 <dd><code><a href="../../../orestes/bloomfilter/CBloomFilter.html#add(byte[])">add</a></code>&nbsp;in class&nbsp;<code><a href="../../../orestes/bloomfilter/CBloomFilter.html" title="class in orestes.bloomfilter">CBloomFilter</a>&lt;<a href="../../../orestes/bloomfilter/redis/CBloomFilterRedis.html" title="type parameter in CBloomFilterRedis">T</a>&gt;</code></dd>
@@ -363,7 +363,7 @@ extends <a href="../../../orestes/bloomfilter/CBloomFilter.html" title="class in
 <ul class="blockListLast">
 <li class="blockList">
 <h4>contains</h4>
-<pre>public&nbsp;boolean&nbsp;contains(byte[]&nbsp;value)</pre>
+<pre>public&nbsp;boolean&nbsp;contains(byte[]&nbsp;message)</pre>
 <dl>
 <dt><strong>Overrides:</strong></dt>
 <dd><code><a href="../../../orestes/bloomfilter/BloomFilter.html#contains(byte[])">contains</a></code>&nbsp;in class&nbsp;<code><a href="../../../orestes/bloomfilter/BloomFilter.html" title="class in orestes.bloomfilter">BloomFilter</a>&lt;<a href="../../../orestes/bloomfilter/redis/CBloomFilterRedis.html" title="type parameter in CBloomFilterRedis">T</a>&gt;</code></dd>

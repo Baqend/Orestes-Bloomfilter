@@ -188,7 +188,7 @@ extends <a href="../../orestes/bloomfilter/BloomFilter.html" title="class in ore
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/CBloomFilter.html#add(byte[])">add</a></strong>(byte[]&nbsp;value)</code>&nbsp;</td>
+<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/CBloomFilter.html#add(byte[])">add</a></strong>(byte[]&nbsp;message)</code>&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
@@ -220,13 +220,13 @@ extends <a href="../../orestes/bloomfilter/BloomFilter.html" title="class in ore
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/CBloomFilter.html#remove(byte[])">remove</a></strong>(byte[]&nbsp;value)</code>
+<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/CBloomFilter.html#remove(byte[])">remove</a></strong>(byte[]&nbsp;message)</code>
 <div class="block">Removes the object from the counting bloom filter.</div>
 </td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/CBloomFilter.html#remove(T)">remove</a></strong>(<a href="../../orestes/bloomfilter/CBloomFilter.html" title="type parameter in CBloomFilter">T</a>&nbsp;value)</code>
+<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/CBloomFilter.html#remove(T)">remove</a></strong>(<a href="../../orestes/bloomfilter/CBloomFilter.html" title="type parameter in CBloomFilter">T</a>&nbsp;message)</code>
 <div class="block">Removes the object from the counting bloom filter.</div>
 </td>
 </tr>
@@ -338,7 +338,7 @@ extends <a href="../../orestes/bloomfilter/BloomFilter.html" title="class in ore
 <ul class="blockList">
 <li class="blockList">
 <h4>add</h4>
-<pre>public&nbsp;boolean&nbsp;add(byte[]&nbsp;value)</pre>
+<pre>public&nbsp;boolean&nbsp;add(byte[]&nbsp;message)</pre>
 <dl>
 <dt><strong>Overrides:</strong></dt>
 <dd><code><a href="../../orestes/bloomfilter/BloomFilter.html#add(byte[])">add</a></code>&nbsp;in class&nbsp;<code><a href="../../orestes/bloomfilter/BloomFilter.html" title="class in orestes.bloomfilter">BloomFilter</a>&lt;<a href="../../orestes/bloomfilter/CBloomFilter.html" title="type parameter in CBloomFilter">T</a>&gt;</code></dd>
@@ -351,9 +351,9 @@ extends <a href="../../orestes/bloomfilter/BloomFilter.html" title="class in ore
 <ul class="blockList">
 <li class="blockList">
 <h4>remove</h4>
-<pre>public&nbsp;void&nbsp;remove(byte[]&nbsp;value)</pre>
+<pre>public&nbsp;void&nbsp;remove(byte[]&nbsp;message)</pre>
 <div class="block">Removes the object from the counting bloom filter.</div>
-<dl><dt><span class="strong">Parameters:</span></dt><dd><code>value</code> - object to be deleted</dd></dl>
+<dl><dt><span class="strong">Parameters:</span></dt><dd><code>message</code> - object to be deleted</dd></dl>
 </li>
 </ul>
 <a name="remove(java.lang.Object)">
@@ -364,9 +364,9 @@ extends <a href="../../orestes/bloomfilter/BloomFilter.html" title="class in ore
 <ul class="blockList">
 <li class="blockList">
 <h4>remove</h4>
-<pre>public&nbsp;void&nbsp;remove(<a href="../../orestes/bloomfilter/CBloomFilter.html" title="type parameter in CBloomFilter">T</a>&nbsp;value)</pre>
+<pre>public&nbsp;void&nbsp;remove(<a href="../../orestes/bloomfilter/CBloomFilter.html" title="type parameter in CBloomFilter">T</a>&nbsp;message)</pre>
 <div class="block">Removes the object from the counting bloom filter.</div>
-<dl><dt><span class="strong">Parameters:</span></dt><dd><code>value</code> - object to be deleted</dd></dl>
+<dl><dt><span class="strong">Parameters:</span></dt><dd><code>message</code> - object to be deleted</dd></dl>
 </li>
 </ul>
 <a name="removeAll(java.util.Collection)">

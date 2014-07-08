@@ -312,7 +312,7 @@ implements java.io.Serializable</pre>
 <tr class="rowColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilterMagnus.html#getK()">getK</a></strong>()</code>
-<div class="block">Returns the value chosen for K.</div>
+<div class="block">Returns the message chosen for K.</div>
 </td>
 </tr>
 <tr class="altColor">
@@ -324,7 +324,7 @@ implements java.io.Serializable</pre>
 <tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilterMagnus.html#setBit(int, boolean)">setBit</a></strong>(int&nbsp;bit,
-      boolean&nbsp;value)</code>
+      boolean&nbsp;message)</code>
 <div class="block">Set a single bit in the Bloom filter.</div>
 </td>
 </tr>
@@ -510,10 +510,10 @@ implements java.io.Serializable</pre>
 <div class="block">Calculates the expected probability of false positives based on
  the number of expected filter elements and the size of the Bloom filter.
  <br /><br />
- The value returned by this method is the <i>expected</i> rate of false
+ The message returned by this method is the <i>expected</i> rate of false
  positives, assuming the number of inserted elements equals the number of
  expected elements. If the number of elements in the Bloom filter is less
- than the expected value, the true probability of false positives will be lower.</div>
+ than the expected message, the true probability of false positives will be lower.</div>
 <dl><dt><span class="strong">Returns:</span></dt><dd>expected probability of false positives.</dd></dl>
 </li>
 </ul>
@@ -549,7 +549,7 @@ implements java.io.Serializable</pre>
 <li class="blockList">
 <h4>getK</h4>
 <pre>public&nbsp;int&nbsp;getK()</pre>
-<div class="block">Returns the value chosen for K.<br />
+<div class="block">Returns the message chosen for K.<br />
  <br />
  K is the optimal number of hash functions based on the size
  of the Bloom filter and the expected number of inserted elements.</div>
@@ -665,9 +665,9 @@ implements java.io.Serializable</pre>
 <li class="blockList">
 <h4>setBit</h4>
 <pre>public&nbsp;void&nbsp;setBit(int&nbsp;bit,
-          boolean&nbsp;value)</pre>
+          boolean&nbsp;message)</pre>
 <div class="block">Set a single bit in the Bloom filter.</div>
-<dl><dt><span class="strong">Parameters:</span></dt><dd><code>bit</code> - is the bit to set.</dd><dd><code>value</code> - If true, the bit is set. If false, the bit is cleared.</dd></dl>
+<dl><dt><span class="strong">Parameters:</span></dt><dd><code>bit</code> - is the bit to set.</dd><dd><code>message</code> - If true, the bit is set. If false, the bit is cleared.</dd></dl>
 </li>
 </ul>
 <a name="getBitSet()">
@@ -713,7 +713,7 @@ implements java.io.Serializable</pre>
 <h4>getExpectedNumberOfElements</h4>
 <pre>public&nbsp;int&nbsp;getExpectedNumberOfElements()</pre>
 <div class="block">Returns the expected number of elements to be inserted into the filter.
- This value is the same value as the one passed to the constructor.</div>
+ This message is the same message as the one passed to the constructor.</div>
 <dl><dt><span class="strong">Returns:</span></dt><dd>expected number of elements.</dd></dl>
 </li>
 </ul>
@@ -724,7 +724,7 @@ implements java.io.Serializable</pre>
 <li class="blockList">
 <h4>getExpectedBitsPerElement</h4>
 <pre>public&nbsp;double&nbsp;getExpectedBitsPerElement()</pre>
-<div class="block">Get expected number of bits per element when the Bloom filter is full. This value is set by the constructor
+<div class="block">Get expected number of bits per element when the Bloom filter is full. This message is set by the constructor
  when the Bloom filter is created. See also getBitsPerElement().</div>
 <dl><dt><span class="strong">Returns:</span></dt><dd>expected number of bits per element.</dd></dl>
 </li>

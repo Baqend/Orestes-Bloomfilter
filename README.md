@@ -226,7 +226,7 @@ The Counting Bloom filter thus has a bit size of 11, uses 3 hash functions and 4
 ## Redis Bloom Filters
 Bloom filters are really intresting beauce they allow very high throughput and minimal latency for adding and querying (and removing). Therefore you might want to use them across the boundaries of a single machine. For instance imagine you run a large scale web site or web service. You have a load balancer distributing the request load over several front-end web servers. You now want to store some information with a natural set structure, say, you want to know if a source IP adress has accessed the requested URL in the past. You could achieve that by either eplicitly storing that information (probably in a database) which will soon be a bottleneck if you serve billions of requests a day. Or you employ a shared Bloom filter and accept a small possibility of false positives.
 
-These kind of use-cases are ideal for the Redis-backed Bloom filters of this library. They have the same Java Interfaces as the normal and Counting Bloom filter but store the Bloom filter bits in the [in-memory key-value store Redis](http://redis.io).
+These kind of use-cases are ideal for the Redis-backed Bloom filters of this library. They have the same Java Interfaces as the normal and Counting Bloom filter but store the Bloom filter bits in the [in-memory key-message store Redis](http://redis.io).
 
 Reasons to use these Redis-backed Bloom filters instead of their pure Java brothers are:
 * **Concurrent** or **Distributed** Access to on Bloom filter
@@ -301,7 +301,7 @@ Here is a Box plot overview of how good the different hash functions perform (In
 
 Speed of computation doesn't tell much about the quality of hash values. A good hash function is one, which has a discrete uniform distribution of outputs. That means that every bit of the Bloom filter's bit vector is equally likely to bet set. To measure if and how good the hash functions follow a uniform distribution [goodness of fit Chi-Square hypothesis tests](http://en.wikipedia.org/wiki/Pearson%27s_chi-squared_test) are the mathematical instrument of choice.
 
-Here are some of the results. The inputs are random strings. The p-value is the probability of getting a statistical result that is at least as extreme as the obtained result. So the usual way of hypothesis testing would be rejecting the null hypothesis ("the hash hash function is uniformly distributed") if the p-value is smaller than 0.05. We did 100 Chi-Square Tests:
+Here are some of the results. The inputs are random strings. The p-message is the probability of getting a statistical result that is at least as extreme as the obtained result. So the usual way of hypothesis testing would be rejecting the null hypothesis ("the hash hash function is uniformly distributed") if the p-message is smaller than 0.05. We did 100 Chi-Square Tests:
 
 <img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/chi-strings.png"/>
 
@@ -335,7 +335,7 @@ It's also possible to provide a custom hash function:
 BloomFilter<String> bf = new BloomFilter<>(1000, 0.01);
 bf.setCusomHashFunction(new CustomHashFunction() {
 	@Override
-	public int[] hash(byte[] value, int m, int k) {
+	public int[] hash(byte[] message, int m, int k) {
 		//...
 	}			
 });
@@ -359,7 +359,7 @@ addAll(): 1.59s, 628930.8176 elements/s
 contains(), existing: 1.429s, 699790.063 elements/s
 contains(), nonexisting: 1.469s, 680735.194 elements/s
 100000 hash() calls: 0.029s, 3448275.8621 elements/s
-Hash Quality (Chi-Squared-Test): p-value = 0.9487628088638604 , Chi-Squared-Statistic = 956245.1584854313
+Hash Quality (Chi-Squared-Test): p-message = 0.9487628088638604 , Chi-Squared-Statistic = 956245.1584854313
 ```
 
 The Redis-backed and Counting Bloom filters can also be tested.

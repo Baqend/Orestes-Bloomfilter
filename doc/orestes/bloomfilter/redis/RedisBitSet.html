@@ -209,13 +209,13 @@ extends java.util.BitSet</pre>
 <tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><strong><a href="../../../orestes/bloomfilter/redis/RedisBitSet.html#set(int, boolean)">set</a></strong>(int&nbsp;bitIndex,
-   boolean&nbsp;value)</code>&nbsp;</td>
+   boolean&nbsp;message)</code>&nbsp;</td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><strong><a href="../../../orestes/bloomfilter/redis/RedisBitSet.html#set(redis.clients.jedis.Pipeline, int, boolean)">set</a></strong>(redis.clients.jedis.Pipeline&nbsp;p,
    int&nbsp;bitIndex,
-   boolean&nbsp;value)</code>
+   boolean&nbsp;message)</code>
 <div class="block">Performs the normal <a href="../../../orestes/bloomfilter/redis/RedisBitSet.html#set(int, boolean)"><code>set(int, boolean)</code></a> operation using the given pipeline.</div>
 </td>
 </tr>
@@ -223,7 +223,7 @@ extends java.util.BitSet</pre>
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><strong><a href="../../../orestes/bloomfilter/redis/RedisBitSet.html#set(redis.clients.jedis.Transaction, int, boolean)">set</a></strong>(redis.clients.jedis.Transaction&nbsp;t,
    int&nbsp;bitIndex,
-   boolean&nbsp;value)</code>
+   boolean&nbsp;message)</code>
 <div class="block">Performs the normal <a href="../../../orestes/bloomfilter/redis/RedisBitSet.html#set(int, boolean)"><code>set(int, boolean)</code></a> operation using the given transaction.</div>
 </td>
 </tr>
@@ -379,7 +379,7 @@ extends java.util.BitSet</pre>
 <li class="blockList">
 <h4>set</h4>
 <pre>public&nbsp;void&nbsp;set(int&nbsp;bitIndex,
-       boolean&nbsp;value)</pre>
+       boolean&nbsp;message)</pre>
 <dl>
 <dt><strong>Overrides:</strong></dt>
 <dd><code>set</code>&nbsp;in class&nbsp;<code>java.util.BitSet</code></dd>
@@ -394,9 +394,9 @@ extends java.util.BitSet</pre>
 <h4>set</h4>
 <pre>public&nbsp;void&nbsp;set(redis.clients.jedis.Transaction&nbsp;t,
        int&nbsp;bitIndex,
-       boolean&nbsp;value)</pre>
+       boolean&nbsp;message)</pre>
 <div class="block">Performs the normal <a href="../../../orestes/bloomfilter/redis/RedisBitSet.html#set(int, boolean)"><code>set(int, boolean)</code></a> operation using the given transaction.</div>
-<dl><dt><span class="strong">Parameters:</span></dt><dd><code>t</code> - the propagated transaction</dd><dd><code>bitIndex</code> - a bit index</dd><dd><code>value</code> - a boolean value to set</dd></dl>
+<dl><dt><span class="strong">Parameters:</span></dt><dd><code>t</code> - the propagated transaction</dd><dd><code>bitIndex</code> - a bit index</dd><dd><code>message</code> - a boolean message to set</dd></dl>
 </li>
 </ul>
 <a name="set(redis.clients.jedis.Pipeline, int, boolean)">
@@ -407,9 +407,9 @@ extends java.util.BitSet</pre>
 <h4>set</h4>
 <pre>public&nbsp;void&nbsp;set(redis.clients.jedis.Pipeline&nbsp;p,
        int&nbsp;bitIndex,
-       boolean&nbsp;value)</pre>
+       boolean&nbsp;message)</pre>
 <div class="block">Performs the normal <a href="../../../orestes/bloomfilter/redis/RedisBitSet.html#set(int, boolean)"><code>set(int, boolean)</code></a> operation using the given pipeline.</div>
-<dl><dt><span class="strong">Parameters:</span></dt><dd><code>p</code> - the propagated pipeline</dd><dd><code>bitIndex</code> - a bit index</dd><dd><code>value</code> - a boolean value to set</dd></dl>
+<dl><dt><span class="strong">Parameters:</span></dt><dd><code>p</code> - the propagated pipeline</dd><dd><code>bitIndex</code> - a bit index</dd><dd><code>message</code> - a boolean message to set</dd></dl>
 </li>
 </ul>
 <a name="set(int)">

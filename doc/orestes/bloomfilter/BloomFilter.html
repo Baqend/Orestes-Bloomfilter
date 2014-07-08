@@ -195,11 +195,11 @@ implements java.lang.Cloneable, java.io.Serializable</pre>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#add(byte[])">add</a></strong>(byte[]&nbsp;value)</code>&nbsp;</td>
+<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#add(byte[])">add</a></strong>(byte[]&nbsp;message)</code>&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#add(T)">add</a></strong>(<a href="../../orestes/bloomfilter/BloomFilter.html" title="type parameter in BloomFilter">T</a>&nbsp;value)</code>&nbsp;</td>
+<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#add(T)">add</a></strong>(<a href="../../orestes/bloomfilter/BloomFilter.html" title="type parameter in BloomFilter">T</a>&nbsp;message)</code>&nbsp;</td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>void</code></td>
@@ -215,11 +215,11 @@ implements java.lang.Cloneable, java.io.Serializable</pre>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#contains(byte[])">contains</a></strong>(byte[]&nbsp;value)</code>&nbsp;</td>
+<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#contains(byte[])">contains</a></strong>(byte[]&nbsp;message)</code>&nbsp;</td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#contains(T)">contains</a></strong>(<a href="../../orestes/bloomfilter/BloomFilter.html" title="type parameter in BloomFilter">T</a>&nbsp;value)</code>&nbsp;</td>
+<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#contains(T)">contains</a></strong>(<a href="../../orestes/bloomfilter/BloomFilter.html" title="type parameter in BloomFilter">T</a>&nbsp;message)</code>&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
@@ -280,7 +280,7 @@ implements java.lang.Cloneable, java.io.Serializable</pre>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>int[]</code></td>
-<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#hash(java.lang.String)">hash</a></strong>(java.lang.String&nbsp;value)</code>
+<td class="colLast"><code><strong><a href="../../orestes/bloomfilter/BloomFilter.html#hash(java.lang.String)">hash</a></strong>(java.lang.String&nbsp;message)</code>
 <div class="block">Dispatches the hash function defines via
  <a href="../../orestes/bloomfilter/BloomFilter.html#setHashMethod(orestes.bloomfilter.BloomFilter.HashMethod)"><code>setHashMethod(HashMethod)</code></a> (default: cryptographic hash
  function).</div>
@@ -533,7 +533,7 @@ implements java.lang.Cloneable, java.io.Serializable</pre>
 <ul class="blockList">
 <li class="blockList">
 <h4>add</h4>
-<pre>public&nbsp;boolean&nbsp;add(byte[]&nbsp;value)</pre>
+<pre>public&nbsp;boolean&nbsp;add(byte[]&nbsp;message)</pre>
 </li>
 </ul>
 <a name="add(java.lang.Object)">
@@ -544,7 +544,7 @@ implements java.lang.Cloneable, java.io.Serializable</pre>
 <ul class="blockList">
 <li class="blockList">
 <h4>add</h4>
-<pre>public&nbsp;boolean&nbsp;add(<a href="../../orestes/bloomfilter/BloomFilter.html" title="type parameter in BloomFilter">T</a>&nbsp;value)</pre>
+<pre>public&nbsp;boolean&nbsp;add(<a href="../../orestes/bloomfilter/BloomFilter.html" title="type parameter in BloomFilter">T</a>&nbsp;message)</pre>
 </li>
 </ul>
 <a name="addAll(java.util.Collection)">
@@ -571,7 +571,7 @@ implements java.lang.Cloneable, java.io.Serializable</pre>
 <ul class="blockList">
 <li class="blockList">
 <h4>contains</h4>
-<pre>public&nbsp;boolean&nbsp;contains(byte[]&nbsp;value)</pre>
+<pre>public&nbsp;boolean&nbsp;contains(byte[]&nbsp;message)</pre>
 </li>
 </ul>
 <a name="contains(java.lang.Object)">
@@ -582,7 +582,7 @@ implements java.lang.Cloneable, java.io.Serializable</pre>
 <ul class="blockList">
 <li class="blockList">
 <h4>contains</h4>
-<pre>public&nbsp;boolean&nbsp;contains(<a href="../../orestes/bloomfilter/BloomFilter.html" title="type parameter in BloomFilter">T</a>&nbsp;value)</pre>
+<pre>public&nbsp;boolean&nbsp;contains(<a href="../../orestes/bloomfilter/BloomFilter.html" title="type parameter in BloomFilter">T</a>&nbsp;message)</pre>
 </li>
 </ul>
 <a name="containsAll(java.util.Collection)">
@@ -609,11 +609,11 @@ implements java.lang.Cloneable, java.io.Serializable</pre>
 <ul class="blockList">
 <li class="blockList">
 <h4>hash</h4>
-<pre>public&nbsp;int[]&nbsp;hash(java.lang.String&nbsp;value)</pre>
+<pre>public&nbsp;int[]&nbsp;hash(java.lang.String&nbsp;message)</pre>
 <div class="block">Dispatches the hash function defines via
  <a href="../../orestes/bloomfilter/BloomFilter.html#setHashMethod(orestes.bloomfilter.BloomFilter.HashMethod)"><code>setHashMethod(HashMethod)</code></a> (default: cryptographic hash
  function).</div>
-<dl><dt><span class="strong">Parameters:</span></dt><dd><code>value</code> - the value to be hashed</dd>
+<dl><dt><span class="strong">Parameters:</span></dt><dd><code>message</code> - the message to be hashed</dd>
 <dt><span class="strong">Returns:</span></dt><dd>array with <i>k</i> integer hash positions in the range
          <i>[0,m)</i></dd></dl>
 </li>

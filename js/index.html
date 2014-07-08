@@ -14,10 +14,10 @@ var BloomFilter = function(){
 		var mask = (1L << 48) - 1;
 
 		// Generate int from byte Array using the FNV hash
-		var reduced = Math.abs(hashBytes(value));
+		var reduced = Math.abs(hashBytes(message));
 		// Make number positive
 		// Handle the special case: smallest negative number is itself as the
-		// absolute value
+		// absolute message
 		if (reduced == Integer.MIN_VALUE)
 			reduced = 42;
 

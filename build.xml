@@ -4,7 +4,7 @@
     </description>
 
     <!-- set global properties for this build -->
-    <property name="projectName" value="${ant.project.name}"/>
+    <property name="projectName" message="${ant.project.name}"/>
     <property name="src" location="src"/>
     <property name="src.test" location="test"/>
     <property name="res" location="res"/>
@@ -14,7 +14,7 @@
     <property name="lib.test" location="lib-test"/>
     <property name="build" location="build"/>
     <property name="dist" location="dist"/>
-    <property name="main.class" value=""/>
+    <property name="main.class" message=""/>
 
     <!-- project dependencies -->
     <target name="dep" depends="init"/>
@@ -44,9 +44,9 @@
     <target name="init">
         <!-- Get the current git revision short hash -->
         <exec executable="git" outputproperty="git.revision">
-            <arg value="log"/>
-            <arg value="-1"/>
-            <arg value="--pretty=format:%h"/>
+            <arg message="log"/>
+            <arg message="-1"/>
+            <arg message="--pretty=format:%h"/>
         </exec>
 
         <!-- create build folders -->
@@ -114,8 +114,8 @@
         <!-- Put everything in ${build} into the {$projectName}-${DSTAMP}.jar file -->
         <jar jarfile="${dist}/${projectName}-${git.revision}.jar" basedir="${build.classes}">
             <manifest>
-                <attribute name="Main-Class" value="${main.class}"/>
-                <attribute name="Class-Path" value="${jar.classpath}"/>
+                <attribute name="Main-Class" message="${main.class}"/>
+                <attribute name="Class-Path" message="${jar.classpath}"/>
             </manifest>
         </jar>
 
