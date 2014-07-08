@@ -49,8 +49,8 @@ distributions {
     }
 }
 
-distZip.destinationDir = distFolder
 distZip.baseName = projectName
+distZip.destinationDir = distFolder
 
 task dist(dependsOn: distZip, type:Jar){
     baseName = projectName

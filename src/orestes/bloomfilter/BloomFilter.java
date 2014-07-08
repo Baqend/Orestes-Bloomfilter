@@ -398,6 +398,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 
 		int k = 0;
 		byte salt = 0;
+
 		while (k < hashes) {
 			byte[] digest;
 			synchronized (hashFunction) {
