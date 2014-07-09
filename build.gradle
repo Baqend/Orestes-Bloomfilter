@@ -24,12 +24,14 @@ sourceSets {
 }
 
 dependencies {
-    testCompile 'junit:junit:4.11'
     compile (
         'com.google.code.gson:gson:2.2.4',
-        'org.apache.commons:commons-math:2.2',
-        'redis.clients:jedis:2.1.0',
-        'org.eclipse.jetty:jetty-util:9.0.0.RC2'
+        'redis.clients:jedis:2.5.1',
+        'org.apache.commons:commons-pool2:2.2'
+    )
+    testCompile (
+        'junit:junit:4.11',
+        'org.apache.commons:commons-math:2.2'
     )
 }
 

@@ -1,14 +1,12 @@
 package orestes.bloomfilter.json;
 
-import java.util.BitSet;
-
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.BloomFilter.HashMethod;
 
-import org.eclipse.jetty.util.B64Code;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import java.util.Base64;
+import java.util.BitSet;
 
 public class BloomFilterConverter {
 	
@@ -29,7 +27,7 @@ public class BloomFilterConverter {
 		// root.addProperty("bits", Arrays.toString(bits));
 		
 		// Encode using base64 -> AAAAAQAAQAAAAAAgA
-		root.addProperty("bits", new String(B64Code.encode(bits, false)));
+		root.addProperty("bits", new String(Base64.getEncoder().encode(bits)));
 		
 		return root;
 	}
@@ -54,7 +52,7 @@ public class BloomFilterConverter {
 		String hashFunctionName = root.get("CryptographicHashFunction").getAsString();
 		byte[] bits = null;
 		
-		bits = B64Code.decode(root.get("bits").getAsString());
+		bits = Base64.getDecoder().decode(root.get("bits").getAsString());
 		BloomFilter<T> bf = new BloomFilter<T>(BitSet.valueOf(bits), m, k, HashMethod.Cryptographic,
 				hashFunctionName);
 		bf.setHashMethod(HashMethod.valueOf(hashMethod));
