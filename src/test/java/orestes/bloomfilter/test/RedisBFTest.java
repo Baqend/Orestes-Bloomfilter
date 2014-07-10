@@ -53,7 +53,7 @@ public class RedisBFTest {
 
 	@Test
 	public void ImplementationDifferences() {
-		int n = 10_000;
+		int n = 200;
 		int m = 10_000;
 		BloomFilter<String> bf = new BloomFilter<String>(m, 10);
 		BloomFilterRedis<String> bfr = new BloomFilterRedis<String>(host, port, m, 10);
