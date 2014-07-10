@@ -1,0 +1,56 @@
+--these are the scripts used for the Redis-backed bloom filters
+
+--simple Lua test
+eval "return redis.call('incrby',KEYS[1],ARGV[1])" 1 nonexistent 10
+
+--increment the counter bit-array and the bloom filter bit array atomically
+--increment: countskey, bloomkey, c, indexcount, index1, index2, ...
+for index = 3, ARGV[2] + 2, 1 do
+	redis.call('setbit', KEYS[2], ARGV[index], 1)
+	local low = ARGV[index] * ARGV[1]
+	local high = (ARGV[index] + 1) * ARGV[1]
+	local incremented = false
+	for i = (high - 1), low, -1 do
+		if redis.call('getbit', KEYS[1], i) == 0 then
+			redis.call('setbit', KEYS[1], i, 1)
+			incremented = true
+			break
+		else
+			redis.call('setbit', KEYS[1], i, 0)
+		end
+	end
+end
+
+--decrement: countskey, bloomkey, c, indexcount, index1, index2, ...
+for index = 3, ARGV[2] + 2, 1 do
+	local low = ARGV[index] * ARGV[1]
+	local high = (ARGV[index] + 1) * ARGV[1]
+	local decremented = false
+	local nonZero = false;
+	for i = (high - 1), low, -1 do
+		if not decremented then
+			if redis.call('getbit', KEYS[1], i) == 1 then
+				redis.call('setbit', KEYS[1], i, 0)
+				decremented = true
+			else
+				redis.call('setbit', KEYS[1], i, 1)
+				nonZero = true
+			end
+		else
+			if redis.call('getbit', KEYS[1], i) == 1 then
+				nonZero = true
+			end
+		end
+	end
+	if not nonZero then
+		redis.call('setbit', KEYS[2], ARGV[index], 0)
+	end
+end
+
+--acquire an named lock with a timeout when it should expire
+--lock lockkey, timeout
+local lock = redis.call('get', KEYS[1])
+if not lock then
+	return redis.call('setex', KEYS[1], ARGV[1], "locked")
+end
+return false

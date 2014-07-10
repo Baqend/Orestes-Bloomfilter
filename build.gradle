@@ -5,22 +5,11 @@ apply plugin: 'java-library-distribution'
 def distFolder = file("dist")
 def projectName = 'bloom-filter'
 
+version = "1.0-SNAPSHOT"
+group = "com.baqend"
 
 repositories {
     mavenCentral()
-}
-
-sourceSets {
-    main {
-        java {
-            srcDir 'src'
-        }
-    }
-    test {
-        java {
-            srcDir 'test'
-        }
-    }
 }
 
 dependencies {
@@ -34,14 +23,6 @@ dependencies {
         'org.apache.commons:commons-math:2.2'
     )
 }
-
-task buildInfo {
-    def cmd = "git rev-parse --short HEAD"
-    def proc = cmd.execute()
-    ext.revision = proc.text.trim()
-}
-
-version = buildInfo.revision
 
 distributions {
     main {
