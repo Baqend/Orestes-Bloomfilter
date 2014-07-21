@@ -300,7 +300,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	}
 
 	/**
-	 * Gets {@link defaultCharset}
+	 * Gets {@link #defaultCharset}
 	 *
 	 * @return default Charset for encoding the bits
 	 */
@@ -368,8 +368,7 @@ public class BloomFilter<T> implements Cloneable, Serializable {
 	}
 
 	/**
-	 * Generates hash values using the Carter Wegman function ({@link
-	 * http://en.wikipedia.org/wiki/Universal_hashing}), which is a universal
+	 * Generates hash values using the Carter Wegman function (<a href="http://en.wikipedia.org/wiki/Universal_hashing}">Wikipedia</a>), which is a universal
 	 * hashing function. It thus has optimal guarantees for the uniformity of
 	 * generated hash values. On the downside, the performance is not optimal,
 	 * as arithmetic operations on large numbers have to be performed.
