@@ -21,13 +21,13 @@ public class CBloomFilterRedisBits<T> extends CBloomFilter<T> {
 	private String decr;
 	private Jedis jedis;
 
-	public CBloomFilterRedisBits(String host, int port, double n, double p, int c) {
-		this(host, port, optimalM(n, p), optimalK(n, optimalM(n, p)), c);
+	public CBloomFilterRedisBits(Jedis jedis, double n, double p, int c) {
+		this(jedis, optimalM(n, p), optimalK(n, optimalM(n, p)), c);
 	}
 
-	public CBloomFilterRedisBits(String host, int port, int m, int k, int c) {
-		super(new RedisBitSet(host, port, COUNTS, m * c), new RedisBitSet(host, port, BLOOM, m), m, k, c);
-		this.jedis = new Jedis(host, port);
+	public CBloomFilterRedisBits(Jedis jedis, int m, int k, int c) {
+		super(new RedisBitSet(jedis, COUNTS, m * c), new RedisBitSet(jedis, BLOOM, m), m, k, c);
+		this.jedis = jedis;
 		// Create the bloomfilter metadata in Redis. If it is done concurrently --> abort
 		jedis.watch(M);
 		if (!jedis.exists(M)) {
@@ -42,11 +42,11 @@ public class CBloomFilterRedisBits<T> extends CBloomFilter<T> {
 		decr = jedis.scriptLoad(SETANDDECR);
 	}
 	
-	public CBloomFilterRedisBits(Jedis jedis) {
-		this(jedis.getClient().getHost(), jedis.getClient().getPort(), Integer.parseInt(jedis.get(M)), Integer
-				.parseInt(jedis.get(K)), Integer.parseInt(jedis.get(C)));
-		setCryptographicHashFunction(jedis.get(HASH));
-	}
+//	public CBloomFilterRedisBits(Jedis jedis) {
+//		this(jedis.getClient().getHost(), jedis.getClient().getPort(), Integer.parseInt(jedis.get(M)), Integer
+//				.parseInt(jedis.get(K)), Integer.parseInt(jedis.get(C)));
+//		setCryptographicHashFunction(jedis.get(HASH));
+//	}
 
 	@Override
 	public void remove(byte[] value) {
