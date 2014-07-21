@@ -3,3 +3,5 @@
 /nbbuild/
 /dist/
 /gradle*
+.gradle/
+
