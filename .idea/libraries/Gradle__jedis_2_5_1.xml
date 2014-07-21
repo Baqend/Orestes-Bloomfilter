@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: jedis-2.5.1">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/redis.clients/jedis/2.5.1/389f026946cf264191f389ec44070a8871591568/jedis-2.5.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/redis.clients/jedis/2.5.1/e4366bf0556effdcbe6e277e8fab48a5c536da66/jedis-2.5.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
