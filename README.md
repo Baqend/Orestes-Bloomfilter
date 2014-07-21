@@ -5,10 +5,11 @@ This is a set of Bloom filters we implemented as we found all existing open-sour
 
 The Bloom filter is a probabilistic set data structure which is very small. This is achieved by allowing false positives with some probability *p*. It has an `add` and `contains` operation which both are very fast (time complexity *O(1)*). The Counting Bloom filter is an extension of the Bloom filter with a `remove` operation at the cost of incurring an additional space overhead for counting. There are many good introductions to Bloom filters: the [Wikipedia article](http://en.wikipedia.org/wiki/Bloom_filter) is excellent, and even better is a [survey by Broder and Mitzenmacher](http://www.cs.utexas.edu/~yzhang/teaching/cs386m-f8/Readings/im2005b.pdf). Typical use cases of Bloom filters are content summaries and sets that would usually grow too large in fields such as networking, distributed systems, databases and analytics.
 
-There are 4 types of Bloom filters in the Orestes Bloom filter library:
+There are 5 types of Bloom filters in the Orestes Bloom filter library:
 * **Regular Bloom filter**, a regular in-memory Java Bloom filter (`BloomFilter`)
 * **Counting Bloom filter**, a Counting Bloom Filter which supports element removal (`CBloomFilter`)
 * **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`BloomFilterRedis`)
+* **Redis Population Count Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications, it keeps track of the number of keys added to the filter (`BloomFilterRedis`)
 * **Redis Counting Bloom Filter**, a Redis-backed, concurrency-safe Counting Bloom filter in two variants: one that holds a pregenerated regular Bloom filter and relies on Redis Lua scripting (`CBloomFilterRedisBits`) and one that can be distributed through client side consistent hasing or Redis Cluster (`CBloomFilterRedis`)
 
 ### Docs
@@ -226,7 +227,7 @@ The Counting Bloom filter thus has a bit size of 11, uses 3 hash functions and 4
 ## Redis Bloom Filters
 Bloom filters are really intresting beauce they allow very high throughput and minimal latency for adding and querying (and removing). Therefore you might want to use them across the boundaries of a single machine. For instance imagine you run a large scale web site or web service. You have a load balancer distributing the request load over several front-end web servers. You now want to store some information with a natural set structure, say, you want to know if a source IP adress has accessed the requested URL in the past. You could achieve that by either eplicitly storing that information (probably in a database) which will soon be a bottleneck if you serve billions of requests a day. Or you employ a shared Bloom filter and accept a small possibility of false positives.
 
-These kind of use-cases are ideal for the Redis-backed Bloom filters of this library. They have the same Java Interfaces as the normal and Counting Bloom filter but store the Bloom filter bits in the [in-memory key-message store Redis](http://redis.io).
+These kind of use-cases are ideal for the Redis-backed Bloom filters of this library. They have the same Java Interfaces as the normal and Counting Bloom filter but store the Bloom filter bits in the [in-memory key-value store Redis](http://redis.io).
 
 Reasons to use these Redis-backed Bloom filters instead of their pure Java brothers are:
 * **Concurrent** or **Distributed** Access to on Bloom filter
@@ -242,23 +243,36 @@ Using the Redis-backed Bloom filter is straightforward:
 The Redis-backed Bloom filters have the same Interface as the normal Bloom filters:
 
 ```java
-//Redis' IP
-String IP = "192.168.44.131";	
-//Open a Redis-backed Bloom filter
-BloomFilterRedis<String> bfr = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
-bfr.add("cow");
+        int n = 1000;
+        double p = 0.01;
+        String host = "localhost";
+        int port = 6379;
 
-//Open a second Redis-backed Bloom filter with a new connection
-BloomFilterRedis<String> bfr2 = new BloomFilterRedis<>(IP, 6379, 10000, 0.01);
-bfr2.add("bison");
+        String name = "loadExistingTest";
+        String testString = "simpletest";
+        String testString2 = "simpletest2";
 
-print(bfr.contains("cow")); //true
-print(bfr.contains("bison")); //true
+        BloomFilterRedis<String> first =  BloomFilterRedis.createPopulationFilter(new Jedis(host, port), name,  n, p, BloomFilter.HashMethod.Murmur);
+        first.useConnection(new Jedis(host, port));
+        first.add(testString);
+
+        BloomFilterRedis<String> loaded = BloomFilterRedis.loadFilter(jedis(), name );
+        loaded.useConnection(new Jedis(host, port));
+        assert(loaded.contains(testString));
+        assert(loaded.getN() == n);
+
+        loaded.add(testString2);
+
+        assert(first.contains(testString2));
 ```
 
 The Redis-backed Bloom filters are concurrency/thread-safe at the backend. That means you can concurrently insert from any machine without running into anomalies, inconsistencies or lost data. The Redis-backed Bloom filters are implemented using efficient [Redis bit arrays](http://redis.io/commands/getbit). They make heavy use of [pipelining](http://redis.io/topics/pipelining) so that every `add` and `contains` call only needs one round-trip. This is the most performance critical aspect and usually not found in [other implementations](https://github.com/igrigorik/bloomfilter-rb) which need one round-trip for every Bit or worse.
 
 The Redis-backed Bloom filters save their metadata (like number and kind of hash functions) in Redis, too. Thus other clients can easily to connect to a Redis instance that already holds a Bloom filter using `new BloomFilterRedis(new Jedis(ip, port))` or the similar constructors of *CBloomFilterRedis* or *CBloomFilterRedisBits*.
+
+The Redis-backed Population Bloom Filters determine if a key has been added to a Bloom Filter and updates a population count, also stored in Redis if not.
+
+There are several static methods in the  (`BloomFilterRedis`) class to make creating Bloom Filters easy.
 
 <a name="a4"/>
 ## Redis Counting Bloom Filters
@@ -301,7 +315,7 @@ Here is a Box plot overview of how good the different hash functions perform (In
 
 Speed of computation doesn't tell much about the quality of hash values. A good hash function is one, which has a discrete uniform distribution of outputs. That means that every bit of the Bloom filter's bit vector is equally likely to bet set. To measure if and how good the hash functions follow a uniform distribution [goodness of fit Chi-Square hypothesis tests](http://en.wikipedia.org/wiki/Pearson%27s_chi-squared_test) are the mathematical instrument of choice.
 
-Here are some of the results. The inputs are random strings. The p-message is the probability of getting a statistical result that is at least as extreme as the obtained result. So the usual way of hypothesis testing would be rejecting the null hypothesis ("the hash hash function is uniformly distributed") if the p-message is smaller than 0.05. We did 100 Chi-Square Tests:
+Here are some of the results. The inputs are random strings. The p-value is the probability of getting a statistical result that is at least as extreme as the obtained result. So the usual way of hypothesis testing would be rejecting the null hypothesis ("the hash hash function is uniformly distributed") if the p-value is smaller than 0.05. We did 100 Chi-Square Tests:
 
 <img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/chi-strings.png"/>
 
@@ -335,7 +349,7 @@ It's also possible to provide a custom hash function:
 BloomFilter<String> bf = new BloomFilter<>(1000, 0.01);
 bf.setCusomHashFunction(new CustomHashFunction() {
 	@Override
-	public int[] hash(byte[] message, int m, int k) {
+	public int[] hash(byte[] value, int m, int k) {
 		//...
 	}			
 });
@@ -359,7 +373,7 @@ addAll(): 1.59s, 628930.8176 elements/s
 contains(), existing: 1.429s, 699790.063 elements/s
 contains(), nonexisting: 1.469s, 680735.194 elements/s
 100000 hash() calls: 0.029s, 3448275.8621 elements/s
-Hash Quality (Chi-Squared-Test): p-message = 0.9487628088638604 , Chi-Squared-Statistic = 956245.1584854313
+Hash Quality (Chi-Squared-Test): p-value = 0.9487628088638604 , Chi-Squared-Statistic = 956245.1584854313
 ```
 
 The Redis-backed and Counting Bloom filters can also be tested.
