@@ -3,6 +3,8 @@ package orestes.bloomfilter.test;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
+import orestes.bloomfilter.redis.BloomFilterRedis;
+import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.test.helper.Helper;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,10 +20,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static orestes.bloomfilter.test.helper.Helper.*;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class RedisBFTest {
@@ -196,8 +196,18 @@ public class RedisBFTest {
         testNegative.add("six");
         assertTrue(first.containsAll(testPositive));
         assertFalse(first.containsAll(testNegative));
+    }
 
-
+    @Test
+    public void testAsNormalFilter() {
+        BloomFilter<String> first = createFilter("I_m_in_Redis", 10_000, 0.01);
+        first.add("42");
+        BloomFilter<String> second;
+        if(counts)
+            second = ((CountingBloomFilterRedis<String>) first).toMemoryFilter();
+        else
+            second = ((BloomFilterRedis<String>) first).toMemoryFilter();
+        assertTrue(second.contains("42"));
     }
 
 

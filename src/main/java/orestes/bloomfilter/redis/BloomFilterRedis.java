@@ -2,6 +2,7 @@ package orestes.bloomfilter.redis;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.memory.BloomFilterMemory;
 import orestes.bloomfilter.redis.helper.RedisKeys;
 import orestes.bloomfilter.redis.helper.RedisPool;
 
@@ -115,6 +116,12 @@ public class BloomFilterRedis<T> implements BloomFilter<T> {
     @Override
     public BitSet getBitSet() {
         return bloom.asBitSet();
+    }
+
+    public BloomFilterMemory<T> toMemoryFilter() {
+        BloomFilterMemory<T> filter = new BloomFilterMemory<>(config().clone());
+        filter.getBitSet().or(getBitSet());
+        return filter;
     }
 
     @Override

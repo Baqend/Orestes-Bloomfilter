@@ -122,18 +122,18 @@ The recommended way to include the Bloom filter is via the Maven repo (works for
 
 ```xml
     <dependencies>
-        <dependency>
-            <groupId>com.baqend</groupId>
-            <artifactId>bloom-filter</artifactId>
-            <version>1.0</version>
-        </dependency>
-    </dependencies>
-    <repositories>
-        <repository>
-            <id>mapkeeper-releases</id>
-            <url>https://raw.githubusercontent.com/Baqend/Orestes-Bloomfilter/master/maven-repo</url>
-        </repository>
-    </repositories>
+           <dependency>
+               <groupId>com.baqend</groupId>
+               <artifactId>bloom-filter</artifactId>
+               <version>1.0</version>
+           </dependency>
+       </dependencies>
+       <repositories>
+           <repository>
+               <id>orestes-bloom-filter</id>
+               <url>https://raw.githubusercontent.com/Baqend/Orestes-Bloomfilter/master/maven-repo</url>
+           </repository>
+       </repositories>
 ```
 
 or with Gradle:

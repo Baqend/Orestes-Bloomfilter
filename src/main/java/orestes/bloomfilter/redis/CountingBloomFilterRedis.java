@@ -3,6 +3,7 @@ package orestes.bloomfilter.redis;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.redis.helper.RedisKeys;
 import orestes.bloomfilter.redis.helper.RedisPool;
 import redis.clients.jedis.Pipeline;
@@ -143,6 +144,12 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
     @Override
     public FilterBuilder config() {
         return config;
+    }
+
+    public CountingBloomFilterMemory<T> toMemoryFilter() {
+        CountingBloomFilterMemory<T> filter = new CountingBloomFilterMemory<>(config().clone());
+        filter.getBitSet().or(getBitSet());
+        return filter;
     }
 
     @Override

@@ -32,9 +32,6 @@ public class BloomFilterMemory<T> implements BloomFilter<T> {
         return added;
     }
 
-
-
-
     @Override
     public synchronized void clear() {
         bloom.clear();

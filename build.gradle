@@ -5,7 +5,7 @@ def distFolder = file("dist")
 def docFolder = file("dist/doc")
 def projectName = 'bloom-filter'
 
-version = "1.0"
+version = "1.01"
 group = "com.baqend"
 
 repositories {
