@@ -9,7 +9,7 @@ import java.util.BitSet;
 import java.util.Random;
 import java.util.stream.IntStream;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
