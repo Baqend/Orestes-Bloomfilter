@@ -1,11 +1,11 @@
 apply plugin: 'java'
 apply plugin: 'maven'
-apply plugin: 'java-library-distribution'
 
 def distFolder = file("dist")
+def docFolder = file("dist/doc")
 def projectName = 'bloom-filter'
 
-version = "1.0-SNAPSHOT"
+version = "1.0"
 group = "com.baqend"
 
 repositories {
@@ -13,35 +13,55 @@ repositories {
 }
 
 dependencies {
-    compile (
-        'com.google.code.gson:gson:2.2.4',
-        'redis.clients:jedis:2.5.1',
-        'org.apache.commons:commons-pool2:2.2'
+    compile(
+            'com.google.code.gson:gson:2.2.4',
+            'redis.clients:jedis:2.5.1',
+            'org.apache.commons:commons-pool2:2.2'
     )
-    testCompile (
-        'junit:junit:4.11',
-        'org.apache.commons:commons-math:2.2'
-    )
-}
-
-distributions {
-    main {
-        contents {
-            include('**/bloom-filter*')
-        }
-    }
+    testCompile(
+            'junit:junit:4.11',
+            'org.apache.commons:commons-math:2.2',
+            'com.google.guava:guava:11.0.2',
+            'org.apache.commons:commons-lang3:3.0'
+    ) 
 }
 
 test.ignoreFailures = true
+javadoc.destinationDir = docFolder
 jar.baseName = projectName
-distZip.baseName = projectName
-distZip.destinationDir = distFolder
+jar.destinationDir = distFolder
 
-task dist(dependsOn: distZip, type:Jar){
+task dist(dependsOn: jar, type: Jar) {
+    copy {
+        from configurations.compile
+        into distFolder
+    }
     baseName = projectName
     from sourceSets.main.allSource
     destinationDir distFolder
     classifier = 'source'
+}
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "file://$projectDir/maven-repo")
+        }
+    }
 }
 
 
