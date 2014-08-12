@@ -17,9 +17,9 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertFalse;
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static orestes.bloomfilter.test.helper.Helper.*;
 
 @RunWith(Parameterized.class)
@@ -150,13 +150,15 @@ public class BloomFilterTest {
             inserted.forEach(b::add);
 
             inserted.forEach(obj -> {
-                assertTrue(b.contains(obj));
+                assertTrue(hm.toString() + " contains failed", b.contains(obj));
             });
+
             notInserted.forEach(obj -> {
                 boolean found = b.contains(obj);
-                assertFalse(found);
+                assertFalse(hm.toString() + " not contains failed", found);
             });
-            assertTrue(b.containsAll(inserted));
+
+            assertTrue(hm.toString() + " contains all failed", b.containsAll(inserted));
             b.remove();
         }
     }
