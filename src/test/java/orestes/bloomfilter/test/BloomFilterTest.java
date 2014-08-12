@@ -150,13 +150,15 @@ public class BloomFilterTest {
             inserted.forEach(b::add);
 
             inserted.forEach(obj -> {
-                assertTrue(b.contains(obj));
+                assertTrue(hm.toString() + " contains failed", b.contains(obj));
             });
+
             notInserted.forEach(obj -> {
                 boolean found = b.contains(obj);
-                assertFalse(found);
+                assertFalse(hm.toString() + " not contains failed", found);
             });
-            assertTrue(b.containsAll(inserted));
+
+            assertTrue(hm.toString() + " contains all failed", b.containsAll(inserted));
             b.remove();
         }
     }
