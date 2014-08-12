@@ -23,7 +23,7 @@ dependencies {
             'org.apache.commons:commons-math:2.2',
             'com.google.guava:guava:11.0.2',
             'org.apache.commons:commons-lang3:3.0'
-    ) 
+    )
 }
 
 test.ignoreFailures = true
