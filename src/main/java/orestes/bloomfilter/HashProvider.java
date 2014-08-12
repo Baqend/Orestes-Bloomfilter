@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Random;
@@ -78,18 +77,6 @@ public class HashProvider {
         return positions;
     }
 
-    /**
-     * @param value the value to be hashed
-     * @return array with <i>hashes</i> integer hash positions in the range <i>[0,size)</i>
-     */
-    public static int[] hashSecureRNG(byte[] value, int m, int k) {
-        int[] positions = new int[k];
-        SecureRandom r = new SecureRandom(value);
-        for (int i = 0; i < k; i++) {
-            positions[i] = r.nextInt(m);
-        }
-        return positions;
-    }
 
 
     /**
@@ -421,11 +408,6 @@ public class HashProvider {
          * performed.
          */
         CarterWegman(HashProvider::hashCarterWegman),
-        /**
-         * Generates hash values using the Secure Java Random Number Generator (RNG). It is more random than the normal
-         * RNG but more CPU intensive. The RNG is initialized using the value to be hashed.
-         */
-        SecureRNG(HashProvider::hashSecureRNG),
         /**
          * Generates hash values using a Cyclic Redundancy Check (CRC32). CRC is designed as a checksum for data
          * integrity not as hash function but exhibits very good uniformity and is relatively fast.

@@ -60,7 +60,7 @@ This is a set of Bloom filters we implemented as we found all existing open-sour
 
 The Bloom filter is a probabilistic set data structure which is very small. This is achieved by allowing false positives with some probability *p*. It has an `add` and `contains` operation which both are very fast (time complexity *O(1)*). The Counting Bloom filter is an extension of the Bloom filter with a `remove` operation at the cost of incurring an additional space overhead for counting. There are many good introductions to Bloom filters: the [Wikipedia article](http://en.wikipedia.org/wiki/Bloom_filter) is excellent, and even better is a [survey by Broder and Mitzenmacher](http://www.cs.utexas.edu/~yzhang/teaching/cs386m-f8/Readings/im2005b.pdf). Typical use cases of Bloom filters are content summaries and sets that would usually grow too large in fields such as networking, distributed systems, databases and analytics.
 
-There are 5 types of Bloom filters in the Orestes Bloom filter library:
+There are 4 types of Bloom filters in the Orestes Bloom filter library (see <a href="https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0/dist/doc/index.html">JavaDocs</a>):
 * **Regular Bloom filter**, a regular in-memory Java Bloom filter (`MemoryBloomFilter`)
 * **Counting Bloom filter**, a Counting Bloom Filter which supports element removal (`MemoryCountingBloomFilter`)
 * **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`RedisBloomFilter`)
@@ -86,7 +86,7 @@ There are 5 types of Bloom filters in the Orestes Bloom filter library:
 
 
 ### Docs
-The Javadocs are online [here](http://orestes-bloomfilter-docs.s3-website-eu-west-1.amazonaws.com/) and in the */docs* folder of the repository.
+The Javadocs are online [here](https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0/dist/doc/index.html) and in the *dist/docs* folder of the repository.
 
 ## Err, Bloom what?
 Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
@@ -112,13 +112,45 @@ There are a many things we addressed as we sorely missed them in other implement
 * Concurrency: the shared Bloom filter can be accessed by many clients simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
 
 ## Getting started
-Download the [orestes-bf.jar](https://orestes-binaries.s3.amazonaws.com/orestes-bf.jar) and add it your classpath. The jar is also contained in the */build* folder of the repository. Or checkout the repository and build it using ant:
+The Bloom filter requires Java 8. Classic way: download the *dist.zip* from the releases tab and add the jars to your classpath. The jars are also contained in the */dist* folder of the repository. Or checkout the repository and build it using gradle:
 ```
-ant build
+gradle dist
 ```
-This creates two jars in the *build* folder:
-- *orestes-bf.jar*, without dependencies to the Json (-> Json conversion) and Redis library (-> Redis-backed Bloom filters). The additional jars (needed when Json conversion and Redis-backing is required) are in the *build/lib* folder.
-- *orestes-bf-with-deps.jar*, with all dependencies contained in the jar.
+This creates alle the neccessary jars in the *build* folder, including the packaged sources.
+
+The recommended way to include the Bloom filter is via the Maven repo (works for Gradle, Ivy, etc., too), which is currently hosted here on Github:
+
+```xml
+    <dependencies>
+        <dependency>
+            <groupId>com.baqend</groupId>
+            <artifactId>bloom-filter</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
+    <repositories>
+        <repository>
+            <id>mapkeeper-releases</id>
+            <url>https://raw.githubusercontent.com/Baqend/Orestes-Bloomfilter/master/maven-repo</url>
+        </repository>
+    </repositories>
+```
+
+or with Gradle:
+
+```groovy
+repositories {
+    maven {
+        url 'https://raw.githubusercontent.com/Baqend/Orestes-Bloomfilter/master/maven-repo'
+    }
+}
+dependencies {
+    compile(
+            'com.baqend:bloom-filter:1.0'
+    )
+}
+```
+
 
 For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project (not recommended).
 
