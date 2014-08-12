@@ -5,7 +5,7 @@ Version 1.0 is out with a complete rewrite of almost all functionalities and man
 
 ## Overview
 
-<table>
+<table style="font-size: 80%;">
   <tr>
     <th>Data Structure</th>
     <th>Set membership: „Have I seen this item before?“</th>
@@ -91,7 +91,7 @@ The Javadocs are online [here](https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0
 ## Err, Bloom what?
 Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
 ```java
-BloomFilter<String> urls = new BloomFilter<>(100_000_000, 0.01); //Expect 100M URLs
+BloomFilter<String> bf = new FilterBuilder(10_000_000, 0.01).buildBloomFilter(); //Expect 10M URLs
 urls.add("http://github.com"); //Add millions of URLs
 urls.contains("http://twitter.com"); //Know in an instant which ones you have or have not seen before
 ```
