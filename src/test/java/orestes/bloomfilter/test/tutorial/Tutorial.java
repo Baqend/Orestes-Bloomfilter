@@ -7,8 +7,10 @@ import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.json.BloomFilterConverter;
 import orestes.bloomfilter.memory.CountingBloomFilterMemory;
+import orestes.bloomfilter.redis.helper.RedisPool;
 import orestes.bloomfilter.test.MemoryBFTest;
 import orestes.bloomfilter.test.RedisBFTest;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -16,11 +18,37 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Tutorial {
 
     public static void main(String[] args) throws Exception {
-        testPerformance();
+        redisBenchmark();
+    }
+
+    public static void redisBenchmark() {
+        int connections = 100;
+        RedisPool pool = new RedisPool("localhost", 6379, connections);
+        ExecutorService exec = Executors.newFixedThreadPool(connections);
+
+        int rounds = 200_000;
+        int perThread = rounds / connections;
+        CompletableFuture[] futures = new CompletableFuture[connections];
+        Long start = System.currentTimeMillis();
+        for (int i = 0; i < connections; i++) {
+            futures[i] = CompletableFuture.runAsync(() -> {
+                pool.safelyDo(jedis -> {
+                    for(int j = 0; j < perThread; j++) {
+                        jedis.set("key" + Math.random(), RandomStringUtils.random(50));
+                    }
+                });
+            }, exec);
+        }
+        CompletableFuture.allOf(futures).join();
+        Long stop = System.currentTimeMillis();
+        System.out.printf("Time to complete %s sets: %s ms\n", rounds, stop - start);
     }
 
     public static void regularBF() {

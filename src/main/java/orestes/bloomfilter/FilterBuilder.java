@@ -458,7 +458,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
     /**
-     * Calcluates the best-case (uniform hash function) false positive probability.
+     * Calculates the best-case (uniform hash function) false positive probability.
      *
      * @param k                number of hashes
      * @param m                The size of the bloom filter in bits.
@@ -466,7 +466,7 @@ public class FilterBuilder implements Cloneable, Serializable {
      * @return
      */
     public static double optimalP(long k, long m, double insertedElements) {
-        return Math.pow((1 - Math.exp(-k * insertedElements / (double) m)), m);
+        return Math.pow((1 - Math.exp(-k * insertedElements / (double) m)), k);
     }
 
 

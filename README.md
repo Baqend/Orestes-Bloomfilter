@@ -3,59 +3,6 @@ Orestes Bloom filter library 1.0
 
 Version 1.0 is out with a complete rewrite of almost all functionalities and many new ones.
 
-## Overview
-
-<table style="font-size: 80%;">
-  <tr>
-    <th>Data Structure</th>
-    <th>Set membership: „Have I seen this item before?“</th>
-    <th>Frequency estimation: “How many of this kind have I seen?”</th>
-    <th>Cardinality estimation: “How many distinct items have I seen in total”</th>
-    <th>Item removal</th>
-    <th>Persistence and distributed access</th>
-  </tr>
-  <tr>
-    <td>Memory Bloom Filter</td>
-    <td>Yes, with configurable false positive probability, O(1)</td>
-    <td>No</td>
-    <td>Yes, O(#bits)</td>
-    <td>No</td>
-    <td>No</td>
-  </tr>
-  <tr>
-    <td>Memory Counting Bloom Filter</td>
-    <td>Yes, with configurable false positive probability, O(1)</td>
-    <td>Yes (Minimum Selection Algorithm), O(1)</td>
-    <td>Yes, O(#bits)</td>
-    <td>Yes, O(1)</td>
-    <td>No</td>
-  </tr>
-  <tr>
-    <td>Redis Bloom Filter</td>
-    <td>Yes, with configurable false positive probability, O(1), single roundtrip, scalable through read slaves</td>
-    <td>No</td>
-    <td>Yes, O(#bits), single roundtrip, scalable through read slaves</td>
-    <td>No</td>
-    <td>Yes, configurable Redis persistence &amp; replication</td>
-  </tr>
-  <tr>
-    <td>Redis Counting Bloom Filter</td>
-    <td>Yes, with configurable false positive probability, O(1) , single roundtrip, scalable through read slaves</td>
-    <td>Yes (Minimum Selection Algorithm), O(1) , single roundtrip, scalable through read slaves</td>
-    <td>Yes, O(#bits), single roundtrip, scalable through read slaves</td>
-    <td>Yes, O(1), in average 2 roundtrips</td>
-    <td>Yes, configurable Redis persistence &amp; replication</td>
-  </tr>
-  <tr>
-    <td>Other sketches (not part of this lib)</td>
-    <td>Hashsets, Bitvectors</td>
-    <td>Count-Min-Sketch, Count-Mean-Sketch</td>
-    <td>K-Minimum-Values, HyperLogLog</td>
-    <td></td>
-    <td></td>
-  </tr>
-</table>
-
 This is a set of Bloom filters we implemented as we found all existing open-source implementations to be lacking in various aspects. This libary takes some inspiration from the [simple Bloom filter implementation of Magnus Skjegstad](https://github.com/MagnusS/Java-BloomFilter) and the [Ruby Bloom filters by Ilya Grigorik](https://github.com/igrigorik/bloomfilter-rb).
 
 The Bloom filter is a probabilistic set data structure which is very small. This is achieved by allowing false positives with some probability *p*. It has an `add` and `contains` operation which both are very fast (time complexity *O(1)*). The Counting Bloom filter is an extension of the Bloom filter with a `remove` operation at the cost of incurring an additional space overhead for counting. There are many good introductions to Bloom filters: the [Wikipedia article](http://en.wikipedia.org/wiki/Bloom_filter) is excellent, and even better is a [survey by Broder and Mitzenmacher](http://www.cs.utexas.edu/~yzhang/teaching/cs386m-f8/Readings/im2005b.pdf). Typical use cases of Bloom filters are content summaries and sets that would usually grow too large in fields such as networking, distributed systems, databases and analytics.
@@ -66,6 +13,18 @@ There are 4 types of Bloom filters in the Orestes Bloom filter library (see <a h
 * **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`RedisBloomFilter`)
 * **Redis Counting Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications, it keeps track of the number of keys added to the filter (`RedisCountingBloomFilter`)
 
+
+### Docs
+The Javadocs are online [here](https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0/dist/doc/index.html) and in the *dist/docs* folder of the repository.
+
+## Err, Bloom what?
+Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
+```java
+BloomFilter<String> bf = new FilterBuilder(10_000_000, 0.01).buildBloomFilter(); //Expect 10M URLs
+urls.add("http://github.com"); //Add millions of URLs
+urls.contains("http://twitter.com"); //Know in an instant which ones you have or have not seen before
+```
+So what's the catch? Bloom filters allow false positives (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare false positives (false negatives never happen) then Bloom filters are probably for you.
 
 ## New in 1.0
 * Bloom filters are now constructed and configured using a comfortable Builder interface, e.g. `new FilterBuilder(100,0.01).redisBacked().buildCountingBloomFilter()`
@@ -84,18 +43,6 @@ There are 4 types of Bloom filters in the Orestes Bloom filter library (see <a h
 * Redis Bloom filters now use configurable connection pooling and are thus not limited by round-trip times anymore
 * The library is now an important component of our Backend-as-a-Service startup <a href="http://baqend.com">Baqend</a> and thus you can expect far more frequent updates. Don't worry, the Bloom filter library will always remain MIT-licensed and open-source!
 
-
-### Docs
-The Javadocs are online [here](https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0/dist/doc/index.html) and in the *dist/docs* folder of the repository.
-
-## Err, Bloom what?
-Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
-```java
-BloomFilter<String> bf = new FilterBuilder(10_000_000, 0.01).buildBloomFilter(); //Expect 10M URLs
-urls.add("http://github.com"); //Add millions of URLs
-urls.contains("http://twitter.com"); //Know in an instant which ones you have or have not seen before
-```
-So what's the catch? Bloom filters allow false positives (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare false positives (false negatives never happen) then Bloom filters are probably for you.
 
 ## Features
 There are a many things we addressed as we sorely missed them in other implementations:
@@ -164,6 +111,7 @@ For the normal Bloom filters it's even sufficient to only copy the source *.java
 - [JSON Representation](#a5)
 - [Hash Functions](#a6)
 - [Performance](#a7)
+- [Overview of Probabilistic Data Structures](#overview)
 
 <a name="a1"/>
 ### Regular Bloom Filter
@@ -525,6 +473,60 @@ Hash Quality (Chi-Squared-Test): p-value = 0.8041807628127277 , Chi-Squared-Stat
 ```
 
 The Redis-backed and Counting Bloom filters can be tested similarly.
+
+<a name="overview">
+## Overview of Probabilistic Data Structures
+
+<table style="font-size: 80%;">
+  <tr>
+    <th>Data Structure</th>
+    <th>Set membership: „Have I seen this item before?“</th>
+    <th>Frequency estimation: “How many of this kind have I seen?”</th>
+    <th>Cardinality estimation: “How many distinct items have I seen in total”</th>
+    <th>Item removal</th>
+    <th>Persistence and distributed access</th>
+  </tr>
+  <tr>
+    <td>Memory Bloom Filter</td>
+    <td>Yes, with configurable false positive probability, O(1)</td>
+    <td>No</td>
+    <td>Yes, O(#bits)</td>
+    <td>No</td>
+    <td>No</td>
+  </tr>
+  <tr>
+    <td>Memory Counting Bloom Filter</td>
+    <td>Yes, with configurable false positive probability, O(1)</td>
+    <td>Yes (Minimum Selection Algorithm), O(1)</td>
+    <td>Yes, O(#bits)</td>
+    <td>Yes, O(1)</td>
+    <td>No</td>
+  </tr>
+  <tr>
+    <td>Redis Bloom Filter</td>
+    <td>Yes, with configurable false positive probability, O(1), single roundtrip, scalable through read slaves</td>
+    <td>No</td>
+    <td>Yes, O(#bits), single roundtrip, scalable through read slaves</td>
+    <td>No</td>
+    <td>Yes, configurable Redis persistence &amp; replication</td>
+  </tr>
+  <tr>
+    <td>Redis Counting Bloom Filter</td>
+    <td>Yes, with configurable false positive probability, O(1) , single roundtrip, scalable through read slaves</td>
+    <td>Yes (Minimum Selection Algorithm), O(1) , single roundtrip, scalable through read slaves</td>
+    <td>Yes, O(#bits), single roundtrip, scalable through read slaves</td>
+    <td>Yes, O(1), in average 2 roundtrips</td>
+    <td>Yes, configurable Redis persistence &amp; replication</td>
+  </tr>
+  <tr>
+    <td>Other sketches (not part of this lib)</td>
+    <td>Hashsets, Bitvectors</td>
+    <td>Count-Min-Sketch, Count-Mean-Sketch</td>
+    <td>K-Minimum-Values, HyperLogLog</td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
 
 
 Up next
