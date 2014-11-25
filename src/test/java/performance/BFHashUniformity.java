@@ -28,17 +28,18 @@ public class BFHashUniformity {
 
     public static void testHashing() {
 
-        int hashesPerRound = 100_0;
-        int m = 100;
+        int hashesPerRound = 100_000;
+        int m = 1_000;
         int k = 10;
         int rounds = 100;
         double alpha = 0.05;
 
-        for(Randoms mode : Randoms.values()) {
+        //for(Randoms mode : Randoms.values()) {
+            Randoms mode = Randoms.RANDWORDS;
             StringBuilder log = new StringBuilder();
             testHashDistribution(hashesPerRound, rounds, m, k, alpha, log, mode);
             System.out.println(log.toString());
-        }
+        //}
     }
 
 
@@ -98,7 +99,6 @@ public class BFHashUniformity {
 
         for (int i = 0; i < rounds; i++) {
             List<byte[]> data = hashData.get(i);
-
             long[] observed = new long[m];
             for (int j = 0; j < hashRounds; j++) {
                 int[] hashes = hf.hash(data.get(j), m, k);

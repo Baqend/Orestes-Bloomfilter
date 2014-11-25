@@ -11,6 +11,7 @@ import orestes.bloomfilter.redis.helper.RedisPool;
 import orestes.bloomfilter.test.MemoryBFTest;
 import orestes.bloomfilter.test.RedisBFTest;
 import org.apache.commons.lang3.RandomStringUtils;
+import performance.BFHashUniformity;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -25,7 +26,8 @@ import java.util.concurrent.Executors;
 public class Tutorial {
 
     public static void main(String[] args) throws Exception {
-        redisBenchmark();
+        //redisBenchmark();
+        BFHashUniformity.testHashing();
     }
 
     public static void redisBenchmark() {
