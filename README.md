@@ -13,6 +13,7 @@ There are 4 types of Bloom filters in the Orestes Bloom filter library (see <a h
 * **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`RedisBloomFilter`)
 * **Redis Counting Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications, it keeps track of the number of keys added to the filter (`RedisCountingBloomFilter`)
 
+This library if written in and for Java 8. For a Java 7 backport see: https://github.com/Crystark/Orestes-Bloomfilter
 
 ### Docs
 The Javadocs are online [here](https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0/dist/doc/index.html) and in the *dist/docs* folder of the repository.
