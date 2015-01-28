@@ -5,3 +5,4 @@
 /gradle*
 /.idea
 /.gradle
+.DS_Store
