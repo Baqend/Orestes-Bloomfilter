@@ -5,7 +5,7 @@ def distFolder = file("dist")
 def docFolder = file("dist/doc")
 def projectName = 'bloom-filter'
 
-version = "1.02"
+version = "1.0.3"
 group = "com.baqend"
 
 repositories {
@@ -15,7 +15,7 @@ repositories {
 dependencies {
     compile(
             'com.google.code.gson:gson:2.2.4',
-            'redis.clients:jedis:2.6.1',
+            'redis.clients:jedis:2.6.2',
             'org.apache.commons:commons-pool2:2.2'
     )
     testCompile(

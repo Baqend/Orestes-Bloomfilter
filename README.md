@@ -72,7 +72,7 @@ The recommended way to include the Bloom filter is via the Maven repo (works for
            <dependency>
                <groupId>com.baqend</groupId>
                <artifactId>bloom-filter</artifactId>
-               <version>1.0</version>
+               <version>1.0.3</version>
            </dependency>
        </dependencies>
        <repositories>
@@ -93,7 +93,7 @@ repositories {
 }
 dependencies {
     compile(
-            'com.baqend:bloom-filter:1.0'
+            'com.baqend:bloom-filter:1.0.3'
     )
 }
 ```
