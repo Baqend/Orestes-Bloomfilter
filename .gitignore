@@ -2,7 +2,6 @@
 /build
 /nbproject/private/
 /nbbuild/
-/gradle*
 /.idea
 /.gradle
 .DS_Store
