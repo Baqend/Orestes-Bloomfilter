@@ -31,7 +31,7 @@ dependencies {
 }
 
 group = "com.baqend"
-version = "1.0.3"
+version = "1.0.4-SNAPSHOT"
 
 def distFolder = file('dist')
 def docFolder = file("doc")
