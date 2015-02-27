@@ -58,6 +58,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
      * Increment the internal counter upon insertion of new elements.
      *
      * @param index position at which to increase
+     * @return the new counter value
      */
     protected long increment(int index) {
         int low = index * config().countingBits();
@@ -112,6 +113,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
      * Decrements the internal counter upon deletion and unsets the Bloom filter bit if necessary.
      *
      * @param index position at which to decrease
+     * @return the new counter value
      */
     protected long decrement(int index) {
         int low = index * config().countingBits();

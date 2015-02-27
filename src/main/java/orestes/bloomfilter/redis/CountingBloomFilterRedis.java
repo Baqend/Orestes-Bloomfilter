@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
  * distribution of keys, thus increasing throughput. Pipelining can also be leveraged in this approach to minimize
  * network latency.
  *
- * @param <T>
+ * @param <T> The type of the containing elements
  */
 public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
     private final RedisKeys keys;

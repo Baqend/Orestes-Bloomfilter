@@ -18,7 +18,7 @@ import java.util.List;
  * grouped into fast transactions, minimizing the network overhead of all bloom filter operations to one round trip to
  * Redis.
  *
- * @param <T>
+ * @param <T> The type of the containing elements
  */
 public class BloomFilterRedis<T> implements BloomFilter<T> {
     private final RedisKeys keys;

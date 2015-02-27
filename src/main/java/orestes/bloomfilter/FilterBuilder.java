@@ -114,7 +114,7 @@ public class FilterBuilder implements Cloneable, Serializable {
      * Sets the number of bits used for counting in case of a counting Bloom filter. For non-counting Bloom filters this
      * setting has no effect. <p><b>Default</b>: 16</p>
      *
-     * @param countingBits
+     * @param countingBits Number of counting bits used by the counting Bloom filter
      * @return the modified FilterBuilder (fluent interface)
      */
     public FilterBuilder countingBits(int countingBits) {
@@ -127,7 +127,7 @@ public class FilterBuilder implements Cloneable, Serializable {
      * compatible to this FilterBuilder configuration, it will be loaded and used. This behaviour can be changed by
      * {@link #overwriteIfExists(boolean)}. <p><b>Default</b>: ""</p>
      *
-     * @param name
+     * @param name The name of the filter
      * @return the modified FilterBuilder (fluent interface)
      */
     public FilterBuilder name(String name) {
@@ -247,9 +247,9 @@ public class FilterBuilder implements Cloneable, Serializable {
     public <T> BloomFilter<T> buildBloomFilter() {
         complete();
         if (redisBacked) {
-            return new BloomFilterRedis<T>(this);
+            return new BloomFilterRedis<>(this);
         } else {
-            return new BloomFilterMemory<T>(this);
+            return new BloomFilterMemory<>(this);
         }
     }
 
@@ -263,15 +263,16 @@ public class FilterBuilder implements Cloneable, Serializable {
     public <T> CountingBloomFilter<T> buildCountingBloomFilter() {
         complete();
         if (redisBacked) {
-            return new CountingBloomFilterRedis<T>(this);
+            return new CountingBloomFilterRedis<>(this);
         } else {
-            return new CountingBloomFilterMemory<T>(this);
+            return new CountingBloomFilterMemory<>(this);
         }
     }
 
     /**
      * Checks if all necessary parameters were set and tries to infer optimal parameters (e.g. size and hashes from
      * given expectedElements and falsePositiveProbability). This is done automatically.
+     * @return the completed FilterBuilder
      */
     public FilterBuilder complete() {
         if (done)
@@ -463,7 +464,7 @@ public class FilterBuilder implements Cloneable, Serializable {
      * @param k                number of hashes
      * @param m                The size of the bloom filter in bits.
      * @param insertedElements number of elements inserted in the filter
-     * @return
+     * @return The calculated false positive probability
      */
     public static double optimalP(long k, long m, double insertedElements) {
         return Math.pow((1 - Math.exp(-k * insertedElements / (double) m)), k);

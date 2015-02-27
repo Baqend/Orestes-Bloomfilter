@@ -61,7 +61,7 @@ public class BloomFilterMemory<T> implements BloomFilter<T> {
 
     @Override
     public synchronized boolean union(BloomFilter<T> other) {
-        if (compatible(this, other)) {
+        if (compatible(other)) {
             bloom.or(other.getBitSet());
             return true;
         }
@@ -70,7 +70,7 @@ public class BloomFilterMemory<T> implements BloomFilter<T> {
 
     @Override
     public synchronized boolean intersect(BloomFilter<T> other) {
-        if (compatible(this, other)) {
+        if (compatible(other)) {
             bloom.and(other.getBitSet());
             return true;
         }

@@ -44,6 +44,8 @@ public class HashProvider {
 
     /**
      * @param value the value to be hashed
+     * @param m     integer output range [1,size]
+     * @param k     number of hashes to be computed
      * @return array with <i>hashes</i> integer hash positions in the range <i>[0,size)</i>
      */
     public static int[] hashCarterWegman(byte[] value, int m, int k) {
@@ -66,6 +68,8 @@ public class HashProvider {
 
     /**
      * @param value the value to be hashed
+     * @param m     integer output range [1,size]
+     * @param k     number of hashes to be computed
      * @return array with <i>hashes</i> integer hash positions in the range <i>[0,size)</i>
      */
     public static int[] hashRNG(byte[] value, int m, int k) {
@@ -81,6 +85,8 @@ public class HashProvider {
 
     /**
      * @param value the value to be hashed
+     * @param m     integer output range [1,size]
+     * @param k     number of hashes to be computed
      * @return array with <i>hashes</i> integer hash positions in the range <i>[0,size)</i>
      */
     public static int[] hashCRC(byte[] value, int m, int k) {
@@ -89,6 +95,8 @@ public class HashProvider {
 
     /**
      * @param value the value to be hashed
+     * @param m     integer output range [1,size]
+     * @param k     number of hashes to be computed
      * @return array with <i>hashes</i> integer hash positions in the range <i>[0,size)</i>
      */
     public static int[] hashAdler(byte[] value, int m, int k) {
@@ -116,6 +124,8 @@ public class HashProvider {
 
     /**
      * @param value the value to be hashed
+     * @param m     integer output range [1,size]
+     * @param k     number of hashes to be computed
      * @return array with <i>hashes</i> integer hash positions in the range <i>[0,size)</i>
      */
     public static int[] hashSimpleLCG(byte[] value, int m, int k) {
@@ -295,6 +305,7 @@ public class HashProvider {
      * Performs rejection sampling on a random 32bit Java int (sampled from Integer.MIN_VALUE to Integer.MAX_VALUE).
      *
      * @param random int
+     * @param m     integer output range [1,size]
      * @return the number down-sampled to interval [0, size]. Or -1 if it has to be rejected.
      */
     public static int rejectionSample(int random, int m) {
@@ -322,6 +333,9 @@ public class HashProvider {
 
     /**
      * @param value the value to be hashed
+     * @param m     integer output range [1,size]
+     * @param k     number of hashes to be computed
+     * @param method the hash method name used by {@link MessageDigest#getInstance(String)}
      * @return array with <i>hashes</i> integer hash positions in the range <i>[0,size)</i>
      */
     public static int[] hashCrypt(byte[] value, int m, int k, String method) {

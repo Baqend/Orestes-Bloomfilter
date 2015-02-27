@@ -46,7 +46,8 @@ public class BloomFilterConverter {
      * Constructs a Bloom filter from its JSON representation
      *
      * @param source the JSON source
-     * @param type   Generic type parameter of the Bloom filter
+     * @param type  The class of the generic type
+     * @param <T>   Generic type parameter of the Bloom filter
      * @return the Bloom filter
      */
     public static <T> BloomFilter<T> fromJson(JsonElement source, Class<T> type) {

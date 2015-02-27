@@ -34,7 +34,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
     /**
      * Performs a bulk add operation for a collection of elements.
      *
-     * @param elements
+     * @param elements to add
      * @return a list of booleans indicating for each element, whether it was previously present in the filter
      */
     public default List<Boolean> addAll(Collection<T> elements) {
@@ -49,7 +49,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
     /**
      * Tests whether an element is present in the filter (subject to the specified false positive rate).
      *
-     * @param element
+     * @param element to test
      * @return {@code true} if the element is contained
      */
     public boolean contains(byte[] element);
@@ -57,7 +57,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
     /**
      * Tests whether an element is present in the filter (subject to the specified false positive rate).
      *
-     * @param element
+     * @param element to test
      * @return {@code true} if the element is contained
      */
     public default boolean contains(T element) {
@@ -150,19 +150,31 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * @return the elements byte array representation
      */
     public default byte[] toBytes(T element) {
-        return element.toString().getBytes(config().defaultCharset());
+        return element.toString().getBytes(FilterBuilder.defaultCharset());
     }
 
     /**
      * Checks if two Bloom filters are compatible, i.e. have compatible parameters (hash function, size, etc.)
      *
-     * @param bloomFilter
-     * @param other
-     * @return
+     * @param bloomFilter the bloomfilter
+     * @param other the other bloomfilter
+     * @return <code>true</code> if this bloomfilter is compatible with the other one
+     *
+     * @see #compatible(BloomFilter)
      */
-    public default boolean compatible(BloomFilter<T> bloomFilter,
-                                      BloomFilter<T> other) {
-        return bloomFilter.config().isCompatibleTo(other.config());
+    @Deprecated
+    public default boolean compatible(BloomFilter<T> bloomFilter, BloomFilter<T> other) {
+        return bloomFilter.compatible(other);
+    }
+
+    /**
+     * Checks if two Bloom filters are compatible, i.e. have compatible parameters (hash function, size, etc.)
+     *
+     * @param other the other bloomfilter
+     * @return <code>true</code> if this bloomfilter is compatible with the other one
+     */
+    public default boolean compatible(BloomFilter<T> other) {
+        return config().isCompatibleTo(other.config());
     }
 
     /**
@@ -189,7 +201,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * @return array with <i>hashes</i> integer hash positions in the range <i>[0,size)</i>
      */
     public default int[] hash(String value) {
-        return hash(value.getBytes(config().defaultCharset()));
+        return hash(value.getBytes(FilterBuilder.defaultCharset()));
     }
 
     /**

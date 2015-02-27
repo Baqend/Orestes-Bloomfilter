@@ -21,6 +21,7 @@ public class RedisBitSet extends BitSet {
     /**
      * Constructs an new RedisBitSet.
      *
+     * @param pool the redis connection pool
      * @param name the name used as key in the database
      * @param size the initial size of the RedisBitSet
      */
@@ -155,7 +156,7 @@ public class RedisBitSet extends BitSet {
     /**
      * Set all bits
      *
-     * @param positions
+     * @param positions The positions to set
      * @return {@code true} if any of the bits was previously unset.
      */
     public boolean setAll(int... positions) {

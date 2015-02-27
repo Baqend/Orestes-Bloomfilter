@@ -1,7 +1,5 @@
-/bin
 /build
-/nbproject/private/
-/nbbuild/
-/.idea
 /.gradle
+/dist/*SNAPSHOT*
+/doc
 .DS_Store
