@@ -1,12 +1,16 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'net.researchgate:gradle-release:2.0.2'
+    }
+}
+
 apply plugin: 'java'
 apply plugin: 'maven'
-
-def distFolder = file("dist")
-def docFolder = file("dist/doc")
-def projectName = 'bloom-filter'
-
-version = "1.0.3"
-group = "com.baqend"
+apply plugin: 'java-library-distribution'
+apply plugin: 'net.researchgate.release'
 
 repositories {
     mavenCentral()
@@ -26,30 +30,60 @@ dependencies {
     )
 }
 
-test.ignoreFailures = true
+group = "com.baqend"
+version = "1.0.3"
+
+def distFolder = file('dist')
+def docFolder = file("doc")
+def projectName = 'bloom-filter'
+
 javadoc.destinationDir = docFolder
 jar.baseName = projectName
 jar.destinationDir = distFolder
+distZip.destinationDir = distFolder
+distTar.destinationDir = distFolder
 
-task dist(dependsOn: jar, type: Jar) {
-    copy {
-        from configurations.compile
-        into distFolder
-    }
-    baseName = projectName
-    from sourceSets.main.allSource
-    destinationDir distFolder
-    classifier = 'source'
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3'
 }
 
 task javadocJar(type: Jar) {
     classifier = 'javadoc'
     from javadoc
+    destinationDir = distFolder
 }
 
 task sourcesJar(type: Jar) {
     classifier = 'sources'
     from sourceSets.main.allSource
+    destinationDir = distFolder
+}
+
+task dist() {
+    dependsOn distZip, distTar
+}
+
+task gitAdd(dependsOn: [dist, javadoc, uploadArchives]) << {
+    'git add dist maven-repo'.execute().waitFor()
+    'git add -f doc'.execute().waitFor()
+}
+
+task gitRemove() << {
+    'git rm -r --cached doc'.execute().waitFor()
+}
+
+preTagCommit.dependsOn gitAdd
+commitNewVersion.dependsOn gitRemove
+
+clean {
+    delete distFolder
+    delete docFolder
+}
+
+release {
+    preTagCommitMessage = "pre tag commit:"
+    tagCommitMessage = "creating tag:"
+    newVersionCommitMessage = "new version commit:"
 }
 
 artifacts {
