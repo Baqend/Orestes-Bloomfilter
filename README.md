@@ -7,7 +7,7 @@ This is a set of Bloom filters we implemented as we found all existing open-sour
 
 The Bloom filter is a probabilistic set data structure which is very small. This is achieved by allowing false positives with some probability *p*. It has an `add` and `contains` operation which both are very fast (time complexity *O(1)*). The Counting Bloom filter is an extension of the Bloom filter with a `remove` operation at the cost of incurring an additional space overhead for counting. There are many good introductions to Bloom filters: the [Wikipedia article](http://en.wikipedia.org/wiki/Bloom_filter) is excellent, and even better is a [survey by Broder and Mitzenmacher](http://www.cs.utexas.edu/~yzhang/teaching/cs386m-f8/Readings/im2005b.pdf). Typical use cases of Bloom filters are content summaries and sets that would usually grow too large in fields such as networking, distributed systems, databases and analytics.
 
-There are 4 types of Bloom filters in the Orestes Bloom filter library (see <a href="https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0/dist/doc/index.html">JavaDocs</a>):
+There are 4 types of Bloom filters in the Orestes Bloom filter library (see <a href="https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0.3/doc/index.html">JavaDocs</a>):
 * **Regular Bloom filter**, a regular in-memory Java Bloom filter (`MemoryBloomFilter`)
 * **Counting Bloom filter**, a Counting Bloom Filter which supports element removal (`MemoryCountingBloomFilter`)
 * **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`RedisBloomFilter`)
@@ -16,7 +16,7 @@ There are 4 types of Bloom filters in the Orestes Bloom filter library (see <a h
 This library if written in and for Java 8. For a Java 7 backport see: https://github.com/Crystark/Orestes-Bloomfilter
 
 ### Docs
-The Javadocs are online [here](https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0/dist/doc/index.html) and in the *dist/docs* folder of the repository.
+The Javadocs are online [here](https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0.3/doc/index.html) and in the *doc* folder of the repository.
 
 ## Err, Bloom what?
 Bloom filters are awesome data structures: **fast *and* maximally space efficient**.
@@ -402,7 +402,7 @@ Moreover, the Memory Counting Bloom filter can also be serialized and deserializ
 
 <a name="a6"/>
 ## Hash Functions
-There is a detailed description of the available hash functions in the <a href="">Javadocs of the HashMethod enum</a>. Hash uniformity (i.e. all bits of the Bloom filter being equally likely) is of great importance for the false positive rate. But there is also an inherent trade-off between hash uniformity and speed of computation. For instance cryptographic hash functions have very good distribution properties but are very CPU intensive. Pseudorandom number generators like the [linear congruential generator](http://en.wikipedia.org/wiki/Linear_congruential_generator) are easy to compute but do not have perfectly random outputs but rather certain distribution patterns which for some inputs are notable and for others are negligible. The implementations of all hash functions are part of the BloomFilter class and use tricks like [rejection sampling](https://en.wikipedia.org/wiki/Rejection_sampling) to get the best possible distribution for the respective hash function type.
+There is a detailed description of the available hash functions in the <a href="https://rawgit.com/Baqend/Orestes-Bloomfilter/1.0.3/doc/orestes/bloomfilter/HashProvider.HashMethod.html">Javadocs of the HashMethod enum</a>. Hash uniformity (i.e. all bits of the Bloom filter being equally likely) is of great importance for the false positive rate. But there is also an inherent trade-off between hash uniformity and speed of computation. For instance cryptographic hash functions have very good distribution properties but are very CPU intensive. Pseudorandom number generators like the [linear congruential generator](http://en.wikipedia.org/wiki/Linear_congruential_generator) are easy to compute but do not have perfectly random outputs but rather certain distribution patterns which for some inputs are notable and for others are negligible. The implementations of all hash functions are part of the BloomFilter class and use tricks like [rejection sampling](https://en.wikipedia.org/wiki/Rejection_sampling) to get the best possible distribution for the respective hash function type.
 
 Here is a Box plot overview of how good the different hash functions perform (Intel i7 with 4 cores, 16 GB RAM). The configuration is 100000 hashes using k = 10, m = 1000 averaged over 20 runs. 
 
