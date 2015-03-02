@@ -31,7 +31,6 @@ dependencies {
 }
 
 group = "com.baqend"
-version = "1.0.4-SNAPSHOT"
 
 def distFolder = file('dist')
 def docFolder = file("doc")
@@ -42,6 +41,7 @@ jar.baseName = projectName
 jar.destinationDir = distFolder
 distZip.destinationDir = distFolder
 distTar.destinationDir = distFolder
+distTar.compression "GZIP"
 
 task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
