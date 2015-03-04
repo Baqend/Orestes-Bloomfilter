@@ -34,10 +34,8 @@ group = "com.baqend"
 
 def distFolder = file('dist')
 def docFolder = file("doc")
-def projectName = 'bloom-filter'
 
 javadoc.destinationDir = docFolder
-jar.baseName = projectName
 jar.destinationDir = distFolder
 distZip.destinationDir = distFolder
 distTar.destinationDir = distFolder
