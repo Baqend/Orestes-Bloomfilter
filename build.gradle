@@ -60,7 +60,7 @@ task sourcesJar(type: Jar) {
 }
 
 task dist() {
-    dependsOn distZip, distTar
+    dependsOn distZip, distTar, sourcesJar
 }
 
 task gitAdd(dependsOn: [dist, javadoc, uploadArchives]) << {
