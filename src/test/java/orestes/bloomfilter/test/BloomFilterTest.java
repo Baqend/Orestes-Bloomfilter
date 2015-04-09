@@ -124,7 +124,7 @@ public class BloomFilterTest {
     public void addAllTest() {
         int n = 100_000;
         double p = 0.01;
-        int rounds = 100;
+        int rounds = 10_000;
         List<String> inserted = IntStream.range(0, rounds).mapToObj(i -> "test" + String.valueOf(i)).collect(Collectors.toList());
         BloomFilter<String> b1 = createFilter(name + "1", n, p, HashMethod.MD5);
         BloomFilter<String> b2 = createFilter(name + "2", n, p, HashMethod.MD5);
