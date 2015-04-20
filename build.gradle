@@ -1,16 +1,13 @@
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'net.researchgate:gradle-release:2.0.2'
-    }
+plugins {
+    id 'com.jfrog.bintray' version "1.1"
+    id 'net.researchgate.release' version '2.0.2'
 }
 
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'java-library-distribution'
 apply plugin: 'net.researchgate.release'
+apply plugin: 'com.jfrog.bintray'
 
 repositories {
     mavenCentral()
@@ -86,6 +83,27 @@ release {
 
 artifacts {
     archives javadocJar, sourcesJar
+}
+
+bintray {
+    user = project.properties.get('bintray_user')
+    key = project.properties.get('bintray_api_key')
+
+    configurations = ['archives'] //When uploading configuration files
+    dryRun = false //Whether to run this as dry-run, without deploying
+    publish = true //If version should be auto published after an upload
+    pkg {
+        repo = 'maven'
+        userOrg = 'baqend' //An optional organization name when the repo belongs to one of the user's orgs
+        name = 'Orestes-Bloomfilter'
+        desc = 'Library of different Bloom filters in Java with optional Redis-backing, counting and many hashing options'
+        websiteUrl = 'https://github.com/Baqend/Orestes-Bloomfilter'
+        issueTrackerUrl = 'https://github.com/Baqend/Orestes-Bloomfilter/issues'
+        vcsUrl = 'git@github.com:Baqend/Orestes-Bloomfilter.git'
+        licenses = ['MIT']
+        labels = ['bloomfilter', 'redis', 'memory', 'counting bloomfilter']
+        publicDownloadNumbers = true
+    }
 }
 
 uploadArchives {
