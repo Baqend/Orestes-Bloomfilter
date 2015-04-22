@@ -29,13 +29,6 @@ dependencies {
 
 group = "com.baqend"
 
-def distFolder = file('dist')
-def docFolder = file("doc")
-
-javadoc.destinationDir = docFolder
-jar.destinationDir = distFolder
-distZip.destinationDir = distFolder
-distTar.destinationDir = distFolder
 distTar.compression "GZIP"
 
 task wrapper(type: Wrapper) {
@@ -45,34 +38,15 @@ task wrapper(type: Wrapper) {
 task javadocJar(type: Jar) {
     classifier = 'javadoc'
     from javadoc
-    destinationDir = distFolder
 }
 
 task sourcesJar(type: Jar) {
     classifier = 'sources'
     from sourceSets.main.allSource
-    destinationDir = distFolder
 }
 
-task dist() {
-    dependsOn distZip, distTar, sourcesJar
-}
-
-task gitAdd(dependsOn: [dist, javadoc, uploadArchives]) << {
-    'git add dist maven-repo'.execute().waitFor()
-    'git add -f doc'.execute().waitFor()
-}
-
-task gitRemove() << {
-    'git rm -r --cached doc'.execute().waitFor()
-}
-
-preTagCommit.dependsOn gitAdd
-commitNewVersion.dependsOn gitRemove
-
-clean {
-    delete distFolder
-    delete docFolder
+artifacts {
+    archives javadocJar, sourcesJar
 }
 
 release {
@@ -81,9 +55,7 @@ release {
     newVersionCommitMessage = "new version commit:"
 }
 
-artifacts {
-    archives javadocJar, sourcesJar
-}
+createReleaseTag.dependsOn bintray
 
 bintray {
     user = project.properties.get('bintray_user')
@@ -105,13 +77,4 @@ bintray {
         publicDownloadNumbers = true
     }
 }
-
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            repository(url: "file://$projectDir/maven-repo")
-        }
-    }
-}
-
 
