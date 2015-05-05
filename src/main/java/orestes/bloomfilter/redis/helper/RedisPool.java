@@ -1,7 +1,6 @@
 package orestes.bloomfilter.redis.helper;
 
 import redis.clients.jedis.*;
-import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,20 +56,8 @@ public class RedisPool {
     }
 
     public <T> T safelyReturn(Function<Jedis, T> f) {
-        T result;
-        Jedis jedis = pool.getResource();
-        try {
-            result = f.apply(jedis);
-            return result;
-        } catch (JedisConnectionException e) {
-            if (jedis != null) {
-                pool.returnBrokenResource(jedis);
-                jedis = null;
-            }
-            throw e;
-        } finally {
-            if (jedis != null)
-                pool.returnResource(jedis);
+        try (Jedis jedis = pool.getResource()) {
+            return f.apply(jedis);
         }
     }
 
