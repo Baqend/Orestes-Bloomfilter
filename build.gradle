@@ -16,7 +16,7 @@ repositories {
 dependencies {
     compile(
             'com.google.code.gson:gson:2.2.4',
-            'redis.clients:jedis:2.7.0',
+            'redis.clients:jedis:2.7.2',
             'org.apache.commons:commons-pool2:2.2'
     )
     testCompile(
