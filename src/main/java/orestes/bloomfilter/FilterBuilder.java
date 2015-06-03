@@ -2,8 +2,7 @@ package orestes.bloomfilter;
 
 import orestes.bloomfilter.HashProvider.HashFunction;
 import orestes.bloomfilter.HashProvider.HashMethod;
-import orestes.bloomfilter.memory.BloomFilterMemory;
-import orestes.bloomfilter.memory.CountingBloomFilterMemory;
+import orestes.bloomfilter.memory.*;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 
@@ -238,8 +237,8 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
     /**
-     * Constructs a Bloom filter using the specified parameters and computing missing parameters if possible (e.g.
-     * the optimal Bloom filter bit size).
+     * Constructs a Bloom filter using the specified parameters and computing missing parameters if possible (e.g. the
+     * optimal Bloom filter bit size).
      *
      * @param <T> the type of element contained in the Bloom filter.
      * @return the constructed Bloom filter
@@ -254,8 +253,8 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
     /**
-     * Constructs a Counting Bloom filter using the specified parameters and by computing missing parameters if possible (e.g.
-     * the optimal Bloom filter bit size).
+     * Constructs a Counting Bloom filter using the specified parameters and by computing missing parameters if possible
+     * (e.g. the optimal Bloom filter bit size).
      *
      * @param <T> the type of element contained in the Counting Bloom filter.
      * @return the constructed Counting Bloom filter
@@ -265,28 +264,37 @@ public class FilterBuilder implements Cloneable, Serializable {
         if (redisBacked) {
             return new CountingBloomFilterRedis<>(this);
         } else {
-            return new CountingBloomFilterMemory<>(this);
+            if (countingBits == 32) {
+                return new CountingBloomFilter32<>(this);
+            } else if (countingBits == 16) {
+                return new CountingBloomFilter16<>(this);
+            } else if (countingBits == 8) {
+                return new CountingBloomFilter8<>(this);
+            } else if (countingBits == 64) {
+                return new CountingBloomFilter64<>(this);
+            } else {
+                return new CountingBloomFilterMemory<>(this);
+            }
         }
     }
 
     /**
      * Checks if all necessary parameters were set and tries to infer optimal parameters (e.g. size and hashes from
      * given expectedElements and falsePositiveProbability). This is done automatically.
+     *
      * @return the completed FilterBuilder
      */
     public FilterBuilder complete() {
-        if (done)
-            return this;
-        if (size == null && expectedElements != null && falsePositiveProbability != null)
+        if (done) { return this; }
+        if (size == null && expectedElements != null && falsePositiveProbability != null) {
             size = optimalM(expectedElements, falsePositiveProbability);
-        if (hashes == null && expectedElements != null && size != null)
-            hashes = optimalK(expectedElements, size);
-        if (size == null || hashes == null)
+        }
+        if (hashes == null && expectedElements != null && size != null) { hashes = optimalK(expectedElements, size); }
+        if (size == null || hashes == null) {
             throw new NullPointerException("Neither (expectedElements, falsePositiveProbability) nor (size, hashes) were specified.");
-        if (expectedElements == null)
-            expectedElements = optimalN(hashes, size);
-        if (falsePositiveProbability == null)
-            falsePositiveProbability = optimalP(hashes, size, expectedElements);
+        }
+        if (expectedElements == null) { expectedElements = optimalN(hashes, size); }
+        if (falsePositiveProbability == null) { falsePositiveProbability = optimalP(hashes, size, expectedElements); }
 
         done = true;
         return this;
@@ -397,7 +405,8 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
     /**
-     * @return {@code true} if the Bloom filter that is to be built should overwrite any existing Bloom filter with the same name
+     * @return {@code true} if the Bloom filter that is to be built should overwrite any existing Bloom filter with the
+     * same name
      */
     public boolean overwriteIfExists() {
         return overwriteIfExists;
@@ -418,8 +427,7 @@ public class FilterBuilder implements Cloneable, Serializable {
      * @return {@code true} if the configurations are compatible
      */
     public boolean isCompatibleTo(FilterBuilder other) {
-        return this.size() == other.size() && this.hashes() == other.hashes()
-                && this.hashMethod() == other.hashMethod();
+        return this.size() == other.size() && this.hashes() == other.hashes() && this.hashMethod() == other.hashMethod();
     }
 
     /**

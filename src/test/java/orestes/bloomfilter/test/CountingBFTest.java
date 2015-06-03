@@ -1,6 +1,7 @@
 package orestes.bloomfilter.test;
 
 import orestes.bloomfilter.CountingBloomFilter;
+import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -8,6 +9,7 @@ import org.junit.runners.Parameterized;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static orestes.bloomfilter.test.helper.Helper.createCountingFilter;
 import static orestes.bloomfilter.test.helper.Helper.createCountingRedisFilter;
@@ -21,10 +23,7 @@ public class CountingBFTest {
 
     @Parameterized.Parameters(name = "Counting Bloom Filter test with {0}")
     public static Collection<Object[]> data() throws Exception {
-        Object[][] data = {
-                {"memory", false},
-                {"redis", true}
-        };
+        Object[][] data = {{"memory", false}, {"redis", true}};
         return Arrays.asList(data);
     }
 
@@ -40,6 +39,32 @@ public class CountingBFTest {
         }
     }
 
+    @Test
+    public void testCounterSizes() {
+        int m = 100000;
+        int k = 10;
+        Stream.of(4, 8, 16, 32, 55, 64).forEach(bits -> {
+            CountingBloomFilter<String> filter = new FilterBuilder(m, k).name(name).redisBacked(redis).countingBits(bits).buildCountingBloomFilter();
+            filter.clear();
+
+            long first = filter.addAndEstimateCount("first");
+            long second = filter.addAndEstimateCount("first");
+            long other = filter.addAndEstimateCount("other");
+            filter.removeAll(Arrays.asList("first","first","other"));
+
+            long big = 0;
+            long inserts = (long) Math.min(Math.pow(2, 8), Math.pow(2, bits)-1);
+            for (int i = 1; i <= inserts; i++) {
+                big = filter.addAndEstimateCount("muuh");
+                assertEquals(i, big);
+            }
+
+            assertEquals(1, first);
+            assertEquals(1, other);
+            assertEquals(2, second);
+        });
+
+    }
 
     @Test
     public void testCardinality() {
@@ -49,10 +74,7 @@ public class CountingBFTest {
         int range = 20;
         CountingBloomFilter<String> b = createFilter(name + "normal", n, p, HashMethod.MD5);
         Random r = new Random();
-        List<String> adds = r.longs()
-                .limit(elements)
-                .mapToObj(i -> String.valueOf(i % range))
-                .collect(Collectors.toList());
+        List<String> adds = r.longs().limit(elements).mapToObj(i -> String.valueOf(i % range)).collect(Collectors.toList());
 
         Map<String, Long> counters = new HashMap<>();
         //Check that counting add is correct

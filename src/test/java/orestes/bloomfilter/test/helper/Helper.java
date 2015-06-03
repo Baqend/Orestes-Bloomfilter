@@ -1,6 +1,7 @@
 package orestes.bloomfilter.test.helper;
 
 
+import orestes.bloomfilter.CountingBloomFilter;
 import orestes.bloomfilter.memory.BloomFilterMemory;
 import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.FilterBuilder;
@@ -31,8 +32,8 @@ public class Helper {
         return new BloomFilterMemory<>(new FilterBuilder(n, p).hashFunction(hm).complete());
     }
 
-    public static <T> CountingBloomFilterMemory<T> createCountingFilter(int m, int k, HashMethod hm) {
-        return new CountingBloomFilterMemory<>(new FilterBuilder(m, k).hashFunction(hm).complete());
+    public static <T> CountingBloomFilter<T> createCountingFilter(int m, int k, HashMethod hm) {
+        return new FilterBuilder(m, k).hashFunction(hm).buildCountingBloomFilter();
     }
 
     public static <T> CountingBloomFilterMemory<T> createCountingFilter(int n, double p, HashMethod hm) {

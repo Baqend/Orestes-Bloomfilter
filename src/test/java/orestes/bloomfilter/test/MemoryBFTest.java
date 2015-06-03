@@ -2,8 +2,8 @@ package orestes.bloomfilter.test;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
-import orestes.bloomfilter.memory.BloomFilterMemory;
 import orestes.bloomfilter.HashProvider.HashMethod;
+import orestes.bloomfilter.memory.BloomFilterMemory;
 import org.apache.commons.math.stat.inference.ChiSquareTestImpl;
 import org.junit.Test;
 
@@ -39,7 +39,7 @@ public class MemoryBFTest {
         int m = 10000;
         int k = 10;
         for(HashMethod hm : HashMethod.values()) {
-            BloomFilter<String> bf = createFilter(m, k, hm);
+            BloomFilter<String> bf = createCountingFilter(m, k, hm);
             benchmark(bf, hm.toString(), n);
         }
     }

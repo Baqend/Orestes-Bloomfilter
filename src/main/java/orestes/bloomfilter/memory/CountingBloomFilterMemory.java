@@ -9,11 +9,14 @@ import java.util.stream.IntStream;
 
 
 public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
-    private FilterBuilder config;
-    private BloomFilterMemory<T> filter;
-    private BitSet counts;
-    private Runnable overflowHandler = () -> {
+    protected FilterBuilder config;
+    protected BloomFilterMemory<T> filter;
+    protected BitSet counts;
+    protected Runnable overflowHandler = () -> {
     };
+
+    protected CountingBloomFilterMemory() {}
+
 
     public CountingBloomFilterMemory(FilterBuilder config) {
         config.complete();
@@ -89,6 +92,8 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
             for (int i = (high - 1); i >= low; i--) {
                 counts.set(i);
             }
+            //return max value
+            count = (long) Math.pow(2, config().countingBits() -1);
         }
         return count;
     }
@@ -235,6 +240,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
         return true;
     }
+
 
     public void setOverflowHandler(Runnable callback) {
         this.overflowHandler = callback;
