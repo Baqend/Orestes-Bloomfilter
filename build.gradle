@@ -6,8 +6,6 @@ plugins {
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'java-library-distribution'
-apply plugin: 'net.researchgate.release'
-apply plugin: 'com.jfrog.bintray'
 
 repositories {
     mavenCentral()
@@ -55,7 +53,7 @@ release {
     newVersionCommitMessage = "new version commit:"
 }
 
-createReleaseTag.dependsOn bintray
+createReleaseTag.dependsOn bintrayUpload
 
 bintray {
     user = project.properties.get('bintray_user')
