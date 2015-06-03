@@ -1,4 +1,4 @@
-Orestes Bloom filter library 1.0
+Bloom filter library
 ================================
 
 Version 1.0 is out with a complete rewrite of almost all functionalities and many new ones.
@@ -60,26 +60,26 @@ There are a many things we addressed as we sorely missed them in other implement
 * Concurrency: the shared Bloom filter can be accessed by many clients simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
 
 ## Getting started
-The Bloom filter requires Java 8. Classic way: download the *dist.zip* from the releases tab and add the jars to your classpath. The jars are also contained in the */dist* folder of the repository. Or checkout the repository and build it using gradle:
-```
-gradle dist
-```
-This creates alle the neccessary jars in the *build* folder, including the packaged sources.
+*New*: The Bloom filter repository is now hosted on [JCenter](https://bintray.com/baqend/maven/Orestes-Bloomfilter/view).
 
-The recommended way to include the Bloom filter is via the Maven repo (works for Gradle, Ivy, etc., too), which is currently hosted here on Github:
+The Bloom filter requires Java 8. The recommended way to include the Bloom filter is via the Maven repo (works for Gradle, Ivy, etc., too):
 
 ```xml
     <dependencies>
            <dependency>
                <groupId>com.baqend</groupId>
                <artifactId>bloom-filter</artifactId>
-               <version>1.0.3</version>
+               <version>1.0.5</version>
            </dependency>
        </dependencies>
        <repositories>
            <repository>
-               <id>orestes-bloom-filter</id>
-               <url>https://raw.githubusercontent.com/Baqend/Orestes-Bloomfilter/master/maven-repo</url>
+               <snapshots>
+                <enabled>false</enabled>
+               </snapshots>
+               <id>central</id>
+               <name>bintray</name>
+               <url>http://jcenter.bintray.com</url>
            </repository>
        </repositories>
 ```
@@ -88,13 +88,11 @@ or with Gradle:
 
 ```groovy
 repositories {
-    maven {
-        url 'https://raw.githubusercontent.com/Baqend/Orestes-Bloomfilter/master/maven-repo'
-    }
+    jcenter()
 }
 dependencies {
     compile(
-            'com.baqend:bloom-filter:1.0.3'
+            'com.baqend:bloom-filter:1.0.5'
     )
 }
 ```
