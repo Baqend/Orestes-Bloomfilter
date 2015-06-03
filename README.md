@@ -62,26 +62,27 @@ There are a many things we addressed as we sorely missed them in other implement
 ## Getting started
 *New*: The Bloom filter repository is now hosted on [JCenter](https://bintray.com/baqend/maven/Orestes-Bloomfilter/view).
 
-The Bloom filter requires Java 8. The recommended way to include the Bloom filter is via the Maven repo (works for Gradle, Ivy, etc., too):
+Java 8 is required. The recommended way to include the Bloom filter is via the Maven repo (works for Gradle, Ivy, etc., 
+too):
 
 ```xml
-    <dependencies>
-           <dependency>
-               <groupId>com.baqend</groupId>
-               <artifactId>bloom-filter</artifactId>
-               <version>1.0.5</version>
-           </dependency>
-       </dependencies>
-       <repositories>
-           <repository>
-               <snapshots>
-                <enabled>false</enabled>
-               </snapshots>
-               <id>central</id>
-               <name>bintray</name>
-               <url>http://jcenter.bintray.com</url>
-           </repository>
-       </repositories>
+<dependencies>
+   <dependency>
+       <groupId>com.baqend</groupId>
+       <artifactId>bloom-filter</artifactId>
+       <version>1.0.5</version>
+   </dependency>
+</dependencies>
+<repositories>
+   <repository>
+       <snapshots>
+        <enabled>false</enabled>
+       </snapshots>
+       <id>central</id>
+       <name>bintray</name>
+       <url>http://jcenter.bintray.com</url>
+   </repository>
+</repositories>
 ```
 
 or with Gradle:
