@@ -53,8 +53,7 @@ release {
     newVersionCommitMessage = "new version commit:"
 }
 
-createReleaseTag.dependsOn bintrayUpload
-bintrayUpload.dependsOn assemble
+afterReleaseBuild.dependsOn bintrayUpload
 
 bintray {
     user = project.properties.get('bintray_user')
