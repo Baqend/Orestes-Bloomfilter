@@ -54,13 +54,14 @@ release {
 }
 
 createReleaseTag.dependsOn bintrayUpload
+bintrayUpload.dependsOn assemble
 
 bintray {
     user = project.properties.get('bintray_user')
     key = project.properties.get('bintray_api_key')
 
     configurations = ['archives'] //When uploading configuration files
-    dryRun = false //Whether to run this as dry-run, without deploying
+    dryRun = true //Whether to run this as dry-run, without deploying
     publish = true //If version should be auto published after an upload
     pkg {
         repo = 'maven'
