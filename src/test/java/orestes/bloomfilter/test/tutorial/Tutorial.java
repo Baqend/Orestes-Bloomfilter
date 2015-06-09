@@ -210,7 +210,7 @@ public class Tutorial {
         JsonElement json = BloomFilterConverter.toJson(bf);
         print(json); //{"size":240,"hashes":4,"HashMethod":"MD5","bits":"AAAAEAAAAACAgAAAAAAAAAAAAAAQ"}
         BloomFilter<String> otherBf = BloomFilterConverter.fromJson(json);
-        print(bf.contains("Ululu")); //true
+        print(otherBf.contains("Ululu")); //true
     }
 
     public static void customHash() {

@@ -61,7 +61,7 @@ public class BloomFilterConverter {
                 .hashFunction(HashMethod.valueOf(hashMethod));
 
         BloomFilter<T> filter = builder.buildBloomFilter();
-        filter.getBitSet().and(BitSet.valueOf(bits));
+        filter.getBitSet().or(BitSet.valueOf(bits));
 
         return filter;
     }
