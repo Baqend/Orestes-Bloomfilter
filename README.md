@@ -1,7 +1,7 @@
 Bloom filter library
 ================================
 
-[Changelog](CHANGELOG.md)
+[Changelog](CHANGELOG.md) | [Setup](#install) | [Docs](#usage)
 
 Version 1 is out with a complete rewrite of almost all functionalities and many new ones.
 
@@ -61,6 +61,7 @@ There are a many things we addressed as we sorely missed them in other implement
 * Minimal dependencies: the local Bloom filters have none, the Redis Bloom filters need the [jedis](https://github.com/xetorthio/jedis) client library (in  `lib` folder)
 * Concurrency: the shared Bloom filter can be accessed by many clients simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
 
+<a name="install"/>
 ## Getting started
 *New*: The Bloom filter repository is now hosted on [JCenter](https://bintray.com/baqend/maven/Orestes-Bloomfilter/view).
 
@@ -103,6 +104,7 @@ dependencies {
 
 For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project (not recommended).
 
+<a name="usage"/>
 ## Usage
 - [Regular Bloom Filter](#a1)
 - [The Filter Builder](#builder)
