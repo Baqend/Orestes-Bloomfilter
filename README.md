@@ -397,7 +397,7 @@ bf.add("Ululu");
 JsonElement json = BloomFilterConverter.toJson(bf);
 print(json); //{"size":240,"hashes":4,"HashMethod":"MD5","bits":"AAAAEAAAAACAgAAAAAAAAAAAAAAQ"}
 BloomFilter<String> otherBf = BloomFilterConverter.fromJson(json);
-print(bf.contains("Ululu")); //true
+print(otherBf.contains("Ululu")); //true
 ```
 JSON is not an ideal format for binary content (Base64 only uses 64 out of 94 possible characters) but it's highly interoperable and easy to read which outweighs the slight waste of space. Combining it with a [Content-Encoding](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) like gzip usually compensates the overhead.
 
