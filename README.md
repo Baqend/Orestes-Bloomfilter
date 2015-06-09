@@ -1,7 +1,9 @@
 Bloom filter library
 ================================
 
-Version 1.0 is out with a complete rewrite of almost all functionalities and many new ones.
+[Changelog](CHANGELOG.md)
+
+Version 1 is out with a complete rewrite of almost all functionalities and many new ones.
 
 This is a set of Bloom filters we implemented as we found all existing open-source implementations to be lacking in various aspects. This libary takes some inspiration from the [simple Bloom filter implementation of Magnus Skjegstad](https://github.com/MagnusS/Java-BloomFilter) and the [Ruby Bloom filters by Ilya Grigorik](https://github.com/igrigorik/bloomfilter-rb).
 
@@ -70,7 +72,7 @@ too):
    <dependency>
        <groupId>com.baqend</groupId>
        <artifactId>bloom-filter</artifactId>
-       <version>1.0.5</version>
+       <version>1.0.6</version>
    </dependency>
 </dependencies>
 <repositories>
@@ -93,7 +95,7 @@ repositories {
 }
 dependencies {
     compile(
-            'com.baqend:bloom-filter:1.0.5'
+            'com.baqend:bloom-filter:1.0.6'
     )
 }
 ```
