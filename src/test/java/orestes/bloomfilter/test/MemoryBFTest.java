@@ -2,13 +2,16 @@ package orestes.bloomfilter.test;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
+import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.memory.BloomFilterMemory;
+import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import org.apache.commons.math.stat.inference.ChiSquareTestImpl;
 import org.junit.Test;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.stream.IntStream;
 
 import static orestes.bloomfilter.test.helper.Helper.createCountingFilter;
 import static orestes.bloomfilter.test.helper.Helper.createFilter;
@@ -23,8 +26,7 @@ public class MemoryBFTest {
     public static void plotHistogram(long[] histogram, String name) {
         System.out.println("Histogram for " + name + ":");
         long sum = 0;
-        for (long bar : histogram)
-            sum += bar;
+        for (long bar : histogram) { sum += bar; }
         int index = 0;
         for (long bar : histogram) {
             double deviation = Math.abs(bar * 1.0 / sum - 1.0 / histogram.length);
@@ -38,7 +40,7 @@ public class MemoryBFTest {
         int n = 1000;
         int m = 10000;
         int k = 10;
-        for(HashMethod hm : HashMethod.values()) {
+        for (HashMethod hm : HashMethod.values()) {
             BloomFilter<String> bf = createCountingFilter(m, k, hm);
             benchmark(bf, hm.toString(), n);
         }
@@ -135,8 +137,7 @@ public class MemoryBFTest {
             e.printStackTrace();
         }
 
-        System.out.println("Hash Quality (Chi-Squared-Test): p-value = " + pValue + " , Chi-Squared-Statistic = "
-                + chiSq);
+        System.out.println("Hash Quality (Chi-Squared-Test): p-value = " + pValue + " , Chi-Squared-Statistic = " + chiSq);
         System.out.println("");
         bf.clear();
     }
@@ -148,7 +149,6 @@ public class MemoryBFTest {
         speed = (double) Math.round(speed * 10000) / 10000;
         System.out.println(diff + "s, " + speed + " elements/s");
     }
-
 
 
     @Test
@@ -163,8 +163,7 @@ public class MemoryBFTest {
             observed[i]++;
         }
         long end = System.nanoTime();
-        System.out
-                .println("Time for calculating 1 million hashes with MD5: " + (end - begin) * 1.0 / 1000000000 + " s");
+        System.out.println("Time for calculating 1 million hashes with MD5: " + (end - begin) * 1.0 / 1000000000 + " s");
     }
 
     @Test
@@ -179,8 +178,7 @@ public class MemoryBFTest {
             observed[i]++;
         }
         long end = System.nanoTime();
-        System.out.println("Time for calculating 1 million hashes with SHA-512: " + (end - begin) * 1.0 / 1000000000
-                + " s");
+        System.out.println("Time for calculating 1 million hashes with SHA-512: " + (end - begin) * 1.0 / 1000000000 + " s");
     }
 
 
@@ -199,43 +197,64 @@ public class MemoryBFTest {
             cb.add(value);
         }
         long end = System.nanoTime();
-        System.out.println("Total time for " + inserts
-                + " add operations in both a counting and a normal bloom filter: " + (end - begin) * 1.0 / 1000000000
-                + " s");
+        System.out.println("Total time for " + inserts + " add operations in both a counting and a normal bloom filter: " + (end - begin) * 1.0 / 1000000000 + " s");
     }
 
     @Test
     @SuppressWarnings("unchecked")
     public void serializeBloomFilter() throws IOException, ClassNotFoundException {
         BloomFilter<String> b = createFilter(1000, 0.02, HashMethod.MD5);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutput out = new ObjectOutputStream(bos);
+        CountingBloomFilterMemory<String> b2 = new CountingBloomFilterMemory<>(new FilterBuilder(1000, 0.2).hashFunction
+            (HashMethod.MD5).countingBits(3).complete());
+        b2.setOverflowHandler(() -> System.out.println("bla"));
 
-        b.add("foo");
-        b.add("bar");
+        byte[] byteArray;
+        byte[] byteArray2;
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+             ByteArrayOutputStream bos2 = new ByteArrayOutputStream();
+             ObjectOutput out = new ObjectOutputStream(bos);
+             ObjectOutput out2 = new ObjectOutputStream(bos2)) {
 
-        assertTrue(b.contains("foo"));
-        assertTrue(b.contains("bar"));
+            b.add("foo");
+            b2.add("foo");
+            b.add("bar");
+            b2.add("bar");
 
-        out.writeObject(b);
+            assertTrue(b.contains("foo"));
+            assertTrue(b2.contains("foo"));
+            assertTrue(b.contains("bar"));
+            assertTrue(b2.contains("bar"));
 
-        byte[] byteArray = bos.toByteArray();
+            out.writeObject(b);
+            out2.writeObject(b2);
 
-        out.close();
-        bos.close();
+            byteArray = bos.toByteArray();
+            byteArray2 = bos2.toByteArray();
+        }
 
         ByteArrayInputStream bis = new ByteArrayInputStream(byteArray);
         ObjectInput in = new ObjectInputStream(bis);
         Object object = in.readObject();
 
+        ByteArrayInputStream bis2 = new ByteArrayInputStream(byteArray2);
+        ObjectInput in2 = new ObjectInputStream(bis2);
+        Object object2 = in2.readObject();
+
         bis.close();
+        bis2.close();
         in.close();
+        in2.close();
 
         assertTrue(object instanceof BloomFilter);
+        assertTrue(object2 instanceof CountingBloomFilter);
 
-        b = (BloomFilterMemory<String>) object;
+        BloomFilterMemory<String> bloom = (BloomFilterMemory<String>) object;
+        CountingBloomFilterMemory<String> counting = (CountingBloomFilterMemory<String>) object2;
 
-        assertTrue(b.contains("foo"));
-        assertTrue(b.contains("bar"));
+        assertTrue(bloom.contains("foo"));
+        assertTrue(counting.contains("foo"));
+        assertTrue(bloom.contains("bar"));
+        assertTrue(counting.contains("bar"));
+        IntStream.range(0,100).forEach(i -> counting.add("same object"));
     }
 }

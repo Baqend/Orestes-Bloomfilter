@@ -4,18 +4,20 @@ import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.BitSet;
 import java.util.stream.IntStream;
 
 
 public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
+    private static final long serialVersionUID = -3207752201903871264L;
     protected FilterBuilder config;
     protected BloomFilterMemory<T> filter;
     protected BitSet counts;
-    protected Runnable overflowHandler = () -> {
-    };
+    protected transient Runnable overflowHandler = () -> { };
 
-    protected CountingBloomFilterMemory() {}
+    protected CountingBloomFilterMemory() { }
 
 
     public CountingBloomFilterMemory(FilterBuilder config) {
@@ -33,18 +35,16 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
     @Override
     public synchronized long addAndEstimateCount(byte[] element) {
-        return IntStream.of(hash(element))
-                .mapToLong(hash -> {
-                    filter.setBit(hash, true);
-                    return increment(hash);
-                }).min().getAsLong();
+        return IntStream.of(hash(element)).mapToLong(hash -> {
+            filter.setBit(hash, true);
+            return increment(hash);
+        }).min().getAsLong();
     }
 
 
     @Override
     public synchronized long removeAndEstimateCount(byte[] element) {
-        if (!contains(element))
-            return 0;
+        if (!contains(element)) { return 0; }
 
         long min = Long.MAX_VALUE;
         for (int hash : hash(element)) {
@@ -93,7 +93,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
                 counts.set(i);
             }
             //return max value
-            count = (long) Math.pow(2, config().countingBits() -1);
+            count = (long) Math.pow(2, config().countingBits() - 1);
         }
         return count;
     }
@@ -156,9 +156,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
     @Override
     public synchronized long getEstimatedCount(T element) {
-        return IntStream.of(hash(toBytes(element)))
-                .mapToLong(this::count)
-                .min().getAsLong();
+        return IntStream.of(hash(toBytes(element))).mapToLong(this::count).min().getAsLong();
     }
 
     @Override
@@ -204,8 +202,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
             e.printStackTrace();
         }
         o.filter = (BloomFilterMemory<T>) this.filter.clone();
-        if (this.counts != null)
-            o.counts = (BitSet) this.counts.clone();
+        if (this.counts != null) { o.counts = (BitSet) this.counts.clone(); }
         o.config = this.config.clone();
         return o;
     }
@@ -229,14 +226,14 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
     @Override
     public synchronized boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof CountingBloomFilterMemory)) return false;
+        if (this == o) { return true; }
+        if (!(o instanceof CountingBloomFilterMemory)) { return false; }
 
         CountingBloomFilterMemory that = (CountingBloomFilterMemory) o;
 
-        if (config != null ? !config.isCompatibleTo(that.config) : that.config != null) return false;
-        if (counts != null ? !counts.equals(that.counts) : that.counts != null) return false;
-        if (filter != null ? !filter.equals(that.filter) : that.filter != null) return false;
+        if (config != null ? !config.isCompatibleTo(that.config) : that.config != null) { return false; }
+        if (counts != null ? !counts.equals(that.counts) : that.counts != null) { return false; }
+        if (filter != null ? !filter.equals(that.filter) : that.filter != null) { return false; }
 
         return true;
     }
@@ -244,5 +241,11 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
     public void setOverflowHandler(Runnable callback) {
         this.overflowHandler = callback;
+    }
+
+    private void readObject(ObjectInputStream stream)
+        throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        this.overflowHandler = () -> {};
     }
 }

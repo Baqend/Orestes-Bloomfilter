@@ -6,6 +6,7 @@ import orestes.bloomfilter.BloomFilter;
 import java.util.BitSet;
 
 public class BloomFilterMemory<T> implements BloomFilter<T> {
+    private static final long serialVersionUID = -5962895807963838856L;
     private final FilterBuilder config;
     protected BitSet bloom;
 
