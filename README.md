@@ -238,7 +238,13 @@ To construct a filter, you can either call `buildBloomFilter` or `buildCountingB
 ## Counting Bloom Filter
 The Counting Bloom filter allows object removal. For this purpose it has binary counters instead of simple bits. The 
 amount of bits *c* per counter can be set. If you expect to insert elements only once, the 
-probability of a Bit overflow is very small for *c = 4* : *1.37 * 10^-15 * m* for up to *n* inserted elements  ([details](http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html#SECTION00053000000000000000)). For those use-cases 4 bits are usually the most space-efficient choice. The default however is 16 bits, so you don't have to worry about counter overflow with the downside of some space overhead.
+probability of a Bit overflow is very small for *c = 4* : *1.37 * 10^-15 * m* for up to *n* inserted elements  
+([details](http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html#SECTION00053000000000000000)). For those 
+use-cases 4 bits are usually the most space-efficient choice. The default however is 16 bits, so you don't have to 
+worry about counter overflow with the downside of some space overhead. Keep in mind that if you insert items more 
+than once you need larger counters, i.e. roughly *Log(maximum_inserts)/Log(2) + 4* bits. And it is in fact useful to 
+insert non-unique items since then you can perform frequency estimation ("how often have I seen this item?") using 
+`addAndEstimateCount` and `getEstimatedCount`.
 
 ```java
 //Create a Counting Bloom filter that has a FP rate of 0.01 when 1000 are inserted
@@ -253,7 +259,7 @@ print(cbf.contains("http://twitter.com")); //true
 If you insert one distinct item multiple times, the same counter always get updated so you should pick a higher *c* 
 so that *2^c > inserted_copies*. When 8, 16, 32, 64 bits are specified as the counter size, internally an optimized 
 short-, byte-, int- resp. long-array will be used, whereas other sizes will use a custom bit vector build on the <a 
-href="http://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html>Java BitSet</a>. For optimal performance in 
+href="http://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html">Java BitSet</a>. For optimal performance in 
 terms of time complexity you should therefore prefer 8, 16, 32, 64 counting bits.
 
 The Counting Bloom Filter extends the normal Bloom Filter by `remove` and `removeAll` methods:
