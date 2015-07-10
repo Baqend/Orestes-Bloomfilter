@@ -525,8 +525,7 @@ The Redis-backed and Counting Bloom filters can be tested similarly.
   <tr>
     <td>Other sketches (not part of this lib)</td>
     <td><a href="https://en.wikipedia.org/wiki/Hash_table#Sets">Hashsets</a>, <a href="https://en.wikipedia.org/wiki/Bit_array">Bitvectors</a>, <a 
-    href="http://conferences2.sigcomm.org/co-next/2014/CoNEXT_papers/p75
-    .pdf">Cuckoo 
+    href="http://conferences2.sigcomm.org/co-next/2014/CoNEXT_papers/p75.pdf">Cuckoo 
     Filter</a></td>
     <td><a href="http://db.cs.berkeley.edu/cs286/papers/synopses-fntdb2012.pdf">Count-Min-Sketch, 
     Count-Mean-Sketch</a></td>
