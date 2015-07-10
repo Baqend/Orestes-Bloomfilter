@@ -236,7 +236,9 @@ To construct a filter, you can either call `buildBloomFilter` or `buildCountingB
 
 <a name="a2"/>
 ## Counting Bloom Filter
-The Counting Bloom filter allows object removal. For this purpose it has binary counters instead of simple bits. In `CBloomFilter` the amount of bits *c* per counter can be set. If you expect to insert elements only once, the probability of a Bit overflow is very small for *c = 4* : *1.37 * 10^-15 * m* for up to *n* inserted elements  ([details](http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html#SECTION00053000000000000000)). For those use-cases 4 bits are usually the most space-efficient choice. The default however is 16 bits, so you don't have to worry about counter overflow with the downside of some space overhead.
+The Counting Bloom filter allows object removal. For this purpose it has binary counters instead of simple bits. The 
+amount of bits *c* per counter can be set. If you expect to insert elements only once, the 
+probability of a Bit overflow is very small for *c = 4* : *1.37 * 10^-15 * m* for up to *n* inserted elements  ([details](http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html#SECTION00053000000000000000)). For those use-cases 4 bits are usually the most space-efficient choice. The default however is 16 bits, so you don't have to worry about counter overflow with the downside of some space overhead.
 
 ```java
 //Create a Counting Bloom filter that has a FP rate of 0.01 when 1000 are inserted
@@ -248,7 +250,13 @@ print(cbf.contains("http://google.com")); //true
 print(cbf.contains("http://twitter.com")); //true
 ```
 
-If you insert one distinct item multiple times, the same counter always get updated so you should pick a higher *c* so that *2^c > inserted_copies*. The Counting Bloom Filter extends the normal Bloom Filter by `remove` and `removeAll` methods:
+If you insert one distinct item multiple times, the same counter always get updated so you should pick a higher *c* 
+so that *2^c > inserted_copies*. When 8, 16, 32, 64 bits are specified as the counter size, internally an optimized 
+short-, byte-, int- resp. long-array will be used, whereas other sizes will use a custom bit vector build on the <a 
+href="http://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html>Java BitSet</a>. For optimal performance in 
+terms of time complexity you should therefore prefer 8, 16, 32, 64 counting bits.
+
+The Counting Bloom Filter extends the normal Bloom Filter by `remove` and `removeAll` methods:
 
 ```java
 //What only the Counting Bloom filter can do:
@@ -347,7 +355,9 @@ The Redis-backed Bloom filters save their metadata (like number and kind of hash
 
 <a name="a4"/>
 ## Redis Counting Bloom Filters
-The Redis Counting Bloom filter saves the counters as separate counters in a compact [Redis hash](http://redis.io/commands#hash) and keeps the materialized flat Bloom filter as bit array. It is compatatible with Redis 2.4 or higher.
+The Redis Counting Bloom filter saves the counters as separate counters in a compact [Redis hash](http://redis
+.io/commands#hash) and keeps the materialized flat Bloom filter as a bit array. It is compatatible with Redis 2.4 or 
+higher.
 
 ```java
 //Open a Redis-backed Counting Bloom filter
@@ -544,23 +554,4 @@ Up next
 
 License
 =======
-This Bloom filter library is published under the very permissive MIT license:
-
-Copyright Felix Gessert and Florian Bücklers. All rights reserved.
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to
-deal in the Software without restriction, including without limitation the
-rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-sell copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+This Bloom filter library is published under the very permissive MIT license, see LICENSE file.
