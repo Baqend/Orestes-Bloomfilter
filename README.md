@@ -173,8 +173,8 @@ So our two false positives are in line with the expected amount of 1.74.
 
 and lets "estimate" how many elements are in the filter using statistically sound computations of the amount of bits that are one:
 ```java
-//Compare with the expected amount
-print(bf.getFalsePositiveProbability(303) * 700); //1.74
+//Estimate cardinality/population
+print(bf.getEstimatedPopulation()); //303.6759147801151
 ```
 This estimation is very good, even though the estimation was performed on a "quite full" Bloom filter (remember, we allowed the false positive probability to be 10% for 1000 elements).
 
@@ -524,9 +524,14 @@ The Redis-backed and Counting Bloom filters can be tested similarly.
   </tr>
   <tr>
     <td>Other sketches (not part of this lib)</td>
-    <td>Hashsets, Bitvectors</td>
-    <td>Count-Min-Sketch, Count-Mean-Sketch</td>
-    <td>K-Minimum-Values, HyperLogLog</td>
+    <td><a href="https://en.wikipedia.org/wiki/Hash_table#Sets">Hashsets</a>, <a href="https://en.wikipedia.org/wiki/Bit_array">Bitvectors</a>, <a 
+    href="http://conferences2.sigcomm.org/co-next/2014/CoNEXT_papers/p75
+    .pdf">Cuckoo 
+    Filter</a></td>
+    <td><a href="http://db.cs.berkeley.edu/cs286/papers/synopses-fntdb2012.pdf">Count-Min-Sketch, 
+    Count-Mean-Sketch</a></td>
+    <td><a href="http://research.neustar.biz/2012/07/09/sketch-of-the-day-k-minimum-values/">K-Minimum-Values</a>, 
+    <a href="http://www.dmtcs.org/dmtcs-ojs/index.php/proceedings/article/viewPDFInterstitial/dmAH0110/2100">HyperLogLog</a></td>
     <td></td>
     <td></td>
   </tr>
