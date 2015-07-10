@@ -238,8 +238,7 @@ To construct a filter, you can either call `buildBloomFilter` or `buildCountingB
 ## Counting Bloom Filter
 The Counting Bloom filter allows object removal. For this purpose it has binary counters instead of simple bits. The 
 amount of bits *c* per counter can be set. If you expect to insert elements only once, the 
-probability of a Bit overflow is very small for *c = 4* : *1.37 * 10^-15 * m* for up to *n* inserted elements  
-([details](http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html#SECTION00053000000000000000)). For those 
+probability of a Bit overflow is very small for *c = 4* : *1.37 * 10^-15 * m* for up to *n* inserted elements  ([details](http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html#SECTION00053000000000000000)). For those 
 use-cases 4 bits are usually the most space-efficient choice. The default however is 16 bits, so you don't have to 
 worry about counter overflow with the downside of some space overhead. Keep in mind that if you insert items more 
 than once you need larger counters, i.e. roughly *Log(maximum_inserts)/Log(2) + 4* bits. And it is in fact useful to 
