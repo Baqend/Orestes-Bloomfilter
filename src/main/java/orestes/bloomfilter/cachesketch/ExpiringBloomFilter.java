@@ -10,6 +10,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
      * Determines whether a given object is no-expired
      *
      * @param element the element (or its id)
+     * @return <code>true</code> if the element is non-expired
      */
     boolean isCached(T element);
 

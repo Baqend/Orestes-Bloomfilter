@@ -11,10 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Tracks a mapping from obj -> Expiration and a Bloom filter of objects that are automatically removed after
+ * Tracks a mapping from objects to expirations and a Bloom filter of objects that are automatically removed after
  * expiration(obj).
  *
- * @param <T>
  */
 public class ExpiringBloomFilterMemory<T> extends CountingBloomFilterMemory<T> implements ExpiringBloomFilter<T> {
     private final Map<T, Long> expirations = new ConcurrentHashMap<>();
