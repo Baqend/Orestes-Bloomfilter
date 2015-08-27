@@ -39,4 +39,8 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
      * @return the remaining TTL, if the object was still cached, else <code>null</code>
      */
     Long reportWrite(T element, TimeUnit unit);
+
+    default void reportWrite(T element) {
+        reportWrite(element, TimeUnit.MILLISECONDS);
+    }
 }
