@@ -1,6 +1,6 @@
 plugins {
     id 'com.jfrog.bintray' version "1.1"
-    id 'net.researchgate.release' version '2.1.1'
+    id 'net.researchgate.release' version '2.2.1'
 }
 
 apply plugin: 'java'
@@ -51,6 +51,7 @@ release {
     preTagCommitMessage = "pre tag commit:"
     tagCommitMessage = "creating tag:"
     newVersionCommitMessage = "new version commit:"
+    buildTasks = ['assemble']
     git {
         requireBranch = 'master'
         pushToRemote = 'github'
