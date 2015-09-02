@@ -15,7 +15,8 @@ dependencies {
     compile(
             'com.google.code.gson:gson:2.2.4',
             'redis.clients:jedis:2.7.2',
-            'org.apache.commons:commons-pool2:2.2'
+            'org.apache.commons:commons-pool2:2.2',
+            'org.slf4j:slf4j-api:1.7.12'
     )
     testCompile(
             'junit:junit:4.11',

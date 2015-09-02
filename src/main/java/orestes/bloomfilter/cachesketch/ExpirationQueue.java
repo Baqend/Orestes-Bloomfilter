@@ -30,8 +30,16 @@ public class ExpirationQueue<T> {
         workerThread.start();
     }
 
-    public void add(T item, long expires) {
-        add(new ExpiringItem<>(item, expires));
+    public void addTTL(T item, long ttl) {
+        add(new ExpiringItem<>(item, System.nanoTime() + ttl));
+    }
+
+    public void addExpiration(T item, long timestamp) {
+        add(new ExpiringItem<>(item, timestamp));
+    }
+
+    public int size() {
+        return delayedQueue.size();
     }
 
     public void add(ExpiringItem<T> item) {
@@ -41,6 +49,12 @@ public class ExpirationQueue<T> {
     public Collection<ExpiringItem<T>> getNonExpired() {
         return delayedQueue;
     }
+
+    public void clear() {
+        delayedQueue.clear();
+    }
+
+
 
     public static class ExpiringItem<T> implements Delayed {
         private final T item;

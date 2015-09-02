@@ -10,11 +10,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Tracks a mapping from objects to expirations and a Bloom filter of objects that are automatically removed after
- * expiration(obj).
- *
- */
 public class ExpiringBloomFilterMemory<T> extends CountingBloomFilterMemory<T> implements ExpiringBloomFilter<T> {
     private final Map<T, Long> expirations = new ConcurrentHashMap<>();
     private ExpirationQueue<T> queue;
@@ -31,6 +26,7 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilterMemory<T> i
     private void onExpire(ExpiringItem<T> entry) {
         expirations.remove(entry.getItem(), entry.getExpiration());
         this.remove(entry.getItem());
+        System.out.println("remove");
     }
 
     @Override
@@ -40,8 +36,8 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilterMemory<T> i
 
     @Override
     public Long getRemainingTTL(T element, TimeUnit unit) {
-        Long remaining = expirations.get(element);
-        return remaining != null ? unit.convert(remaining, TimeUnit.NANOSECONDS) : null;
+        Long ts = expirations.get(element);
+        return ts != null ? unit.convert(ts - System.nanoTime(), TimeUnit.NANOSECONDS) : null;
     }
 
     @Override
@@ -54,12 +50,17 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilterMemory<T> i
     @Override
     public synchronized Long reportWrite(T element, TimeUnit unit) {
         //Only add if there is a potentially cached read
-        Long remaining = expirations.get(element);
-        if (remaining != null) {
+        Long ts = expirations.get(element);
+        if (ts != null) {
             add(element);
-            queue.add(element, remaining);
+            queue.addExpiration(element, ts);
         }
-        return remaining != null ? unit.convert(remaining, TimeUnit.NANOSECONDS) : null;
+        return ts != null ? unit.convert(ts - System.nanoTime(), TimeUnit.NANOSECONDS) : null;
+    }
+
+    @Override
+    public Double getEstimatedPopulation() {
+        return (double) expirations.size();
     }
 
     public BloomFilter<T> getClonedBloomFilter() {

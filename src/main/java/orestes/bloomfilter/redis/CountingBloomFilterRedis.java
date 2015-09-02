@@ -22,20 +22,22 @@ import java.util.stream.IntStream;
  * @param <T> The type of the containing elements
  */
 public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
-    private final RedisKeys keys;
-    private final RedisPool pool;
-    private final RedisBitSet bloom;
-    private final FilterBuilder config;
+    protected final RedisKeys keys;
+    protected final RedisPool pool;
+    protected final RedisBitSet bloom;
+    protected final FilterBuilder config;
 
 
     public CountingBloomFilterRedis(FilterBuilder builder) {
         builder.complete();
         this.keys = new RedisKeys(builder.name());
-        this.pool = new RedisPool(builder.redisHost(), builder.redisPort(), builder.redisConnections(), builder.getReadSlaves());
+        this.pool = new RedisPool(builder.redisHost(), builder.redisPort(), builder.redisConnections(),
+            builder.getReadSlaves());
         this.bloom = new RedisBitSet(pool, keys.BITS_KEY, builder.size());
         this.config = keys.persistConfig(pool, builder);
-        if(builder.overwriteIfExists())
+        if (builder.overwriteIfExists()) {
             this.clear();
+        }
     }
 
     @Override
@@ -49,11 +51,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
                 p.hincrBy(keys.COUNTS_KEY, encode(position), 1);
             }
         }, keys.BITS_KEY, keys.COUNTS_KEY);
-        return results.stream()
-                .skip(config().hashes())
-                .map(i -> (Long) i)
-                .min(Comparator.<Long>naturalOrder())
-                .get();
+        return results.stream().skip(config().hashes()).map(i -> (Long) i).min(Comparator.<Long>naturalOrder()).get();
     }
 
     //TODO removeALL addAll
@@ -80,12 +78,19 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
             p.sync();
             counts = responses.stream().map(Response::get).collect(Collectors.toList());
 
+            //Fast lane: don't set BF bits
+            long min = Collections.min(counts);
+            if(min > 0 ) {
+                return min;
+            }
+
             while (true) {
                 p = jedis.pipelined();
                 p.multi();
                 for (int i = 0; i < config().hashes(); i++) {
-                    if (counts.get(i) <= 0)
+                    if (counts.get(i) <= 0) {
                         bloom.set(p, hashes[i], false);
+                    }
                 }
                 Response<List<Object>> exec = p.exec();
                 p.sync();
@@ -94,7 +99,10 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
                     p.watch(keys.COUNTS_KEY, keys.BITS_KEY);
                     Response<List<String>> hmget = p.hmget(keys.COUNTS_KEY, hashesString);
                     p.sync();
-                    counts = hmget.get().stream().map(Long::valueOf).collect(Collectors.toList());
+                    counts = hmget.get()
+                        .stream()
+                        .map(o -> o != null ? Long.parseLong(o) : 0l)
+                        .collect(Collectors.toList());
                 } else {
                     return Collections.min(counts);
                 }
@@ -141,6 +149,8 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
         return bloom.asBitSet();
     }
 
+    public byte[] getBytes() { return bloom.toByteArray(); }
+
     @Override
     public FilterBuilder config() {
         return config;
@@ -180,29 +190,32 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
     }
 
     private static String encode(int value) {
-        return SafeEncoder.encode(new byte[]{
-                (byte) (value >>> 24),
-                (byte) (value >>> 16),
-                (byte) (value >>> 8),
-                (byte) value});
+        return SafeEncoder.encode(
+            new byte[]{(byte) (value >>> 24), (byte) (value >>> 16), (byte) (value >>> 8), (byte) value});
     }
 
 
     private static String[] encode(int[] hashes) {
-        return IntStream.of(hashes)
-                .mapToObj(CountingBloomFilterRedis::encode)
-                .toArray(String[]::new);
+        return IntStream.of(hashes).mapToObj(CountingBloomFilterRedis::encode).toArray(String[]::new);
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof CountingBloomFilterRedis)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof CountingBloomFilterRedis)) {
+            return false;
+        }
 
         CountingBloomFilterRedis that = (CountingBloomFilterRedis) o;
 
-        if (bloom != null ? !bloom.equals(that.bloom) : that.bloom != null) return false;
-        if (config != null ? !config.isCompatibleTo(that.config) : that.config != null) return false;
+        if (bloom != null ? !bloom.equals(that.bloom) : that.bloom != null) {
+            return false;
+        }
+        if (config != null ? !config.isCompatibleTo(that.config) : that.config != null) {
+            return false;
+        }
         //TODO also checks counters
 
         return true;

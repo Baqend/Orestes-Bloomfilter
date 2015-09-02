@@ -21,10 +21,12 @@ public class RedisKeys {
     public static final String HASH_METHOD_KEY = "hashmethod";
     public final String BITS_KEY;
     public final String COUNTS_KEY;
+    public final String TTL_KEY;
 
     public RedisKeys(String instanceName) {
         this.BITS_KEY = instanceName + ":bits";
         this.COUNTS_KEY = instanceName + ":counts";
+        this.TTL_KEY = instanceName + ":ttl";
     }
 
 

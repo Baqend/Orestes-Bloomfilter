@@ -3,3 +3,4 @@
 /dist/*SNAPSHOT*
 /doc
 .DS_Store
+/src/main/java/META-INF

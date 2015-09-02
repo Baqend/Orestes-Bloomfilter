@@ -4,6 +4,12 @@ import orestes.bloomfilter.CountingBloomFilter;
 
 import java.util.concurrent.TimeUnit;
 
+
+/**
+ * Tracks a mapping from objects to expirations and a Bloom filter of objects that are automatically removed after
+ * expiration(obj).
+ *
+ */
 public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
 
     /**
@@ -33,7 +39,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
     void reportRead(T element, long TTL, TimeUnit unit);
 
     /**
-     * Reports a write on objects, adding it to the underlying Bloom filter for the remaining ttl
+     * Reports a write on an object, adding it to the underlying Bloom filter for the remaining ttl
      *
      * @param element the element (or its id)
      * @param unit the time unit of the returned ttl
@@ -41,7 +47,13 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
      */
     Long reportWrite(T element, TimeUnit unit);
 
-    default void reportWrite(T element) {
-        reportWrite(element, TimeUnit.MILLISECONDS);
+    /**
+     * Reports a write.
+     *
+     * @param element the element (or its id)
+     * @return <code>true</code>, if the elements needs invalidation
+     */
+    default boolean reportWrite(T element) {
+        return reportWrite(element, TimeUnit.MILLISECONDS) != null;
     }
 }
