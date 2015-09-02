@@ -1,3 +1,9 @@
+## 1.0.7
+
+- Several bug fixes
+- improved tests
+- Added the expiring Bloom filter
+
 ## 1.0.6
 
 Bugfixes:
