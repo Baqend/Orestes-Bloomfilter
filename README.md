@@ -73,7 +73,7 @@ too):
    <dependency>
        <groupId>com.baqend</groupId>
        <artifactId>bloom-filter</artifactId>
-       <version>1.0.6</version>
+       <version>1.0.7</version>
    </dependency>
 </dependencies>
 <repositories>
@@ -96,7 +96,7 @@ repositories {
 }
 dependencies {
     compile(
-            'com.baqend:bloom-filter:1.0.6'
+            'com.baqend:bloom-filter:1.0.7'
     )
 }
 ```
