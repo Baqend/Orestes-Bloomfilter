@@ -49,9 +49,9 @@ artifacts {
 }
 
 release {
-    preTagCommitMessage = "pre tag commit:"
+    preTagCommitMessage = "[ci skip] pre tag commit:"
     tagCommitMessage = "creating tag:"
-    newVersionCommitMessage = "new version commit:"
+    newVersionCommitMessage = "[ci skip] new version commit:"
     buildTasks = ['assemble']
     git {
         requireBranch = 'master'
