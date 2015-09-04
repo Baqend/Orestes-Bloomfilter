@@ -4,13 +4,13 @@ package orestes.bloomfilter.cachesketch;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
-import orestes.bloomfilter.memory.CountingBloomFilterMemory;
+import orestes.bloomfilter.memory.CountingBloomFilter32;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class ExpiringBloomFilterMemory<T> extends CountingBloomFilterMemory<T> implements ExpiringBloomFilter<T> {
+public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> implements ExpiringBloomFilter<T> {
     private final Map<T, Long> expirations = new ConcurrentHashMap<>();
     private ExpirationQueue<T> queue;
 
@@ -26,7 +26,6 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilterMemory<T> i
     private void onExpire(ExpiringItem<T> entry) {
         expirations.remove(entry.getItem(), entry.getExpiration());
         this.remove(entry.getItem());
-        System.out.println("remove");
     }
 
     @Override
@@ -43,8 +42,7 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilterMemory<T> i
     @Override
     public synchronized void reportRead(T element, long TTL, TimeUnit unit) {
         long ts = ttlToTimestamp(TTL, unit);
-        expirations.computeIfPresent(element, (k, v) -> Math.max(ts, v));
-        expirations.putIfAbsent(element, ts);
+        expirations.compute(element, (k, v) -> v == null ? ts : Math.max(ts, v));
     }
 
     @Override
@@ -63,6 +61,7 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilterMemory<T> i
         return (double) expirations.size();
     }
 
+    @Override
     public BloomFilter<T> getClonedBloomFilter() {
         return filter.clone();
     }

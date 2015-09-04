@@ -3,7 +3,8 @@ package performance;
 import orestes.bloomfilter.CountingBloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
-import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
+import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
+import orestes.bloomfilter.cachesketch.ExpiringBloomFilterMemory;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import performance.BFHashUniformity.Randoms;
 
@@ -17,9 +18,10 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class GeneralPerformance {
-    private static int ops = 1_000_000;
-    private static int from = 0;
-    private static int to = 12;
+    private static int ops = 20_000_000;
+    private static int from = 1;
+    private static int to = 2;
+    private static int rounds = 1;
 
     public static void main(String... args) throws Exception {
 /*        testOp((in, b) -> b.contains(in), "contains");
@@ -41,22 +43,22 @@ public class GeneralPerformance {
 
 
         plotX(from, to);
-        for (int size : Arrays.asList(10_000, 100_000)) {
+        for (int size : Arrays.asList(100_000)) {
             testOpExp((in, b) -> b.contains(in), "contains" + size, size);
             testOpExp((in, b) -> b.reportRead(in, 100, TimeUnit.SECONDS), "reportRead" + size, size);
             testOpExp((in, b) -> b.reportWrite(in), "reportWrite" + size, size);
             testOpExp((in, b) -> b.getRemainingTTL(in, TimeUnit.MILLISECONDS), "getRemainingTTL" + size, size);
-            testOpExp((in, b) -> b.getEstimatedPopulation(), "cardinality" + size, size);
-            testOpExp((in, b) -> b.getBytes(), "dump" + size, size);
-            testOpExp((in, b) -> b.contains(in), "contains" + size, size);
+            testOpExp((in, b) -> b.getEstimatedFalsePositiveProbability(), "cardinality" + size, size);
+            testOpExp((in, b) -> b.getBitSet().toByteArray(), "dump" + size, size);
+            //testOpExp((in, b) -> b.contains(in), "contains" + size, size);
         }
     }
 
-    private static void testOpExp(BiConsumer<String, ExpiringBloomFilterRedis<String>> op, String name) throws Exception {
+    private static void testOpExp(BiConsumer<String, ExpiringBloomFilter<String>> op, String name) throws Exception {
         testOpExp(op, name, 100_000);
     }
 
-    private static void testOpExp(BiConsumer<String, ExpiringBloomFilterRedis<String>> op, String name, int size) throws Exception {
+    private static void testOpExp(BiConsumer<String, ExpiringBloomFilter<String>> op, String name, int size) throws Exception {
         Graph g = new Graph();
 
         List<String> input = Randoms.BYTES.generate(ops, 1)
@@ -65,20 +67,21 @@ public class GeneralPerformance {
             .map(Randoms::fromBytes)
             .collect(Collectors.toList());
         for (int i = from; i < to; i++) {
-            for (int j = 0; j < 5; j++) {
-                //System.out.println((int) (Math.pow(2, i)));
-                ExpiringBloomFilterRedis<String> b = new ExpiringBloomFilterRedis<>(
+            for (int j = 0; j < rounds; j++) {
+                System.err.println((int) (Math.pow(2, i)));
+                ExpiringBloomFilter<String> b = new ExpiringBloomFilterMemory<>(new FilterBuilder(size, 5).hashFunction(HashMethod.Murmur3));
+                /*ExpiringBloomFilterRedis<String> b = new ExpiringBloomFilterRedis<>(
                     new FilterBuilder(size, 5).hashFunction(HashMethod.Murmur3)
                         .redisBacked(true)
                         .name("")
-                        .redisHost("134.100.11.230").redisPort(6379)
+                        .redisHost("redis-small.m9g653.0001.euc1.cache.amazonaws.com").redisPort(6379)
                         //.addReadSlave("localhost", 6380)
                         //.addReadSlave("localhost", 6381)
                         //.addReadSlave("localhost", 6382)
-                        .overwriteIfExists(true).redisConnections((int) (Math.pow(2, i))).complete());
+                        .overwriteIfExists(true).redisConnections((int) (Math.pow(2, i))).complete());*/
                 ExecutorService exec = Executors.newFixedThreadPool((int) (Math.pow(2, i)));
                 warmup(exec);
-                for (int k = 0; k < size / 10; k++) {
+                for (int k = 0; k < size / 100; k++) {
                     b.add(input.get(k));
                 }
                 long start = System.currentTimeMillis();

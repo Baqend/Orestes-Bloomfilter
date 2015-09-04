@@ -1,5 +1,6 @@
 package orestes.bloomfilter.cachesketch;
 
+import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
@@ -78,6 +79,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         return remaining != null ? unit.convert(remaining, TimeUnit.NANOSECONDS) : null;
     }
 
+
     @Override
     public void clear() {
         //Clear CBF
@@ -106,5 +108,11 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
 
     public String key(T element) {
         return keys.TTL_KEY + element.toString();
+    }
+
+
+    @Override
+    public BloomFilter<T> getClonedBloomFilter() {
+        return toMemoryFilter();
     }
 }

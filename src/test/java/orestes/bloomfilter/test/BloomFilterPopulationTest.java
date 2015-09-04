@@ -29,8 +29,11 @@ public class BloomFilterPopulationTest {
 
     @Parameterized.Parameters(name = "Bloom Filter test with {0}")
     public static Collection<Object[]> data() throws Exception {
-        Object[][] data = {{"normal memory", false, false}, {"counting memory", false, true},
-            {"normal redis", true, false}, {"counting redis", true, true}
+        Object[][] data = {
+            {"normal memory", false, false},
+            {"counting memory", false, true},
+            {"normal redis", true, false},
+            {"counting redis", true, true}
         };
         return Arrays.asList(data);
     }
@@ -63,7 +66,8 @@ public class BloomFilterPopulationTest {
 
     @Before
     public void testName() throws Exception {
-        cleanupRedis();
+        if(redisBacked)
+            cleanupRedis();
         createFilter();
     }
 

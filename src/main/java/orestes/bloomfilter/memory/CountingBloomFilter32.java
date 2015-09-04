@@ -30,6 +30,7 @@ public class CountingBloomFilter32<T> extends CountingBloomFilterMemory<T>{
         return Integer.toUnsignedLong(counters[index]);
     }
 
+
     @Override
     public void clear() {
         filter.clear();

@@ -1,5 +1,6 @@
 package orestes.bloomfilter.cachesketch;
 
+import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
 
 import java.util.concurrent.TimeUnit;
@@ -56,4 +57,6 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
     default boolean reportWrite(T element) {
         return reportWrite(element, TimeUnit.MILLISECONDS) != null;
     }
+
+    BloomFilter<T> getClonedBloomFilter();
 }

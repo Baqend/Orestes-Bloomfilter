@@ -1,5 +1,6 @@
 package orestes.bloomfilter.test.cachesketch;
 
+import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterMemory;
@@ -142,5 +143,16 @@ public class ExpiringTest {
             1 - filter.getEstimatedFalsePositiveProbability() / filter.getFalsePositiveProbability(200)) < 0.1);
     }
 
-
+    @Test
+    public void testClone() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.05);
+        createFilter(b);
+        filter.reportRead("1", 50, TimeUnit.MILLISECONDS);
+        filter.reportRead("2", 50, TimeUnit.MILLISECONDS);
+        filter.reportWrite("1");
+        BloomFilter<String> bf = filter.getClonedBloomFilter();
+        filter.reportWrite("2");
+        assertTrue(bf.contains("1"));
+        assertFalse(bf.contains("2"));
+    }
 }
