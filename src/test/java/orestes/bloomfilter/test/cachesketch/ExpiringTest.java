@@ -139,8 +139,7 @@ public class ExpiringTest {
         //fpp exceeded
         assertTrue(filter.getEstimatedFalsePositiveProbability() > 0.05);
         //Less then 10% difference between estimated and precise fpp
-        assertTrue(Math.abs(
-            1 - filter.getEstimatedFalsePositiveProbability() / filter.getFalsePositiveProbability(200)) < 0.1);
+        assertTrue(Math.abs(1 - filter.getEstimatedFalsePositiveProbability() / filter.getFalsePositiveProbability(200)) < 0.1);
     }
 
     @Test
