@@ -65,7 +65,8 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         String ttl_str = String.valueOf(TimeUnit.MILLISECONDS.convert(TTL, unit));
         String ts = ttlToTimestamp(TTL, unit).toString();
         pool.safelyDo(jedis -> {
-            jedis.evalsha(read_lua_hash, Collections.singletonList(key(element)), Arrays.asList(ts, ttl_str));
+            jedis.evalsha(read_lua_hash, Collections.singletonList(key(element)),
+                Arrays.asList(ts, ttl_str));
         });
     }
 
