@@ -86,7 +86,6 @@ public class ExpiringTest {
     public void testAddMultipleTimes() throws Exception {
         FilterBuilder b = new FilterBuilder(100000, 0.05);
         createFilter(b);
-
         boolean invalidation = filter.reportWrite("1");
         filter.reportRead("1", 100, TimeUnit.MILLISECONDS);
         filter.reportRead("1", 800, TimeUnit.MILLISECONDS);
