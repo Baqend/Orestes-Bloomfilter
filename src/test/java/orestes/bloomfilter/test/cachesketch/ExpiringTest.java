@@ -31,6 +31,7 @@ public class ExpiringTest {
             {"in-memory", true},
             {"with redis", false}
         };
+
         return Arrays.asList(data);
     }
 
