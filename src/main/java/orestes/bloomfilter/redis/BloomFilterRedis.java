@@ -30,7 +30,8 @@ public class BloomFilterRedis<T> implements BloomFilter<T> {
     public BloomFilterRedis(FilterBuilder builder) {
         builder.complete();
         this.keys = new RedisKeys(builder.name());
-        this.pool = new RedisPool(builder.redisHost(), builder.redisPort(), builder.redisConnections(), builder.getReadSlaves());
+        this.pool = new RedisPool(builder.redisHost(), builder.redisPort(), builder.redisConnections(), builder
+            .getReadSlaves(), builder.password());
         this.bloom = new RedisBitSet(pool, keys.BITS_KEY, builder.size());
         this.config = keys.persistConfig(pool, builder);
         if (builder.overwriteIfExists())
@@ -43,7 +44,7 @@ public class BloomFilterRedis<T> implements BloomFilter<T> {
     }
 
     @Override
-    public boolean add(byte[] element) {
+    public boolean addRaw(byte[] element) {
         return bloom.setAll(hash(element));
     }
 
@@ -116,6 +117,11 @@ public class BloomFilterRedis<T> implements BloomFilter<T> {
     @Override
     public BitSet getBitSet() {
         return bloom.asBitSet();
+    }
+
+    @Override
+    public BitSet getBitSetCopy() {
+        return getBitSet();
     }
 
     public BloomFilterMemory<T> toMemoryFilter() {

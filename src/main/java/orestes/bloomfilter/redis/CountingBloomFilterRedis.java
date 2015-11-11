@@ -32,7 +32,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
         builder.complete();
         this.keys = new RedisKeys(builder.name());
         this.pool = new RedisPool(builder.redisHost(), builder.redisPort(), builder.redisConnections(),
-            builder.getReadSlaves());
+            builder.getReadSlaves(), builder.password());
         this.bloom = new RedisBitSet(pool, keys.BITS_KEY, builder.size());
         this.config = keys.persistConfig(pool, builder);
         if (builder.overwriteIfExists()) {
@@ -41,7 +41,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
     }
 
     @Override
-    public long addAndEstimateCount(byte[] element) {
+    public long addAndEstimateCountRaw(byte[] element) {
         List<Object> results = pool.transactionallyRetry(p -> {
             int[] hashes = hash(element);
             for (int position : hashes) {
@@ -57,12 +57,12 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
     //TODO removeALL addAll
 
     @Override
-    public boolean remove(byte[] value) {
-        return removeAndEstimateCount(value) <= 0;
+    public boolean removeRaw(byte[] value) {
+        return removeAndEstimateCountRaw(value) <= 0;
     }
 
     @Override
-    public long removeAndEstimateCount(byte[] value) {
+    public long removeAndEstimateCountRaw(byte[] value) {
         return pool.safelyReturn(jedis -> {
             int[] hashes = hash(value);
             String[] hashesString = encode(hashes);
@@ -80,7 +80,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
 
             //Fast lane: don't set BF bits
             long min = Collections.min(counts);
-            if(min > 0 ) {
+            if (min > 0) {
                 return min;
             }
 
@@ -147,6 +147,11 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
     @Override
     public BitSet getBitSet() {
         return bloom.asBitSet();
+    }
+
+    @Override
+    public BitSet getBitSetCopy() {
+        return getBitSet();
     }
 
     public byte[] getBytes() { return bloom.toByteArray(); }

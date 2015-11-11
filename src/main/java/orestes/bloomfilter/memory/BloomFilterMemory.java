@@ -22,7 +22,7 @@ public class BloomFilterMemory<T> implements BloomFilter<T> {
     }
 
     @Override
-    public synchronized boolean add(byte[] element) {
+    public synchronized boolean addRaw(byte[] element) {
         boolean added = false;
         for (int position : hash(element)) {
             if (!getBit(position)) {

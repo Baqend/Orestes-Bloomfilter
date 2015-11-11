@@ -27,15 +27,19 @@ public class RedisPool {
     private List<RedisPool> slavePools;
     private Random random;
 
-    public RedisPool(String host, int port, int redisConnections) {
+    public RedisPool(String host, int port, int redisConnections, String password) {
         this.host = host;
         this.port = port;
         this.redisConnections = redisConnections;
-        this.pool = createJedisPool(host, port, redisConnections);
+        this.pool = createJedisPool(host, port, redisConnections, password);
     }
 
-    public RedisPool(String host, int port, int redisConnections, Set<Entry<String, Integer>> readSlaves) {
-        this(host, port, redisConnections);
+    public RedisPool(String host, int port, int redisConnections) {
+        this(host, port, redisConnections, (String) null);
+    }
+
+    public RedisPool(String host, int port, int redisConnections, Set<Entry<String, Integer>> readSlaves, String password) {
+        this(host, port, redisConnections, password);
         if (readSlaves != null && !readSlaves.isEmpty()) {
             slavePools = new ArrayList<>();
             random = new Random();
@@ -49,11 +53,15 @@ public class RedisPool {
         return pool;
     }
 
-    private JedisPool createJedisPool(String host, int port, int redisConnections) {
+    private JedisPool createJedisPool(String host, int port, int redisConnections, String password) {
         JedisPoolConfig config = new JedisPoolConfig();
         config.setBlockWhenExhausted(true);
         config.setMaxTotal(redisConnections);
-        return new JedisPool(config, host, port);
+        if (password == null) {
+            return new JedisPool(config, host, port);
+        } else {
+            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT, password);
+        }
     }
 
     public String getHost() {

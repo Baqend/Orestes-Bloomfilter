@@ -5,6 +5,7 @@ import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterMemory;
+import orestes.bloomfilter.json.BloomFilterConverter;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import performance.BFHashUniformity.Randoms;
 
@@ -18,7 +19,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class GeneralPerformance {
-    private static int ops = 20_000_000;
+    private static int ops = 1000_000;
     private static int from = 1;
     private static int to = 2;
     private static int rounds = 1;
@@ -44,13 +45,16 @@ public class GeneralPerformance {
 
         plotX(from, to);
         for (int size : Arrays.asList(100_000)) {
-            testOpExp((in, b) -> b.contains(in), "contains" + size, size);
+            /*testOpExp((in, b) -> b.contains(in), "contains" + size, size);
             testOpExp((in, b) -> b.reportRead(in, 100, TimeUnit.SECONDS), "reportRead" + size, size);
             testOpExp((in, b) -> b.reportWrite(in), "reportWrite" + size, size);
             testOpExp((in, b) -> b.getRemainingTTL(in, TimeUnit.MILLISECONDS), "getRemainingTTL" + size, size);
             testOpExp((in, b) -> b.getEstimatedFalsePositiveProbability(), "cardinality" + size, size);
-            testOpExp((in, b) -> b.getBitSet().toByteArray(), "dump" + size, size);
+            testOpExp((in, b) -> b.getBitSet().toByteArray(), "dump" + size, size);*/
             //testOpExp((in, b) -> b.contains(in), "contains" + size, size);
+            testOpExp((in, b) -> b.getBitSet().toByteArray(), "BitSet" + size, size);
+            testOpExp((in, b) -> b.getBitSet().toByteArray(), "Cloned BitSet" + size, size);
+            testOpExp((in, b) -> BloomFilterConverter.toJson(b), "convert" + size, size);
         }
     }
 
@@ -124,10 +128,10 @@ public class GeneralPerformance {
             warmup(exec);
             List<byte[]> input = Randoms.BYTES.generate(ops, 1).get(0);
             for (byte[] in : input) {
-                b.add(in);
-                b.add(in);
-                b.add(in);
-                b.add(in);
+                b.addRaw(in);
+                b.addRaw(in);
+                b.addRaw(in);
+                b.addRaw(in);
             }
             long start = System.currentTimeMillis();
             for (byte[] in : input) {

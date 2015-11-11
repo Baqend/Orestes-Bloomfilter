@@ -34,7 +34,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
 
     @Override
-    public synchronized long addAndEstimateCount(byte[] element) {
+    public synchronized long addAndEstimateCountRaw(byte[] element) {
         return IntStream.of(hash(element)).mapToLong(hash -> {
             filter.setBit(hash, true);
             return increment(hash);
@@ -43,7 +43,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
 
     @Override
-    public synchronized long removeAndEstimateCount(byte[] element) {
+    public synchronized long removeAndEstimateCountRaw(byte[] element) {
         if (!contains(element)) { return 0; }
 
         long min = Long.MAX_VALUE;

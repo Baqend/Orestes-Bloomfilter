@@ -33,6 +33,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     private Set<Entry<String, Integer>> slaves = new HashSet<>();
     private static transient Charset defaultCharset = Charset.forName("UTF-8");
     private boolean done = false;
+    private String password = null;
 
     /**
      * Constructs a new builder for Bloom filters and counting Bloom filters.
@@ -135,6 +136,17 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
     /**
+     * Sets a password authentication for Redis.
+     *
+     * @param password The Redis PW
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder password(String password) {
+        this.password = password;
+        return this;
+    }
+
+    /**
      * Instructs the FilterBuilder to build a Redis-Backed Bloom filters. <p><b>Default</b>: <tt>false</tt></p>
      *
      * @param redisBacked a boolean indicating whether redis should be used
@@ -168,6 +180,7 @@ public class FilterBuilder implements Cloneable, Serializable {
         this.redisPort = port;
         return this;
     }
+
 
     /**
      * Sets the number of connections to use for Redis. <p><b>Default</b>: 10</p>
@@ -479,4 +492,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
 
+    public String password() {
+        return password;
+    }
 }

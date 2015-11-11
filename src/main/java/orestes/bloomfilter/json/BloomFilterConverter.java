@@ -22,7 +22,7 @@ public class BloomFilterConverter {
         root.addProperty("size", source.getSize());
         root.addProperty("hashes", source.getHashes());
         root.addProperty("HashMethod", source.config().hashMethod().name());
-        byte[] bits = source.getBitSet().toByteArray();
+        byte[] bits = source.getBitSetCopy().toByteArray();
 
         // Encode using Arrays.toString -> [0,16,0,0,32].
         // root.addProperty("bits", Arrays.toString(bits));

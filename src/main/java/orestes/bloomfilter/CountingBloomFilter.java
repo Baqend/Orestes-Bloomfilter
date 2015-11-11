@@ -18,8 +18,8 @@ public interface CountingBloomFilter<T> extends BloomFilter<T> {
 
 
     @Override
-    public default boolean add(byte[] element) {
-        return addAndEstimateCount(element) == 1;
+    public default boolean addRaw(byte[] element) {
+        return addAndEstimateCountRaw(element) == 1;
     }
 
     /**
@@ -28,8 +28,8 @@ public interface CountingBloomFilter<T> extends BloomFilter<T> {
      * @param element object to be deleted
      * @return {@code true} if the element is not present after removal
      */
-    public default boolean remove(byte[] element) {
-        return removeAndEstimateCount(element) <= 0;
+    public default boolean removeRaw(byte[] element) {
+        return removeAndEstimateCountRaw(element) <= 0;
     }
 
     /**
@@ -39,7 +39,7 @@ public interface CountingBloomFilter<T> extends BloomFilter<T> {
      * @return {@code true} if the element is not present after removal
      */
     public default boolean remove(T element) {
-        return remove(toBytes(element));
+        return removeRaw(toBytes(element));
     }
 
 
@@ -71,7 +71,7 @@ public interface CountingBloomFilter<T> extends BloomFilter<T> {
      * @param element element to add
      * @return estimated frequency of the element after insertion
      */
-    public long addAndEstimateCount(byte[] element);
+    public long addAndEstimateCountRaw(byte[] element);
 
     /**
      * Adds an element and returns its estimated frequency after the insertion (i.e. the number of times the element was
@@ -81,7 +81,7 @@ public interface CountingBloomFilter<T> extends BloomFilter<T> {
      * @return estimated frequency of the element after insertion
      */
     public default long addAndEstimateCount(T element) {
-        return addAndEstimateCount(toBytes(element));
+        return addAndEstimateCountRaw(toBytes(element));
     }
 
     /**
@@ -91,7 +91,7 @@ public interface CountingBloomFilter<T> extends BloomFilter<T> {
      * @param element element to remove
      * @return estimated frequency of the element after deletion
      */
-    public long removeAndEstimateCount(byte[] element);
+    public long removeAndEstimateCountRaw(byte[] element);
 
     /**
      * Removes an element and returns its estimated frequency after the insertion (i.e. the number of times the element
@@ -101,7 +101,7 @@ public interface CountingBloomFilter<T> extends BloomFilter<T> {
      * @return estimated frequency of the element after deletion
      */
     public default long removeAndEstimateCount(T element) {
-        return removeAndEstimateCount(toBytes(element));
+        return removeAndEstimateCountRaw(toBytes(element));
     }
 
     /**

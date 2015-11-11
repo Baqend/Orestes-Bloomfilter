@@ -18,7 +18,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * @return {@code true} if the value did not previously exist in the filter. Note, that a false positive may occur,
      * thus the value may not have already been in the filter, but it hashed to a set of bits already in the filter.
      */
-    public boolean add(byte[] element);
+    public boolean addRaw(byte[] element);
 
     /**
      * Adds the passed value to the filter.
@@ -28,7 +28,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * thus the value may not have already been in the filter, but it hashed to a set of bits already in the filter.
      */
     public default boolean add(T element) {
-        return add(toBytes(element));
+        return addRaw(toBytes(element));
     }
 
     /**
@@ -90,6 +90,10 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * @return the underyling bit vector of the Bloom filter.
      */
     public BitSet getBitSet();
+
+    public default BitSet getBitSetCopy() {
+        return (BitSet) getBitSet().clone();
+    }
 
     /**
      * Returns the configuration/builder of the Bloom filter.
@@ -239,7 +243,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * size)) ^ hashes</code>
      *
      * @param insertedElements The number of elements already inserted into the Bloomfilter
-     * @return probability of a false positive after <i>expectedElements</i> {@link #add(byte[])} operations
+     * @return probability of a false positive after <i>expectedElements</i> {@link #addRaw(byte[])} operations
      */
     public default double getFalsePositiveProbability(double insertedElements) {
         return FilterBuilder.optimalP(config().hashes(), config().size(), insertedElements);
@@ -270,7 +274,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * Returns the probability that a bit is zero.
      *
      * @param n The number of elements already inserted into the Bloomfilter
-     * @return probability that a certain bit is zero after <i>expectedElements</i> {@link #add(byte[])} operations
+     * @return probability that a certain bit is zero after <i>expectedElements</i> {@link #addRaw(byte[])} operations
      */
     public default double getBitZeroProbability(int n) {
         return Math.pow(1 - (double) 1 / config().size(), config().hashes() * n);

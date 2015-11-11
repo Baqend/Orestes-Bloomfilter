@@ -62,7 +62,7 @@ public class BFHashFP {
                 fps++;
             }
 
-            b.add(current);
+            b.addRaw(current);
             seen.add(Randoms.fromBytes(current));
         }
         long end = System.nanoTime();
