@@ -1,7 +1,7 @@
 package orestes.bloomfilter.memory;
 
-import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.BloomFilter;
+import orestes.bloomfilter.FilterBuilder;
 
 import java.util.BitSet;
 
@@ -40,9 +40,11 @@ public class BloomFilterMemory<T> implements BloomFilter<T> {
 
     @Override
     public synchronized boolean contains(byte[] element) {
-        for (int position : hash(element))
-            if (!getBit(position))
+        for (int position : hash(element)) {
+            if (!getBit(position)) {
                 return false;
+            }
+        }
         return true;
     }
 
@@ -55,8 +57,8 @@ public class BloomFilterMemory<T> implements BloomFilter<T> {
     }
 
     @Override
-    public BitSet getBitSet() {
-        return bloom;
+    public synchronized BitSet getBitSet() {
+        return (BitSet) bloom.clone();
     }
 
 
@@ -106,15 +108,27 @@ public class BloomFilterMemory<T> implements BloomFilter<T> {
     }
 
 
+    public synchronized void setBitSet(BitSet bloom) {
+        this.bloom = bloom;
+    }
+
     @Override
     public synchronized boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof BloomFilterMemory)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof BloomFilterMemory)) {
+            return false;
+        }
 
         BloomFilterMemory that = (BloomFilterMemory) o;
 
-        if (bloom != null ? !bloom.equals(that.bloom) : that.bloom != null) return false;
-        if (config != null ? !config.isCompatibleTo(that.config) : that.config != null) return false;
+        if (bloom != null ? !bloom.equals(that.bloom) : that.bloom != null) {
+            return false;
+        }
+        if (config != null ? !config.isCompatibleTo(that.config) : that.config != null) {
+            return false;
+        }
 
         return true;
     }

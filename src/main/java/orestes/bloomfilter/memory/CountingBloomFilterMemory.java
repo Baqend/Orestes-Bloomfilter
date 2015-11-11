@@ -248,4 +248,8 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
         stream.defaultReadObject();
         this.overflowHandler = () -> {};
     }
+
+    public BloomFilterMemory<T> getBloomFilter() {
+        return filter;
+    }
 }

@@ -119,14 +119,9 @@ public class BloomFilterRedis<T> implements BloomFilter<T> {
         return bloom.asBitSet();
     }
 
-    @Override
-    public BitSet getBitSetCopy() {
-        return getBitSet();
-    }
-
     public BloomFilterMemory<T> toMemoryFilter() {
         BloomFilterMemory<T> filter = new BloomFilterMemory<>(config().clone());
-        filter.getBitSet().or(getBitSet());
+        filter.setBitSet(getBitSet());
         return filter;
     }
 

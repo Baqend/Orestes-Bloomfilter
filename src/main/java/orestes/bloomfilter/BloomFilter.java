@@ -91,10 +91,6 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      */
     public BitSet getBitSet();
 
-    public default BitSet getBitSetCopy() {
-        return (BitSet) getBitSet().clone();
-    }
-
     /**
      * Returns the configuration/builder of the Bloom filter.
      *

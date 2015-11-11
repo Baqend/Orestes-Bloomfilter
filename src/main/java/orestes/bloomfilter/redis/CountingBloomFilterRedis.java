@@ -149,11 +149,6 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
         return bloom.asBitSet();
     }
 
-    @Override
-    public BitSet getBitSetCopy() {
-        return getBitSet();
-    }
-
     public byte[] getBytes() { return bloom.toByteArray(); }
 
     @Override
@@ -163,7 +158,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
 
     public CountingBloomFilterMemory<T> toMemoryFilter() {
         CountingBloomFilterMemory<T> filter = new CountingBloomFilterMemory<>(config().clone());
-        filter.getBitSet().or(getBitSet());
+        filter.getBloomFilter().setBitSet(getBitSet());
         return filter;
     }
 

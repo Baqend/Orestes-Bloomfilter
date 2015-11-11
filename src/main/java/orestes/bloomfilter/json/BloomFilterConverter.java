@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
+import orestes.bloomfilter.memory.BloomFilterMemory;
 
 import java.util.Base64;
 import java.util.BitSet;
@@ -22,7 +23,7 @@ public class BloomFilterConverter {
         root.addProperty("size", source.getSize());
         root.addProperty("hashes", source.getHashes());
         root.addProperty("HashMethod", source.config().hashMethod().name());
-        byte[] bits = source.getBitSetCopy().toByteArray();
+        byte[] bits = source.getBitSet().toByteArray();
 
         // Encode using Arrays.toString -> [0,16,0,0,32].
         // root.addProperty("bits", Arrays.toString(bits));
@@ -60,8 +61,8 @@ public class BloomFilterConverter {
         FilterBuilder builder = new FilterBuilder(m, k)
                 .hashFunction(HashMethod.valueOf(hashMethod));
 
-        BloomFilter<T> filter = builder.buildBloomFilter();
-        filter.getBitSet().or(BitSet.valueOf(bits));
+        BloomFilterMemory<T> filter = new BloomFilterMemory<>(builder.complete());
+        filter.setBitSet(BitSet.valueOf(bits));
 
         return filter;
     }
