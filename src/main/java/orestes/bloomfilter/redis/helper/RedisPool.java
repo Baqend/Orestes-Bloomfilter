@@ -58,9 +58,9 @@ public class RedisPool {
         config.setBlockWhenExhausted(true);
         config.setMaxTotal(redisConnections);
         if (password == null) {
-            return new JedisPool(config, host, port);
+            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT * 4);
         } else {
-            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT, password);
+            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT * 4, password);
         }
     }
 
