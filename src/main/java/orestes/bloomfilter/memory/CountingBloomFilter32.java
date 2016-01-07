@@ -18,13 +18,17 @@ public class CountingBloomFilter32<T> extends CountingBloomFilterMemory<T>{
 
     @Override
     protected long increment(int index) {
-        if(counters[index] == MAX)
+        if(Integer.toUnsignedLong(counters[index]) == MAX) {
+            overflowHandler.run();
             return MAX;
+        }
         return Integer.toUnsignedLong(++counters[index]);
     }
 
     @Override
     protected long decrement(int index) {
+        if(counters[index] == 0)
+            return 0;
         return Integer.toUnsignedLong(--counters[index]);
     }
 
