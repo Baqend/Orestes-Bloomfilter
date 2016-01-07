@@ -7,6 +7,7 @@ import java.util.Objects;
 
 public class CountingBloomFilter8<T> extends CountingBloomFilterMemory<T>{
     private byte[] counters;
+    private static final long MAX = Byte.MAX_VALUE *2 + 1;
 
     public CountingBloomFilter8(FilterBuilder config) {
         config.complete();
@@ -17,6 +18,8 @@ public class CountingBloomFilter8<T> extends CountingBloomFilterMemory<T>{
 
     @Override
     protected long increment(int index) {
+        if(counters[index] == MAX)
+            return MAX;
         return Byte.toUnsignedLong(++counters[index]);
     }
 

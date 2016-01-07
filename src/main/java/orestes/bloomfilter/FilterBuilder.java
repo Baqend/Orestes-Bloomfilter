@@ -5,6 +5,7 @@ import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.memory.*;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
+import orestes.bloomfilter.redis.helper.RedisPool;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
@@ -34,6 +35,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     private static transient Charset defaultCharset = Charset.forName("UTF-8");
     private boolean done = false;
     private String password = null;
+    private RedisPool pool;
 
     /**
      * Constructs a new builder for Bloom filters and counting Bloom filters.
@@ -143,6 +145,17 @@ public class FilterBuilder implements Cloneable, Serializable {
      */
     public FilterBuilder password(String password) {
         this.password = password;
+        return this;
+    }
+
+    /**
+     * Sets an existing RedisPool for reuse
+     *
+     * @param pool The RedisPool
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder password(RedisPool pool) {
+        this.pool = pool;
         return this;
     }
 
@@ -494,5 +507,13 @@ public class FilterBuilder implements Cloneable, Serializable {
 
     public String password() {
         return password;
+    }
+
+    public RedisPool pool() {
+        if(done && pool == null) {
+            pool = new RedisPool(redisHost(), redisPort(), redisConnections(),
+                getReadSlaves(), password());
+        }
+        return pool;
     }
 }
