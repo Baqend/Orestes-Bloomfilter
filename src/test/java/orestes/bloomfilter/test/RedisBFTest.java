@@ -253,7 +253,6 @@ public class RedisBFTest {
     public void testPool() throws Exception {
         BloomFilter<String> bf = createFilter("pooltest", 10_000, 0.01);
         RedisPool pool = bf.config().pool();
-        assertSame(bf.config().pool(), pool);
 
         FilterBuilder clonedConfig = bf.config().clone().name("pooltest-cloned");
         BloomFilter<String> filter = counts ? clonedConfig.buildCountingBloomFilter() : clonedConfig.buildBloomFilter();
@@ -263,7 +262,7 @@ public class RedisBFTest {
         assertTrue(filter.contains("filter"));
         assertTrue(bf.contains("bf"));
         assertFalse(filter.contains("bf"));
-        assertSame(bf.config().pool(), filter.config().pool());
+        assertSame(pool, filter.config().pool());
     }
 
 }
