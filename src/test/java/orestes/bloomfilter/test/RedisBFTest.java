@@ -5,6 +5,7 @@ import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
+import orestes.bloomfilter.redis.helper.RedisPool;
 import orestes.bloomfilter.test.helper.Helper;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,6 +37,7 @@ public class RedisBFTest {
         };
         return Arrays.asList(data);
     }
+
 
     public RedisBFTest(String type, boolean counts) {
         this.counts = counts;
@@ -245,6 +247,23 @@ public class RedisBFTest {
         } catch (InterruptedException e) {
             //...
         }
+    }
+
+    @Test
+    public void testPool() throws Exception {
+        BloomFilter<String> bf = createFilter("pooltest", 10_000, 0.01);
+        RedisPool pool = bf.config().pool();
+        assertSame(bf.config().pool(), pool);
+
+        FilterBuilder clonedConfig = bf.config().clone().name("pooltest-cloned");
+        BloomFilter<String> filter = counts ? clonedConfig.buildCountingBloomFilter() : clonedConfig.buildBloomFilter();
+        filter.add("filter");
+        bf.add("bf");
+
+        assertTrue(filter.contains("filter"));
+        assertTrue(bf.contains("bf"));
+        assertFalse(filter.contains("bf"));
+        assertSame(bf.config().pool(), filter.config().pool());
     }
 
 }

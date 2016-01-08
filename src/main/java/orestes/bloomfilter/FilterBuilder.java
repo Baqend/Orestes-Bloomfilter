@@ -154,7 +154,7 @@ public class FilterBuilder implements Cloneable, Serializable {
      * @param pool The RedisPool
      * @return the modified FilterBuilder (fluent interface)
      */
-    public FilterBuilder password(RedisPool pool) {
+    public FilterBuilder pool(RedisPool pool) {
         this.pool = pool;
         return this;
     }

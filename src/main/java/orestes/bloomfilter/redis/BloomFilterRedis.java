@@ -30,13 +30,14 @@ public class BloomFilterRedis<T> implements BloomFilter<T> {
     public BloomFilterRedis(FilterBuilder builder) {
         builder.complete();
         this.keys = new RedisKeys(builder.name());
-        this.pool = new RedisPool(builder.redisHost(), builder.redisPort(), builder.redisConnections(), builder
-            .getReadSlaves(), builder.password());
+        this.pool = builder.pool();
         this.bloom = new RedisBitSet(pool, keys.BITS_KEY, builder.size());
         this.config = keys.persistConfig(pool, builder);
         if (builder.overwriteIfExists())
             this.clear();
     }
+
+
 
     @Override
     public FilterBuilder config() {
