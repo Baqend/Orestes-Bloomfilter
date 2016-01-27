@@ -36,7 +36,7 @@ public class RedisKeys {
             //Retry on concurrent changes
             while (newConfig == null) {
                 if (!builder.overwriteIfExists() && jedis.exists(builder.name())) {
-                    newConfig = this.parseConfigHash(jedis.hgetAll(builder.name()), builder.name());
+                    newConfig = this.parseConfigHash(jedis.hgetAll(builder.name()), builder.name(), pool);
                 } else {
                     Map<String, String> hash = this.buildConfigHash(builder);
                     jedis.watch(builder.name());
@@ -62,10 +62,13 @@ public class RedisKeys {
         return map;
     }
 
-    public FilterBuilder parseConfigHash(Map<String, String> map, String name) {
+    public FilterBuilder parseConfigHash(Map<String, String> map, String name, RedisPool pool) {
         FilterBuilder config = new FilterBuilder();
         config.name(name);
         config.redisBacked(true);
+        config.redisHost(pool.getHost());
+        config.redisPort(pool.getPort());
+        config.redisConnections(pool.getRedisConnections());
         config.falsePositiveProbability(Double.valueOf(map.get(P_KEY)));
         config.size(Integer.valueOf(map.get(M_KEY)));
         config.hashes(Integer.valueOf(map.get(K_KEY)));
