@@ -65,10 +65,7 @@ public class RedisKeys {
     public FilterBuilder parseConfigHash(Map<String, String> map, String name, RedisPool pool) {
         FilterBuilder config = new FilterBuilder();
         config.name(name);
-        config.redisBacked(true);
-        config.redisHost(pool.getHost());
-        config.redisPort(pool.getPort());
-        config.redisConnections(pool.getRedisConnections());
+        config.pool(pool);
         config.falsePositiveProbability(Double.valueOf(map.get(P_KEY)));
         config.size(Integer.valueOf(map.get(M_KEY)));
         config.hashes(Integer.valueOf(map.get(K_KEY)));

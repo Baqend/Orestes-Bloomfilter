@@ -155,6 +155,10 @@ public class FilterBuilder implements Cloneable, Serializable {
      * @return the modified FilterBuilder (fluent interface)
      */
     public FilterBuilder pool(RedisPool pool) {
+        this.redisBacked(true);
+        this.redisHost(pool.getHost());
+        this.redisPort(pool.getPort());
+        this.redisConnections(pool.getRedisConnections());
         this.pool = pool;
         return this;
     }
