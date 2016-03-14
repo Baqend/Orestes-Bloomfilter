@@ -11,7 +11,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
@@ -48,9 +51,9 @@ public class ExpiringTest {
 
     @Test
     public void addAndLetExpire() throws Exception {
-        FilterBuilder b = new FilterBuilder(1000, 0.05);
+        FilterBuilder b = new FilterBuilder(100000, 0.001);
         createFilter(b);
-        int rounds = 100;
+        int rounds = 1000;
         ExecutorService threads = Executors.newFixedThreadPool(rounds);
         List<CompletableFuture> futures = new LinkedList<>();
         Random r = new Random();
@@ -72,7 +75,10 @@ public class ExpiringTest {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                assertFalse(filter.contains(item));
+                Long remaining = filter.getRemainingTTL(item, TimeUnit.MILLISECONDS);
+                if (filter.contains(item)) {
+                    fail("Element still in BF. remaining TTL: " + remaining);
+                }
                 assertEquals(null, filter.getRemainingTTL(item, TimeUnit.MILLISECONDS));
             }, threads));
         }

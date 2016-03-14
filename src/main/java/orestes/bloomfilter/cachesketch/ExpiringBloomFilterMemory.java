@@ -24,8 +24,8 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     }
 
     private void onExpire(ExpiringItem<T> entry) {
-        expirations.remove(entry.getItem(), entry.getExpiration());
         this.remove(entry.getItem());
+        expirations.remove(entry.getItem(), entry.getExpiration());
     }
 
     @Override
