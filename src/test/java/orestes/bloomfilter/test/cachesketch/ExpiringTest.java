@@ -10,14 +10,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 
 @RunWith(Parameterized.class)
@@ -27,9 +24,7 @@ public class ExpiringTest {
 
     @Parameterized.Parameters(name = "Expiring Bloom Filter test {0}")
     public static Collection<Object[]> data() throws Exception {
-        Object[][] data = {
-            {"in-memory", true},
-            {"with redis", false}
+        Object[][] data = {{"in-memory", true}, {"with redis", false}
         };
 
         return Arrays.asList(data);
@@ -57,12 +52,15 @@ public class ExpiringTest {
         createFilter(b);
         int rounds = 100;
         ExecutorService threads = Executors.newFixedThreadPool(rounds);
-        CountDownLatch latch = new CountDownLatch(rounds);
+        List<CompletableFuture> futures = new LinkedList<>();
+        Random r = new Random();
 
         for (int i = 0; i < rounds; i++) {
+            final int rand = r.nextInt(rounds);
             final String item = String.valueOf(i);
-            CompletableFuture.runAsync(() -> {
-                filter.reportRead(item, 100, TimeUnit.MILLISECONDS);
+            futures.add(CompletableFuture.runAsync(() -> {
+                int delay = (rounds - rand) * 10 + 200;
+                filter.reportRead(item, delay, TimeUnit.MILLISECONDS);
                 assertTrue(filter.isCached(item));
                 assertTrue(filter.getRemainingTTL(item, TimeUnit.MILLISECONDS) >= 0);
                 assertFalse(filter.contains(item));
@@ -70,17 +68,16 @@ public class ExpiringTest {
                 assertTrue(invalidation);
                 assertTrue(filter.contains(item));
                 try {
-                    Thread.sleep(200);
+                    Thread.sleep(delay + 100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
                 assertFalse(filter.contains(item));
                 assertEquals(null, filter.getRemainingTTL(item, TimeUnit.MILLISECONDS));
-                latch.countDown();
-            }, threads);
+            }, threads));
         }
 
-        latch.await(3, TimeUnit.SECONDS);
+        futures.forEach(CompletableFuture::join);
     }
 
     @Test
@@ -140,7 +137,8 @@ public class ExpiringTest {
         //fpp exceeded
         assertTrue(filter.getEstimatedFalsePositiveProbability() > 0.05);
         //Less then 10% difference between estimated and precise fpp
-        assertTrue(Math.abs(1 - filter.getEstimatedFalsePositiveProbability() / filter.getFalsePositiveProbability(200)) < 0.1);
+        assertTrue(Math.abs(
+            1 - filter.getEstimatedFalsePositiveProbability() / filter.getFalsePositiveProbability(200)) < 0.1);
     }
 
     @Test

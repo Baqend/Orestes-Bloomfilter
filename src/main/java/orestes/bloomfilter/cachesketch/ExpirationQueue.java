@@ -82,13 +82,14 @@ public class ExpirationQueue<T> {
 
         @Override
         public int compareTo(Delayed delayed) {
-            return Long.compare(expires, delayed.getDelay(TimeUnit.NANOSECONDS));
+            return Long.compare(getDelay(TimeUnit.NANOSECONDS), delayed.getDelay(TimeUnit.NANOSECONDS));
         }
 
         @Override
         public String toString() {
             return getItem() + " expires in " + getDelay(TimeUnit.SECONDS) + "s";
         }
+
     }
 
 }
