@@ -51,18 +51,27 @@ public class ExpiringTest {
 
     @Test
     public void addAndLetExpire() throws Exception {
+        int rounds = 100;
         FilterBuilder b = new FilterBuilder(100000, 0.001);
+        b.redisConnections(rounds);
         createFilter(b);
-        int rounds = 1000;
-        ExecutorService threads = Executors.newFixedThreadPool(rounds);
+        ExecutorService threads = Executors.newFixedThreadPool(10);
         List<CompletableFuture> futures = new LinkedList<>();
-        Random r = new Random();
+        Random r = new Random(rounds);
+
+        //Assert no collision
+        for (int i = 0; i < rounds; i++) {
+            final String item = String.valueOf(i);
+            assertFalse(filter.contains(item));
+            filter.add(item);
+        }
+        filter.clear();
 
         for (int i = 0; i < rounds; i++) {
             final int rand = r.nextInt(rounds);
             final String item = String.valueOf(i);
             futures.add(CompletableFuture.runAsync(() -> {
-                int delay = (rounds - rand) * 10 + 200;
+                int delay = (rounds - rand) * 10 + 1000;
                 filter.reportRead(item, delay, TimeUnit.MILLISECONDS);
                 assertTrue(filter.isCached(item));
                 assertTrue(filter.getRemainingTTL(item, TimeUnit.MILLISECONDS) >= 0);
@@ -71,7 +80,7 @@ public class ExpiringTest {
                 assertTrue(invalidation);
                 assertTrue(filter.contains(item));
                 try {
-                    Thread.sleep(delay + 100);
+                    Thread.sleep(delay + 1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
