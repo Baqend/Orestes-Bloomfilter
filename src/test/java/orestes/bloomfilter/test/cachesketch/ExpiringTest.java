@@ -38,6 +38,7 @@ public class ExpiringTest {
     }
 
     public <T> void createFilter(FilterBuilder b) {
+        b.overwriteIfExists(true);
         filter = inMemory ? new ExpiringBloomFilterMemory<>(b) : new ExpiringBloomFilterRedis<>(b);
         filter.clear();
     }
