@@ -3,7 +3,9 @@ package orestes.bloomfilter.test;
 import com.google.gson.JsonElement;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.HashProvider;
 import orestes.bloomfilter.json.BloomFilterConverter;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
@@ -26,5 +28,15 @@ public class ConverterTest {
         JsonElement json = BloomFilterConverter.toJson(bf);
         BloomFilter<String> otherBf = BloomFilterConverter.fromJson(json);
         assertTrue(otherBf.contains("Ululu"));
+    }
+
+    @Ignore
+    @Test
+    public void testMurmur3() throws Exception {
+        byte[] test1 = "Erik".getBytes(FilterBuilder.defaultCharset());
+        byte[] test2 = "Witt".getBytes(FilterBuilder.defaultCharset());
+
+        System.out.println(HashProvider.murmur3(0, test1));
+        System.out.println(HashProvider.murmur3(0, test2));
     }
 }

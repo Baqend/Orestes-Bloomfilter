@@ -23,7 +23,7 @@ public class MurmurTest {
                 byte[] input = new byte[i];
                 random.nextBytes(input);
                 int theirs = guavaHash.hashBytes(input).asInt();
-                int ours = HashProvider.murmur3(0, input);
+                int ours = HashProvider.murmur3_signed(0, input);
                 //System.out.println(i+","+j+":"+theirs+" | " + ours);
                 TestCase.assertEquals(theirs, ours);
             });

@@ -29,8 +29,8 @@ public class FilterBuilder implements Cloneable, Serializable {
     private String redisHost = "localhost";
     private Integer redisPort = 6379;
     private Integer redisConnections = 10;
-    private HashMethod hashMethod = HashMethod.Murmur3;
-    private HashFunction hashFunction = HashMethod.Murmur3.getHashFunction();
+    private HashMethod hashMethod = HashMethod.Murmur3KirschMitzenmacher;
+    private HashFunction hashFunction = HashMethod.Murmur3KirschMitzenmacher.getHashFunction();
     private Set<Entry<String, Integer>> slaves = new HashSet<>();
     private static transient Charset defaultCharset = Charset.forName("UTF-8");
     private boolean done = false;

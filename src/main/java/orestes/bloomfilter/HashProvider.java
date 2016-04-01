@@ -154,21 +154,26 @@ public class HashProvider {
     }
 
     public static int[] hashMurmur3(byte[] value, int m, int k) {
-        return rejectionSample(HashProvider::murmur3, value, m, k);
+        return rejectionSample(HashProvider::murmur3_signed, value, m, k);
     }
 
     public static int[] hashCassandra(byte[] value, int m, int k) {
         int[] result = new int[k];
-        int hash1 = murmur3(0, value);
-        int hash2 = murmur3((int) hash1, value);
+        long hash1 = murmur3(0, value);
+        long hash2 = murmur3((int) hash1, value);
         for (int i = 0; i < k; i++) {
-            result[i] = Math.abs((hash1 + i * hash2) % m);
+            result[i] = (int) ((hash1 + i * hash2) % m);
         }
         return result;
     }
 
-    public static int murmur3(int seed, byte[] bytes) {
-        int h1 = seed; //Standard in Guava
+    public static int murmur3_signed(int seed, byte[] bytes) {
+        return (int) murmur3(seed, bytes);
+    }
+
+    public static long murmur3(int seed, byte[] bytes) {
+        int h1 = seed;
+        //Standard in Guava
         int c1 = 0xcc9e2d51;
         int c2 = 0x1b873593;
         int len = bytes.length;
@@ -225,7 +230,7 @@ public class HashProvider {
         h1 *= 0xc2b2ae35;
         h1 ^= h1 >>> 16;
 
-        return h1;
+        return Integer.toUnsignedLong(h1);
     }
 
 
