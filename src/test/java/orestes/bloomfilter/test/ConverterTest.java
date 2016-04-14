@@ -8,6 +8,9 @@ import orestes.bloomfilter.json.BloomFilterConverter;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.UUID;
+
 import static org.junit.Assert.assertTrue;
 
 
@@ -38,5 +41,16 @@ public class ConverterTest {
 
         System.out.println(HashProvider.murmur3(0, test1));
         System.out.println(HashProvider.murmur3(0, test2));
+        System.out.println(HashProvider.murmur3(666, test1));
+        System.out.println(HashProvider.murmur3(666, test2));
+        System.out.println(Arrays.toString(HashProvider.hashCassandra(test1, 10000, 5)));
+
+
+        BloomFilter<String> bf = new FilterBuilder().expectedElements(50).falsePositiveProbability(0.1).buildBloomFilter();
+        for (int i = 0; i < 100000; i++) {
+            bf.add(UUID.randomUUID().toString());
+        }
+        JsonElement json = BloomFilterConverter.toJson(bf);
+        System.out.println(json.toString());
     }
 }
