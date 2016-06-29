@@ -12,8 +12,8 @@ The Bloom filter is a probabilistic set data structure which is very small. This
 There are 4 types of Bloom filters in the Orestes Bloom filter library:
 * **Regular Bloom filter**, a regular in-memory Java Bloom filter (`MemoryBloomFilter`)
 * **Counting Bloom filter**, a Counting Bloom Filter which supports element removal (`MemoryCountingBloomFilter`)
-* **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`RedisBloomFilter`)
-* **Redis Counting Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications, it keeps track of the number of keys added to the filter (`RedisCountingBloomFilter`)
+* **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`BloomFilterRedis`)
+* **Redis Counting Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications, it keeps track of the number of keys added to the filter (`CountingBloomFilterRedis`)
 
 This library is written in and for Java 8. For a Java 7 backport see: https://github.com/Crystark/Orestes-Bloomfilter
 
