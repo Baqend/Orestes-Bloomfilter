@@ -35,6 +35,8 @@ public class BloomFilterRedis<T> implements BloomFilter<T> {
         this.config = keys.persistConfig(pool, builder);
         if (builder.overwriteIfExists())
             this.clear();
+
+        expire();
     }
 
 
@@ -106,6 +108,16 @@ public class BloomFilterRedis<T> implements BloomFilter<T> {
     @Override
     public void clear() {
         bloom.clear();
+    }
+
+    private void expire() {
+
+        if(config.getRedisTTL() > 0) {
+            pool.safelyDo(jedis -> {
+                jedis.expire(keys.BITS_KEY, config.getRedisTTL());
+                jedis.expire(keys.COUNTS_KEY, config.getRedisTTL());
+            });
+        }
     }
 
     @Override

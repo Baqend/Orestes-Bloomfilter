@@ -36,6 +36,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     private boolean done = false;
     private String password = null;
     private RedisPool pool;
+    private Integer redisTTL = 0;
 
     /**
      * Constructs a new builder for Bloom filters and counting Bloom filters.
@@ -267,6 +268,17 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
     /**
+     * Uses a given custom ttl from init for the filter at redis.
+     *
+     * @param redisTTL the custom TTL
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder redisTTL(Integer redisTTL) {
+        this.redisTTL = redisTTL;
+        return this;
+    }
+
+    /**
      * Constructs a Bloom filter using the specified parameters and computing missing parameters if possible (e.g. the
      * optimal Bloom filter bit size).
      *
@@ -447,6 +459,13 @@ public class FilterBuilder implements Cloneable, Serializable {
      */
     public Set<Entry<String, Integer>> getReadSlaves() {
         return slaves;
+    }
+
+    /**
+     * @return return the ttl from init for the Redis-backed Bloom filter
+     */
+    public Integer getRedisTTL() {
+        return redisTTL;
     }
 
     /**
