@@ -40,6 +40,11 @@ public class BloomFilterMemory<T> implements BloomFilter<T> {
 
     @Override
     public synchronized boolean contains(byte[] element) {
+        return contains(element);
+    }
+
+    @Override
+    public boolean containsNotSynchronized(byte[] element) {
         for (int position : hash(element)) {
             if (!getBit(position)) {
                 return false;
