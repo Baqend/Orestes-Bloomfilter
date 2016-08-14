@@ -37,6 +37,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     private String password = null;
     private RedisPool pool;
     private Integer redisTTL = 0;
+    private boolean redisMock;
 
     /**
      * Constructs a new builder for Bloom filters and counting Bloom filters.
@@ -275,6 +276,17 @@ public class FilterBuilder implements Cloneable, Serializable {
      */
     public FilterBuilder redisTTL(Integer redisTTL) {
         this.redisTTL = redisTTL;
+        return this;
+    }
+
+    /**
+     * Uses a to init redis as mock.
+     *
+     * @param redisMock is redis is mock
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder redisMock(boolean redisMock) {
+        this.redisMock = redisMock;
         return this;
     }
 
@@ -528,6 +540,10 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
 
+    private boolean isRedisMock() {
+        return redisMock;
+    }
+
     public String password() {
         return password;
     }
@@ -535,8 +551,10 @@ public class FilterBuilder implements Cloneable, Serializable {
     public RedisPool pool() {
         if(done && pool == null) {
             pool = new RedisPool(redisHost(), redisPort(), redisConnections(),
-                getReadSlaves(), password());
+                getReadSlaves(), password(), isRedisMock());
         }
         return pool;
     }
+
+
 }

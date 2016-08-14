@@ -16,7 +16,8 @@ dependencies {
             'com.google.code.gson:gson:2.5',
             'redis.clients:jedis:2.8.0',
             //'org.apache.commons:commons-pool2:2.2',
-            'org.slf4j:slf4j-api:1.7.12'
+            'org.slf4j:slf4j-api:1.7.12',
+            'com.fiftyonred:mock-jedis:0.4.0'
     )
     testCompile(
             'junit:junit:4.11',
