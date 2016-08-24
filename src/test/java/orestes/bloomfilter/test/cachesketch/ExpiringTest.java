@@ -169,4 +169,18 @@ public class ExpiringTest {
         assertTrue(bf.contains("1"));
         assertFalse(bf.contains("2"));
     }
+
+    @Test
+    public void testClear() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.05);
+        createFilter(b);
+        filter.reportRead("1", 50, TimeUnit.MILLISECONDS);
+        filter.reportRead("2", 50, TimeUnit.MILLISECONDS);
+        filter.reportWrite("1");
+        filter.clear();
+        assertFalse(filter.contains("1"));
+        assertFalse(filter.contains("2"));
+        assertNull(filter.getRemainingTTL("1", TimeUnit.MILLISECONDS));
+        assertNull(filter.getRemainingTTL("2", TimeUnit.MILLISECONDS));
+    }
 }

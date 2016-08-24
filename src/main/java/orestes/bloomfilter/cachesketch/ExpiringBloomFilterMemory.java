@@ -66,5 +66,12 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
         return filter.clone();
     }
 
-
+    @Override
+    public void clear() {
+        super.clear();
+        if (queue != null) {
+            queue.clear();
+        }
+        expirations.clear();
+    }
 }
