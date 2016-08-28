@@ -12,10 +12,10 @@ The Bloom filter is a probabilistic set data structure which is very small. This
 There are 4 types of Bloom filters in the Orestes Bloom filter library:
 * **Regular Bloom filter**, a regular in-memory Java Bloom filter (`MemoryBloomFilter`)
 * **Counting Bloom filter**, a Counting Bloom Filter which supports element removal (`MemoryCountingBloomFilter`)
-* **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`RedisBloomFilter`)
-* **Redis Counting Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications, it keeps track of the number of keys added to the filter (`RedisCountingBloomFilter`)
+* **Redis Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications (`BloomFilterRedis`)
+* **Redis Counting Bloom Filter**, a Redis-backed Bloom filter which can be concurrently used by different applications, it keeps track of the number of keys added to the filter (`CountingBloomFilterRedis`)
 
-This library if written in and for Java 8. For a Java 7 backport see: https://github.com/Crystark/Orestes-Bloomfilter
+This library is written in and for Java 8. For a Java 7 backport see: https://github.com/Crystark/Orestes-Bloomfilter
 
 ## Err, Bloom what?
 Bloom filters are awesome data structures: **fast *and* space efficient**.
@@ -34,7 +34,7 @@ So what's the catch? Bloom filters allow false positives (i.e. URL contained tho
 * New and improved Hash functions: All cryptographic hash functions, Murmur3 and Murmur3 with the <a href="http://www.eecs.harvard.edu/~kirsch/pubs/bbbf/esa06.pdf">Kirsch&Mitzenmacher trick</a>, advanced distribution and performance testing of hash functions
 * Redis Bloom filters are much faster and simpler, fixed a very rare race-condition
 * Memory and Redis Bloom filters now share a common interface `BloomFilter` resp. `CountingBloomFilter` instead of being subclasses
-* Extensive JavaDoc documentation, test-coverage increased by a factor of at least 2, cleaner an streamlined (Java 8) design
+* Extensive JavaDoc documentation, test-coverage increased by a factor of at least 2, cleaner a streamlined (Java 8) design
 * Redis read-slaves: allow your Bloom filter to perform reads on slaves to get even higher performance
 * Library now available as Maven/Gradle repo and built using Gradle
 * Population Estimation: the population of Counting and normal Bloom Filter can now be <a href="http://en.wikipedia.org/wiki/Bloom_filter#Approximating_the_number_of_items_in_a_Bloom_filter">precisely estimated</a>
@@ -45,7 +45,7 @@ So what's the catch? Bloom filters allow false positives (i.e. URL contained tho
 
 
 ## Features
-There are a many things we addressed as we sorely missed them in other implementations:
+There are many things we addressed as we sorely missed them in other implementations:
 * Bloom filter and Counting Bloom filter in both a local and shared variants with the same interface
 * Configuration of all parameters: Bit-Array size *m*, number of hash functions *k*, counting bits *c*
 * Automatic configuration given the tolerable false positive rate *p* and expected elements *n*
@@ -190,7 +190,7 @@ bf.addAll(bulk);
 print(bf.containsAll(bulk)); //true
 ```
 
-To get the best performance for a given use-case the parameters of the bloom filter must be chosen wisely. So for example we could choose the Bloom filter to use 1000 Bits and then use the best number of hash functions for an expected amount of 6666 inserted elements. We choose Murmur as our hash function which is faster than cryptographic hash functions like MD5:
+To get the best performance for a given use-case the parameters of the bloom filter must be chosen wisely. So, for example, we could choose the Bloom filter to use 1000 Bits and then use the best number of hash functions for an expected amount of 6666 inserted elements. We choose Murmur as our hash function which is faster than cryptographic hash functions like MD5:
 
 ```java
 //Create a more customized Bloom filter

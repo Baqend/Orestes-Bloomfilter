@@ -1,5 +1,8 @@
 package orestes.bloomfilter.redis.helper;
 
+import com.fiftyonred.mock_jedis.MockJedis;
+import com.fiftyonred.mock_jedis.MockJedisPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.*;
@@ -27,24 +30,24 @@ public class RedisPool {
     private List<RedisPool> slavePools;
     private Random random;
 
-    public RedisPool(String host, int port, int redisConnections, String password) {
+    public RedisPool(String host, int port, int redisConnections, String password, boolean redisMock) {
         this.host = host;
         this.port = port;
         this.redisConnections = redisConnections;
-        this.pool = createJedisPool(host, port, redisConnections, password);
+        this.pool = createJedisPool(host, port, redisConnections, password, redisMock);
     }
 
-    public RedisPool(String host, int port, int redisConnections) {
-        this(host, port, redisConnections, (String) null);
+    public RedisPool(String host, int port, int redisConnections, boolean redisMock) {
+        this(host, port, redisConnections, (String) null, redisMock);
     }
 
-    public RedisPool(String host, int port, int redisConnections, Set<Entry<String, Integer>> readSlaves, String password) {
-        this(host, port, redisConnections, password);
+    public RedisPool(String host, int port, int redisConnections, Set<Entry<String, Integer>> readSlaves, String password, boolean redisMock) {
+        this(host, port, redisConnections, password, redisMock);
         if (readSlaves != null && !readSlaves.isEmpty()) {
             slavePools = new ArrayList<>();
             random = new Random();
             for (Entry<String, Integer> slave : readSlaves) {
-                slavePools.add(new RedisPool(slave.getKey(), slave.getValue(), redisConnections));
+                slavePools.add(new RedisPool(slave.getKey(), slave.getValue(), redisConnections, redisMock));
             }
         }
     }
@@ -53,7 +56,12 @@ public class RedisPool {
         return pool;
     }
 
-    private JedisPool createJedisPool(String host, int port, int redisConnections, String password) {
+    private JedisPool createJedisPool(String host, int port, int redisConnections, String password, boolean redisMock) {
+
+        if(redisMock) {
+            return new MockJedisPool(new GenericObjectPoolConfig(), "localhost");
+        }
+
         JedisPoolConfig config = new JedisPoolConfig();
         config.setBlockWhenExhausted(true);
         config.setMaxTotal(redisConnections);

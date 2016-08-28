@@ -37,6 +37,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
         if (builder.overwriteIfExists()) {
             this.clear();
         }
+        expire();
     }
 
     @Override
@@ -124,6 +125,15 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
         pool.safelyDo(jedis -> {
             jedis.del(keys.COUNTS_KEY, keys.BITS_KEY);
         });
+    }
+
+    private void expire() {
+        if(config.getRedisTTL() > 0) {
+            pool.safelyDo(jedis -> {
+                jedis.expire(keys.BITS_KEY, config.getRedisTTL());
+                jedis.expire(keys.COUNTS_KEY, config.getRedisTTL());
+            });
+        }
     }
 
     @Override

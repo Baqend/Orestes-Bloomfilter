@@ -32,6 +32,10 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
         return filter.contains(element);
     }
 
+    @Override
+    public boolean containsNotSynchronized(byte[] element) {
+        return filter.containsNotSynchronized(element);
+    }
 
     @Override
     public synchronized long addAndEstimateCountRaw(byte[] element) {

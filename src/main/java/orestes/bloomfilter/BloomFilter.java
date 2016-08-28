@@ -65,6 +65,26 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
     }
 
     /**
+     * Tests whether an element is present in the filter (subject to the specified false positive rate).
+     *
+     * @param element to test
+     * @return {@code true} if the element is contained
+     */
+    default boolean containsNotSynchronized(byte[] element) {
+        return contains(element);
+    }
+
+    /**
+     * Tests whether an element is present in the filter (subject to the specified false positive rate).
+     * For read only bloom filter
+     * @param element to test
+     * @return {@code true} if the element is contained
+     */
+    default boolean containsNotSynchronized(T element) {
+        return containsNotSynchronized(toBytes(element));
+    }
+
+    /**
      * Bulk-tests elements for existence in the filter.
      *
      * @param elements a collection of elements to test
