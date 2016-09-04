@@ -450,7 +450,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
     /**
-     * Checks wether a configuration is compatible to another configuration based on the size of the Bloom filter and
+     * Checks whether a configuration is compatible to another configuration based on the size of the Bloom filter and
      * its hash functions.
      *
      * @param other the other configuration
