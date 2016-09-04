@@ -34,7 +34,7 @@ So what's the catch? Bloom filters allow false positives (i.e. URL contained tho
 * New and improved Hash functions: All cryptographic hash functions, Murmur3 and Murmur3 with the <a href="http://www.eecs.harvard.edu/~kirsch/pubs/bbbf/esa06.pdf">Kirsch&Mitzenmacher trick</a>, advanced distribution and performance testing of hash functions
 * Redis Bloom filters are much faster and simpler, fixed a very rare race-condition
 * Memory and Redis Bloom filters now share a common interface `BloomFilter` resp. `CountingBloomFilter` instead of being subclasses
-* Extensive JavaDoc documentation, test-coverage increased by a factor of at least 2, cleaner an streamlined (Java 8) design
+* Extensive JavaDoc documentation, test-coverage increased by a factor of at least 2, cleaner a streamlined (Java 8) design
 * Redis read-slaves: allow your Bloom filter to perform reads on slaves to get even higher performance
 * Library now available as Maven/Gradle repo and built using Gradle
 * Population Estimation: the population of Counting and normal Bloom Filter can now be <a href="http://en.wikipedia.org/wiki/Bloom_filter#Approximating_the_number_of_items_in_a_Bloom_filter">precisely estimated</a>

@@ -19,7 +19,7 @@ public class RedisBitSet extends BitSet {
     private int size;
 
     /**
-     * Constructs an new RedisBitSet.
+     * Constructs a new RedisBitSet.
      *
      * @param pool the redis connection pool
      * @param name the name used as key in the database
