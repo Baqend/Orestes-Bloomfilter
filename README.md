@@ -5,7 +5,7 @@ Bloom filter library
 
 Version 1 is out with a complete rewrite of almost all functionalities and many new ones.
 
-This is a set of Bloom filters we implemented as we found all existing open-source implementations to be lacking in various aspects. This libary takes some inspiration from the [simple Bloom filter implementation of Magnus Skjegstad](https://github.com/MagnusS/Java-BloomFilter) and the [Ruby Bloom filters by Ilya Grigorik](https://github.com/igrigorik/bloomfilter-rb).
+This is a set of Bloom filters we implemented as we found all existing open-source implementations to be lacking in various aspects. This library takes some inspiration from the [simple Bloom filter implementation of Magnus Skjegstad](https://github.com/MagnusS/Java-BloomFilter) and the [Ruby Bloom filters by Ilya Grigorik](https://github.com/igrigorik/bloomfilter-rb).
 
 The Bloom filter is a probabilistic set data structure which is very small. This is achieved by allowing false positives with some probability *p*. It has an `add` and `contains` operation which both are very fast (time complexity *O(1)*). The Counting Bloom filter is an extension of the Bloom filter with a `remove` operation at the cost of incurring an additional space overhead for counting. There are many good introductions to Bloom filters: the [Wikipedia article](http://en.wikipedia.org/wiki/Bloom_filter) is excellent, and even better is a [survey by Broder and Mitzenmacher](http://www.cs.utexas.edu/~yzhang/teaching/cs386m-f8/Readings/im2005b.pdf). Typical use cases of Bloom filters are content summaries and sets that would usually grow too large in fields such as networking, distributed systems, databases and analytics.
 
@@ -34,7 +34,7 @@ So what's the catch? Bloom filters allow false positives (i.e. URL contained tho
 * New and improved Hash functions: All cryptographic hash functions, Murmur3 and Murmur3 with the <a href="http://www.eecs.harvard.edu/~kirsch/pubs/bbbf/esa06.pdf">Kirsch&Mitzenmacher trick</a>, advanced distribution and performance testing of hash functions
 * Redis Bloom filters are much faster and simpler, fixed a very rare race-condition
 * Memory and Redis Bloom filters now share a common interface `BloomFilter` resp. `CountingBloomFilter` instead of being subclasses
-* Extensive JavaDoc documentation, test-coverage increased by a factor of at least 2, cleaner an streamlined (Java 8) design
+* Extensive JavaDoc documentation, test-coverage increased by a factor of at least 2, cleaner a streamlined (Java 8) design
 * Redis read-slaves: allow your Bloom filter to perform reads on slaves to get even higher performance
 * Library now available as Maven/Gradle repo and built using Gradle
 * Population Estimation: the population of Counting and normal Bloom Filter can now be <a href="http://en.wikipedia.org/wiki/Bloom_filter#Approximating_the_number_of_items_in_a_Bloom_filter">precisely estimated</a>
