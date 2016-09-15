@@ -24,27 +24,29 @@ public class RedisPool {
     private final String host;
     private final int port;
     private final int redisConnections;
+    private final boolean ssl;
     private List<RedisPool> slavePools;
     private Random random;
 
-    public RedisPool(String host, int port, int redisConnections, String password) {
+    public RedisPool(String host, int port, int redisConnections, String password, boolean ssl) {
         this.host = host;
         this.port = port;
         this.redisConnections = redisConnections;
-        this.pool = createJedisPool(host, port, redisConnections, password);
+        this.ssl = ssl;
+        this.pool = createJedisPool(host, port, redisConnections, password, ssl);
     }
 
-    public RedisPool(String host, int port, int redisConnections) {
-        this(host, port, redisConnections, (String) null);
+    public RedisPool(String host, int port, int redisConnections, boolean ssl) {
+        this(host, port, redisConnections, (String) null, false);
     }
 
-    public RedisPool(String host, int port, int redisConnections, Set<Entry<String, Integer>> readSlaves, String password) {
-        this(host, port, redisConnections, password);
+    public RedisPool(String host, int port, int redisConnections, Set<Entry<String, Integer>> readSlaves, String password, boolean ssl) {
+        this(host, port, redisConnections, password, ssl);
         if (readSlaves != null && !readSlaves.isEmpty()) {
             slavePools = new ArrayList<>();
             random = new Random();
             for (Entry<String, Integer> slave : readSlaves) {
-                slavePools.add(new RedisPool(slave.getKey(), slave.getValue(), redisConnections));
+                slavePools.add(new RedisPool(slave.getKey(), slave.getValue(), redisConnections, ssl));
             }
         }
     }
@@ -53,14 +55,14 @@ public class RedisPool {
         return pool;
     }
 
-    private JedisPool createJedisPool(String host, int port, int redisConnections, String password) {
+    private JedisPool createJedisPool(String host, int port, int redisConnections, String password, boolean ssl) {
         JedisPoolConfig config = new JedisPoolConfig();
         config.setBlockWhenExhausted(true);
         config.setMaxTotal(redisConnections);
         if (password == null) {
-            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT * 4);
+            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT * 4, ssl);
         } else {
-            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT * 4, password);
+            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT * 4, password, ssl);
         }
     }
 
@@ -74,6 +76,10 @@ public class RedisPool {
 
     public int getRedisConnections() {
         return redisConnections;
+    }
+
+    public boolean getSsl() {
+        return ssl;
     }
 
     public RedisPool allowingSlaves() {
