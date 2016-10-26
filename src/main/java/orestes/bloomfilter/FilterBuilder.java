@@ -29,6 +29,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     private String redisHost = "localhost";
     private Integer redisPort = 6379;
     private Integer redisConnections = 10;
+    private boolean redisSsl = false;
     private HashMethod hashMethod = HashMethod.Murmur3KirschMitzenmacher;
     private HashFunction hashFunction = HashMethod.Murmur3KirschMitzenmacher.getHashFunction();
     private Set<Entry<String, Integer>> slaves = new HashSet<>();
@@ -159,6 +160,7 @@ public class FilterBuilder implements Cloneable, Serializable {
         this.redisHost(pool.getHost());
         this.redisPort(pool.getPort());
         this.redisConnections(pool.getRedisConnections());
+        this.redisSsl(pool.getSsl());
         this.pool = pool;
         return this;
     }
@@ -208,6 +210,18 @@ public class FilterBuilder implements Cloneable, Serializable {
     public FilterBuilder redisConnections(int numConnections) {
         this.redisBacked = true;
         this.redisConnections = numConnections;
+        return this;
+    }
+
+    /**
+     * Enables or disables SSL connection to Redis. <p><b>Default</b>: false</p>
+     *
+     * @param ssl enables or disables SSL connection to Redis
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder redisSsl(boolean ssl) {
+        this.redisBacked = true;
+        this.redisSsl = ssl;
         return this;
     }
 
@@ -414,6 +428,13 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
     /**
+     * @return if SSL is enabled for Redis connection
+     */
+    public boolean redisSsl() {
+        return redisSsl;
+    }
+
+    /**
      * @return The hash method to be used by the Bloom filter
      */
     public HashMethod hashMethod() {
@@ -516,7 +537,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     public RedisPool pool() {
         if(done && pool == null) {
             pool = new RedisPool(redisHost(), redisPort(), redisConnections(),
-                getReadSlaves(), password());
+                getReadSlaves(), password(), redisSsl());
         }
         return pool;
     }

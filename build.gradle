@@ -14,7 +14,7 @@ repositories {
 dependencies {
     compile(
             'com.google.code.gson:gson:2.5',
-            'redis.clients:jedis:2.8.0',
+            'redis.clients:jedis:2.9.0',
             //'org.apache.commons:commons-pool2:2.2',
             'org.slf4j:slf4j-api:1.7.12'
     )
