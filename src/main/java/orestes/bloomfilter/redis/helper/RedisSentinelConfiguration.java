@@ -12,22 +12,33 @@ public class RedisSentinelConfiguration {
 
     public RedisSentinelConfiguration(String master, Set<String> sentinels, int timeout) {
         this.master = master;
-        this.timeout=timeout;
+        this.timeout = timeout;
         this.password = null;
         this.sentinels = sentinels;
     }
 
     public RedisSentinelConfiguration(String master, Set<String> sentinels, int timeout, String password) {
         this.master = master;
-        this.timeout=timeout;
+        this.timeout = timeout;
         this.sentinels = sentinels;
         this.password = password;
     }
 
-    public String getMasterName() { return this.master;}
-    public Set<String> getSentinels() { return Collections.unmodifiableSet(this.sentinels);}
-    public int getTimeout() { return this.timeout;}
-    public String getPassword() { return this.password;}
+    String getMasterName() {
+        return this.master;
+    }
+
+    Set<String> getSentinels() {
+        return Collections.unmodifiableSet(this.sentinels);
+    }
+
+    int getTimeout() {
+        return this.timeout;
+    }
+
+    String getPassword() {
+        return this.password;
+    }
 
 
 }
