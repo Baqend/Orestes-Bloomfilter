@@ -9,7 +9,11 @@ import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.redis.helper.RedisPool;
+import orestes.bloomfilter.redis.helper.RedisSentinelConfiguration;
 import redis.clients.jedis.Jedis;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class Helper {
     public static String host = "localhost";
@@ -56,6 +60,20 @@ public class Helper {
                 .name(name)
                 .redisHost(host)
                 .redisPort(port)
+                .overwriteIfExists(true)
+                .redisConnections(connections).complete());
+    }
+
+    public static <T> BloomFilterRedis<T> createRedisSentinelFilter(String name, int n, double p, HashMethod hm) {
+        Set<String> sentinels = new HashSet<>();
+        sentinels.add("localhost:16380");
+        sentinels.add("localhost:16381");
+        sentinels.add("localhost:16382");
+
+        return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
+                .redisBacked(true)
+                .name(name)
+                .pool(new RedisPool(new RedisSentinelConfiguration("redis-cluster", sentinels, 100), connections))
                 .overwriteIfExists(true)
                 .redisConnections(connections).complete());
     }
