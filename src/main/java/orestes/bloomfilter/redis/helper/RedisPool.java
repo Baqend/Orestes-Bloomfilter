@@ -21,38 +21,43 @@ import java.util.function.Function;
  */
 public class RedisPool {
     private static final Logger LOG = LoggerFactory.getLogger(RedisPool.class);
+
     private final Pool<Jedis> pool;
     private  String host;
     private  int port;
     private  int redisConnections;
+
+    private  boolean ssl = false;
     private List<RedisPool> slavePools;
     private Random random;
 
-    public RedisPool(String host, int port, int redisConnections, String password) {
+    public RedisPool(String host, int port, int redisConnections, String password, boolean ssl) {
         this.host = host;
         this.port = port;
         this.redisConnections = redisConnections;
-        this.pool = createJedisPool(host, port, redisConnections, password);
+        this.ssl = ssl;
+        this.pool = createJedisPool(host, port, redisConnections, password, ssl);
     }
 
-    public RedisPool(String host, int port, int redisConnections) {
-        this(host, port, redisConnections, (String) null);
+    public RedisPool(String host, int port, int redisConnections, boolean ssl) {
+        this(host, port, redisConnections, null, false);
     }
 
-    public RedisPool(String host, int port, int redisConnections, Set<Entry<String, Integer>> readSlaves, String password) {
-        this(host, port, redisConnections, password);
-        if (readSlaves != null && !readSlaves.isEmpty()) {
-            slavePools = new ArrayList<>();
-            random = new Random();
-            for (Entry<String, Integer> slave : readSlaves) {
-                slavePools.add(new RedisPool(slave.getKey(), slave.getValue(), redisConnections));
-            }
-        }
+    public RedisPool(String host, int port, int redisConnections, Set<Entry<String, Integer>> readSlaves, String password, boolean ssl) {
+        this(host, port, redisConnections, password, ssl);
+        setupReadSlaves(readSlaves);
     }
 
     public RedisPool(RedisSentinelConfiguration sentinelConfiguration, int redisConnections) {
         this.redisConnections = redisConnections;
         this.pool = createSentinelPool(sentinelConfiguration, redisConnections);
+    }
+
+    public RedisPool(RedisStandaloneConfiguration standaloneConfiguration, int redisConnections) {
+        this.redisConnections = redisConnections;
+        this.pool = createJedisPool(standaloneConfiguration.getHost(), standaloneConfiguration.getPort(), redisConnections,
+                standaloneConfiguration.getPassword(), standaloneConfiguration.isSsl());
+        setupReadSlaves(standaloneConfiguration.getReadSlaves());
     }
 
     public RedisPool(Pool<Jedis> externallyManaged) {
@@ -63,12 +68,22 @@ public class RedisPool {
         return pool;
     }
 
-    private JedisPool createJedisPool(String host, int port, int redisConnections, String password) {
+    private void setupReadSlaves(Set<Entry<String, Integer>> readSlaves) {
+        if (readSlaves != null && !readSlaves.isEmpty()) {
+            slavePools = new ArrayList<>();
+            random = new Random();
+            for (Entry<String, Integer> slave : readSlaves) {
+                slavePools.add(new RedisPool(slave.getKey(), slave.getValue(), redisConnections, ssl));
+            }
+        }
+    }
 
-        if (password == null) {
-            return new JedisPool(getPoolConfig(redisConnections), host, port, Protocol.DEFAULT_TIMEOUT * 4);
+    private JedisPool createJedisPool(String host, int port, int redisConnections, String password, boolean ssl) {
+
+        if (password == null || password.length() == 0) {
+            return new JedisPool(getPoolConfig(redisConnections), host, port, Protocol.DEFAULT_TIMEOUT * 4, ssl);
         } else {
-            return new JedisPool(getPoolConfig(redisConnections), host, port, Protocol.DEFAULT_TIMEOUT * 4, password);
+            return new JedisPool(getPoolConfig(redisConnections), host, port, Protocol.DEFAULT_TIMEOUT * 4, password, ssl);
         }
     }
 
@@ -101,6 +116,10 @@ public class RedisPool {
 
     public int getRedisConnections() {
         return redisConnections;
+    }
+
+    public boolean getSsl() {
+        return ssl;
     }
 
     public RedisPool allowingSlaves() {

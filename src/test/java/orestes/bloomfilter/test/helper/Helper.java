@@ -25,7 +25,7 @@ public class Helper {
     }
 
     public static RedisPool getPool() {
-        return new RedisPool(host, port, connections, null);
+        return new RedisPool(host, port, connections, null, false);
     }
 
     public static <T> BloomFilterMemory<T> createFilter(int m, int k, HashMethod hm) {
