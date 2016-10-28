@@ -27,40 +27,62 @@ import static org.junit.Assert.*;
 @RunWith(Parameterized.class)
 public class RedisBFTest {
 
-    private final boolean counts;
+    private enum FilterTypes {
+        NORMAL, COUNTING, POOL_CONFIG, SENTINEL_CONFIG
+    }
+
+    private final FilterTypes filterTypes;
 
     @Parameterized.Parameters(name = "Redis Bloom Filter test with {0}")
     public static Collection<Object[]> data() throws Exception {
         Object[][] data = {
-                {"normal", false},
-                {"counting", true}
+                {"normal", FilterTypes.NORMAL},
+                {"pool_config", FilterTypes.POOL_CONFIG},
+                {"sentinel_config", FilterTypes.SENTINEL_CONFIG},
+                {"counting", FilterTypes.COUNTING}
         };
         return Arrays.asList(data);
     }
 
 
-    public RedisBFTest(String type, boolean counts) {
-        this.counts = counts;
+    public RedisBFTest(String type, FilterTypes filterTypes) {
+        this.filterTypes = filterTypes;
     }
 
-    private BloomFilter<String> createFilter(String name, int n, double p) {
-        if(counts)
-            return createCountingRedisFilter(name, n, p, HashMethod.MD5);
+    private BloomFilter<String> createFilter(String name, int n, double p, boolean overwrite) {
+        if(filterTypes == FilterTypes.COUNTING)
+            return createCountingRedisFilter(name, n, p, HashMethod.MD5, overwrite);
+        else if (filterTypes == FilterTypes.NORMAL)
+            return createRedisFilter(name, n, p, HashMethod.MD5, overwrite);
+        else if (filterTypes == FilterTypes.POOL_CONFIG)
+            return createRedisPoolFilter(name, n, p, HashMethod.MD5, overwrite);
         else
-            return createRedisFilter(name, n, p, HashMethod.MD5);
+            return createRedisSentinelFilter(name, n, p, HashMethod.MD5, overwrite);
+    }
+
+    private void cleanupRedis() {
+        if (filterTypes == FilterTypes.SENTINEL_CONFIG) {
+            cleanupRedisSentinel();
+        }
+        else {
+            Helper.cleanupRedis();
+        }
     }
 
 
     @Test
     public void testSlaveReads() throws Exception{
         int m = 1000, k = 10;
+        int n = 1000;
+        double p = 0.01;
         FilterBuilder fb = new FilterBuilder(m,k)
                 .name("slavetest")
                 .redisBacked(true)
                 .addReadSlave(Helper.host, Helper.port);
                 //.addReadSlave(Helper.host, Helper.port +1);
 
-        BloomFilter<String> filter = counts ? fb.buildCountingBloomFilter() : fb.buildBloomFilter();
+        BloomFilter<String> filter = createFilter("slaves", n, p, true);
+        // TODO - CMC this is wrong. Slaves aren't being added to the filter
 
         List<String> items = IntStream.range(0, 100).mapToObj(i -> "obj" + String.valueOf(i)).collect(Collectors.toList());
         items.forEach(filter::add);
@@ -85,11 +107,11 @@ public class RedisBFTest {
         String testString2 = "simpletest2";
 
         cleanupRedis();
-        BloomFilter<String> first = createFilter(name, n, p);
+        BloomFilter<String> first = createFilter(name, n, p, true);
         first.add(testString);
         System.out.println(first.asString());
 
-        BloomFilter<String> loaded = createFilter(name, n, p);
+        BloomFilter<String> loaded = createFilter(name, n, p, true);
         System.out.println(loaded.asString());
         assertFalse(loaded.contains(testString));
         assertTrue(loaded.getExpectedElements() == n);
@@ -114,15 +136,11 @@ public class RedisBFTest {
         String testString2 = "simpletest2";
 
         cleanupRedis();
-        BloomFilter<String> first = createFilter(name, n, p);
+        BloomFilter<String> first = createFilter(name, n, p, true);
         first.add(testString);
         System.out.println(first.asString());
 
-        BloomFilter<String> loaded;
-        if(counts)
-            loaded = new FilterBuilder(n, p).name(name).redisBacked(true).buildCountingBloomFilter();
-        else
-            loaded = new FilterBuilder(n, p).name(name).redisBacked(true).buildBloomFilter();
+        BloomFilter<String> loaded = createFilter(name, n, p, false);
 
         System.out.println(loaded.asString());
         assertTrue(loaded.contains(testString));
@@ -143,13 +161,18 @@ public class RedisBFTest {
         String testString = "simpletest";
 
         cleanupRedis();
-        BloomFilter<String> first = createFilter(name, n, p);
+        BloomFilter<String> first = createFilter(name, n, p, true);
 
         first.add(testString);
 
         first.remove();
 
-        assert(!getJedis().exists(name));
+        if (filterTypes == FilterTypes.SENTINEL_CONFIG) {
+            assert(!getSentinelJedis().exists(name));
+        }
+        else {
+            assert(!getJedis().exists(name));
+        }
 
     }
 
@@ -163,7 +186,7 @@ public class RedisBFTest {
         String testString = "simpletest";
 
         cleanupRedis();
-        BloomFilter<String> first = createFilter(name, n, p);
+        BloomFilter<String> first = createFilter(name, n, p, true);
 
         first.add(testString);
 
@@ -202,10 +225,10 @@ public class RedisBFTest {
 
     @Test
     public void testAsNormalFilter() {
-        BloomFilter<String> first = createFilter("I_m_in_Redis", 10_000, 0.01);
+        BloomFilter<String> first = createFilter("I_m_in_Redis", 10_000, 0.01, true);
         first.add("42");
         BloomFilter<String> second;
-        if(counts)
+        if(filterTypes == FilterTypes.COUNTING)
             second = ((CountingBloomFilterRedis<String>) first).toMemoryFilter();
         else
             second = ((BloomFilterRedis<String>) first).toMemoryFilter();
@@ -251,11 +274,13 @@ public class RedisBFTest {
 
     @Test
     public void testPool() throws Exception {
-        BloomFilter<String> bf = createFilter("pooltest", 10_000, 0.01);
+        int n = 1000;
+        double p = 0.01;
+        BloomFilter<String> bf = createFilter("pooltest", 10_000, 0.01, true);
         RedisPool pool = bf.config().pool();
 
         FilterBuilder clonedConfig = bf.config().clone().name("pooltest-cloned");
-        BloomFilter<String> filter = counts ? clonedConfig.buildCountingBloomFilter() : clonedConfig.buildBloomFilter();
+        BloomFilter<String> filter = filterTypes == FilterTypes.COUNTING ? clonedConfig.buildCountingBloomFilter() : clonedConfig.buildBloomFilter();
         filter.add("filter");
         bf.add("bf");
 

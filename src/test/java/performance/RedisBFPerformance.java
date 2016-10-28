@@ -21,7 +21,7 @@ public class RedisBFPerformance {
         int count = 30_000;
         int m = 100_000;
         int k = 10;
-        BloomFilter<String> b = Helper.createRedisFilter("ruby", m, k, HashMethod.Murmur2);
+        BloomFilter<String> b = Helper.createRedisFilter("ruby", m, k, HashMethod.Murmur2, true);
         compareToRuby(count,  items, b);
         dumbParallelAdds(count, items, b);
         BloomFilter<String> b3 = Helper.createFilter( m * 10, k, HashMethod.Murmur2);

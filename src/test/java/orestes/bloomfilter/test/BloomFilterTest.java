@@ -48,9 +48,9 @@ public class BloomFilterTest {
                 return Helper.createFilter(n, p, hm);
         } else {
             if (counting)
-                return createCountingRedisFilter(name, n, p, hm);
+                return createCountingRedisFilter(name, n, p, hm, true);
             else
-                return createRedisFilter(name, n, p, hm);
+                return createRedisFilter(name, n, p, hm, true);
         }
     }
 
