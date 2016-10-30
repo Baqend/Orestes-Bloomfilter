@@ -60,6 +60,14 @@ public class RedisBFTest {
             return createRedisSentinelFilter(name, n, p, HashMethod.MD5, overwrite);
     }
 
+    private BloomFilter<String> createSlaveFilter(String name, int n, double p, boolean overwrite) {
+        // Only the normal Read Filter needs to know about slaves.
+        if (filterTypes == FilterTypes.NORMAL)
+            return createRedisFilterWithReadSlave(name, n, p, HashMethod.MD5, overwrite, host, slavePort);
+        else return createFilter(name, n, p, overwrite);
+
+    }
+
     private void cleanupRedis() {
         if (filterTypes == FilterTypes.SENTINEL_CONFIG) {
             cleanupRedisSentinel();
@@ -72,17 +80,10 @@ public class RedisBFTest {
 
     @Test
     public void testSlaveReads() throws Exception{
-        int m = 1000, k = 10;
         int n = 1000;
         double p = 0.01;
-        FilterBuilder fb = new FilterBuilder(m,k)
-                .name("slavetest")
-                .redisBacked(true)
-                .addReadSlave(Helper.host, Helper.port);
-                //.addReadSlave(Helper.host, Helper.port +1);
 
-        BloomFilter<String> filter = createFilter("slaves", n, p, true);
-        // TODO - CMC this is wrong. Slaves aren't being added to the filter
+        BloomFilter<String> filter = createSlaveFilter("slaves", n, p, true);
 
         List<String> items = IntStream.range(0, 100).mapToObj(i -> "obj" + String.valueOf(i)).collect(Collectors.toList());
         items.forEach(filter::add);
@@ -168,7 +169,7 @@ public class RedisBFTest {
         first.remove();
 
         if (filterTypes == FilterTypes.SENTINEL_CONFIG) {
-            assert(!getSentinelJedis().exists(name));
+            assert(!getSentinelJedis().getResource().exists(name));
         }
         else {
             assert(!getJedis().exists(name));

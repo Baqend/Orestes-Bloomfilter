@@ -12,25 +12,36 @@ import orestes.bloomfilter.redis.helper.RedisPool;
 import orestes.bloomfilter.redis.helper.RedisSentinelConfiguration;
 import orestes.bloomfilter.redis.helper.RedisStandaloneConfiguration;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisSentinelPool;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public class Helper {
-    public static String host = "localhost";
+    public static String host = "10.77.175.110";
     public static int port = 6379;
-    static int connections = 10;
+    public static int slavePort = 6380;
+    private static int connections = 10;
 
     // There is a bug in Jedis 2.9.0 where 'localhost' isn't resolving to 127.0.0.1 like the binding shows so force
     // to your machine's IP. Note you may have to change the redis.conf and sentinel.conf files to use the IP too.
-    static String sentinelHostName="10.77.175.110";
-    static int sentinelRedisPort = 6380;
+    private static final String sentinelHostName="10.77.175.110";
+    private static final String sentinelClusterName = "redis-cluster";
+
+    static private Set<String> getSentinelNodes() {
+        Set<String> sentinels = new HashSet<>();
+        sentinels.add(sentinelHostName + ":16385");
+        sentinels.add(sentinelHostName + ":16386");
+        sentinels.add(sentinelHostName + ":16387");
+        return sentinels;
+    }
 
     public static Jedis getJedis() {
         return new Jedis(host, port);
     }
 
-    public static Jedis getSentinelJedis() { return new Jedis(sentinelHostName, sentinelRedisPort);}
+    public static JedisSentinelPool getSentinelJedis() {
+        return new JedisSentinelPool(sentinelClusterName, getSentinelNodes());}
 
     public static RedisPool getPool() {
         return new RedisPool(host, port, connections, null, false);
@@ -72,6 +83,17 @@ public class Helper {
                 .redisConnections(connections).complete());
     }
 
+    public static <T> BloomFilterRedis<T> createRedisFilterWithReadSlave(String name, int n, double p, HashMethod hm, boolean overwrite, String slaveName, int slavePort) {
+        return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
+                .redisBacked(true)
+                .name(name)
+                .redisHost(host)
+                .redisPort(port)
+                .addReadSlave(slaveName, slavePort)
+                .overwriteIfExists(overwrite)
+                .redisConnections(connections).complete());
+    }
+
     public static <T> BloomFilterRedis<T> createRedisPoolFilter(String name, int n, double p, HashMethod hm, boolean overwrite) {
         return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
                 .redisBacked(true)
@@ -82,15 +104,11 @@ public class Helper {
     }
 
     public static <T> BloomFilterRedis<T> createRedisSentinelFilter(String name, int n, double p, HashMethod hm, boolean overwrite) {
-        Set<String> sentinels = new HashSet<>();
-        sentinels.add(sentinelHostName + ":16380");
-        sentinels.add(sentinelHostName + ":16381");
-        sentinels.add(sentinelHostName + ":16382");
 
         return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
                 .redisBacked(true)
                 .name(name)
-                .pool(new RedisPool(new RedisSentinelConfiguration("redis-cluster", sentinels, 100), connections))
+                .pool(new RedisPool(new RedisSentinelConfiguration(sentinelClusterName, getSentinelNodes(), 100), connections))
                 .overwriteIfExists(overwrite)
                 .redisConnections(connections).complete());
     }
@@ -120,6 +138,6 @@ public class Helper {
     }
 
     public static void cleanupRedisSentinel() {
-        getSentinelJedis().flushAll();
+        getSentinelJedis().getResource().flushAll();
     }
 }
