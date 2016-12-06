@@ -36,7 +36,7 @@ public class RedisPool {
         this.port = port;
         this.redisConnections = redisConnections;
         this.ssl = ssl;
-        this.pool = createJedisPool(host, port, redisConnections, password, ssl);
+        this.pool = createJedisPool(host, port, redisConnections, password, Protocol.DEFAULT_DATABASE, ssl);
     }
 
     public RedisPool(String host, int port, int redisConnections, boolean ssl) {
@@ -56,7 +56,7 @@ public class RedisPool {
     public RedisPool(RedisStandaloneConfiguration standaloneConfiguration, int redisConnections) {
         this.redisConnections = redisConnections;
         this.pool = createJedisPool(standaloneConfiguration.getHost(), standaloneConfiguration.getPort(), redisConnections,
-                standaloneConfiguration.getPassword(), standaloneConfiguration.isSsl());
+                standaloneConfiguration.getPassword(), standaloneConfiguration.getDatabase(), standaloneConfiguration.isSsl());
         setupReadSlaves(standaloneConfiguration.getReadSlaves());
     }
 
@@ -78,25 +78,17 @@ public class RedisPool {
         }
     }
 
-    private JedisPool createJedisPool(String host, int port, int redisConnections, String password, boolean ssl) {
-
-        if (password == null || password.length() == 0) {
-            return new JedisPool(getPoolConfig(redisConnections), host, port, Protocol.DEFAULT_TIMEOUT * 4, ssl);
-        } else {
-            return new JedisPool(getPoolConfig(redisConnections), host, port, Protocol.DEFAULT_TIMEOUT * 4, password, ssl);
-        }
+    private JedisPool createJedisPool(String host, int port, int redisConnections, String password, int database, boolean ssl) {
+        return new JedisPool(getPoolConfig(redisConnections), host, port, Protocol.DEFAULT_TIMEOUT * 4, password, database, ssl);            
     }
 
     private JedisSentinelPool createSentinelPool(RedisSentinelConfiguration sentinelConfiguration, int redisConnections) {
-        if(sentinelConfiguration.getPassword() == null) {
-            return new JedisSentinelPool(sentinelConfiguration.getMasterName(),
-                    sentinelConfiguration.getSentinels(), getPoolConfig(redisConnections), sentinelConfiguration.getTimeout());
-        }
-        else {
-            return new JedisSentinelPool(sentinelConfiguration.getMasterName(),
-                    sentinelConfiguration.getSentinels(), getPoolConfig(redisConnections), sentinelConfiguration.getTimeout(), sentinelConfiguration.getPassword());
-        }
-
+        return new JedisSentinelPool(sentinelConfiguration.getMasterName(), 
+                sentinelConfiguration.getSentinels(),
+                getPoolConfig(redisConnections), 
+                sentinelConfiguration.getTimeout(), 
+                sentinelConfiguration.getPassword(),
+                sentinelConfiguration.getDatabase());
     }
 
     private JedisPoolConfig getPoolConfig(int redisConnections) {
