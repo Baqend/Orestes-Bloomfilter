@@ -7,6 +7,8 @@ import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.redis.helper.RedisPool;
 import orestes.bloomfilter.test.helper.Helper;
+import redis.clients.jedis.Protocol;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -44,20 +46,25 @@ public class RedisBFTest {
         return Arrays.asList(data);
     }
 
-
     public RedisBFTest(String type, FilterTypes filterTypes) {
         this.filterTypes = filterTypes;
     }
 
     private BloomFilter<String> createFilter(String name, int n, double p, boolean overwrite) {
+        return createFilter(name, n, p, overwrite, Protocol.DEFAULT_DATABASE);
+    }
+
+    private BloomFilter<String> createFilter(String name, int n, double p, boolean overwrite, int database) {
         if(filterTypes == FilterTypes.COUNTING)
-            return createCountingRedisFilter(name, n, p, HashMethod.MD5, overwrite);
+            return createCountingRedisFilter(name, n, p, HashMethod.MD5, overwrite, database);
         else if (filterTypes == FilterTypes.NORMAL)
-            return createRedisFilter(name, n, p, HashMethod.MD5, overwrite);
+            return createRedisFilter(name, n, p, HashMethod.MD5, overwrite, database);
         else if (filterTypes == FilterTypes.POOL_CONFIG)
-            return createRedisPoolFilter(name, n, p, HashMethod.MD5, overwrite);
+            return createRedisPoolFilter(name, n, p, HashMethod.MD5, overwrite, database);
+        else if (filterTypes == FilterTypes.SENTINEL_CONFIG)
+            return createRedisSentinelFilter(name, n, p, HashMethod.MD5, overwrite, database);
         else
-            return createRedisSentinelFilter(name, n, p, HashMethod.MD5, overwrite);
+            throw new IllegalArgumentException();
     }
 
     private BloomFilter<String> createSlaveFilter(String name, int n, double p, boolean overwrite) {
@@ -289,6 +296,24 @@ public class RedisBFTest {
         assertTrue(bf.contains("bf"));
         assertFalse(filter.contains("bf"));
         assertSame(pool, filter.config().pool());
+    }
+
+    
+    @Test
+    public void testDatabase() throws Exception {
+        final String filterName = "dbtest";
+        BloomFilter<String> bfDb1 = createFilter(filterName, 10_000, 0.01, true);
+        assertEquals(filterName, bfDb1.config().name());
+        bfDb1.add("element1");
+        assertTrue(bfDb1.contains("element1"));
+        assertFalse(bfDb1.contains("element2"));
+        
+        BloomFilter<String> bfDb2 = createFilter(filterName, 10_000, 0.01, true, 1);
+        assertEquals(filterName, bfDb2.config().name());
+        assertFalse(bfDb2.contains("element1"));
+        bfDb2.add("element2");
+        assertTrue(bfDb2.contains("element2"));
+        assertFalse(bfDb1.contains("element2"));
     }
 
 }

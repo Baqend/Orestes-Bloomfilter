@@ -6,8 +6,11 @@ import orestes.bloomfilter.memory.*;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.redis.helper.RedisPool;
+import orestes.bloomfilter.redis.helper.RedisStandaloneConfiguration;
+import redis.clients.jedis.Protocol;
 
 import java.io.Serializable;
+import java.lang.reflect.GenericArrayType;
 import java.nio.charset.Charset;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.HashSet;
@@ -37,6 +40,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     private boolean done = false;
     private String password = null;
     private RedisPool pool;
+    private int database = Protocol.DEFAULT_DATABASE;
 
     /**
      * Constructs a new builder for Bloom filters and counting Bloom filters.
@@ -280,6 +284,21 @@ public class FilterBuilder implements Cloneable, Serializable {
         return this;
     }
 
+    /**
+     * Use a given database number.
+     *
+     * @param database number
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder database(int database) {
+        this.database = database;
+        return this;
+    }
+
+    public int database() {
+        return database;
+    }
+    
     /**
      * Constructs a Bloom filter using the specified parameters and computing missing parameters if possible (e.g. the
      * optimal Bloom filter bit size).
@@ -536,8 +555,15 @@ public class FilterBuilder implements Cloneable, Serializable {
 
     public RedisPool pool() {
         if(done && pool == null) {
-            pool = new RedisPool(redisHost(), redisPort(), redisConnections(),
-                getReadSlaves(), password(), redisSsl());
+            pool = new RedisPool(
+                    RedisStandaloneConfiguration.builder()
+                        .host(redisHost())
+                        .port(redisPort())
+                        .readSlaves(getReadSlaves())
+                        .password(password())
+                        .database(database())
+                        .build(),
+                        redisConnections());
         }
         return pool;
     }
