@@ -114,8 +114,8 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
         return pool.allowingSlaves().safelyReturn(jedis -> {
             String[] hashesString = encode(hash(toBytes(element)));
             List<String> hmget = jedis.hmget(keys.COUNTS_KEY, hashesString);
-            return hmget.stream().map(Long::valueOf).min(Comparator.<Long>naturalOrder()).get();
-        });
+            return hmget.stream().map(i -> (i != null) ? Long.valueOf(i) : 0L).min(Comparator.<Long> naturalOrder()).get();
+          });
     }
 
 
