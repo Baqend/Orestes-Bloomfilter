@@ -55,7 +55,7 @@ public class RedisPool {
         return pool;
     }
 
-    private JedisPool createJedisPool(String host, int port, int redisConnections, String password, boolean ssl) {
+    protected JedisPool createJedisPool(String host, int port, int redisConnections, String password, boolean ssl) {
         JedisPoolConfig config = new JedisPoolConfig();
         config.setBlockWhenExhausted(true);
         config.setMaxTotal(redisConnections);
