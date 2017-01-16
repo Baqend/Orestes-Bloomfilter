@@ -153,7 +153,11 @@ public class BloomFilterRedis<T> implements BloomFilter<T> {
         return BloomFilter.population(bloom, config());
     }
 
-    private RedisBitSet getRedisBitSet() {
+    /**
+     * Returns the underlying RedisBitSet implementation of this RedisBloomFilter
+     * @return The underlying RedisBitSet
+     */
+    public RedisBitSet getRedisBitSet() {
         return bloom;
     }
 
