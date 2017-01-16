@@ -47,9 +47,9 @@ public class BloomFilterPopulationTest {
             }
         } else {
             if (counting) {
-                return createCountingRedisFilter(name, n, p, hm);
+                return createCountingRedisFilter(name, n, p, hm, true);
             } else {
-                return createRedisFilter(name, n, p, hm);
+                return createRedisFilter(name, n, p, hm, true);
             }
         }
     }

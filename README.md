@@ -400,6 +400,20 @@ filter.getEstimatedCount("abc"); //dito
 filter.getBitSet(); //and again
 ```
 
+<a mame="sentinel"/>
+## Redis Sentinel Bloom Filters
+To configure a Bloom Filter to use Sentinel to find the master Redis node, when building the FilterBuilder explicitly define a Sentinel configuration and provide your own Pool.
+
+In the following example the Sentinel Nodes are a simple Set of form "host:port" and the sentinelClusterName is the name of Sentinel you want to connect to
+```java
+        return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
+                .redisBacked(true)
+                .name(name)
+                .pool(new RedisPool(new RedisSentinelConfiguration(sentinelClusterName, getSentinelNodes(), 100), connections))
+                .overwriteIfExists(overwrite)
+                .redisConnections(connections).complete());
+```
+
 <a name="a5"/>
 ## JSON Representation
 To easily transfer a Bloom filter to a client (for instance via an HTTP GET) there is a JSON Converter for the Bloom filters. All Bloom filters are implemented so that this generation option is very cheap (i.e. just sequentially reading it from memory). It works for all Bloom filters including the ones backed by Redis.

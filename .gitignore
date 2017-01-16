@@ -5,3 +5,7 @@
 .DS_Store
 /src/main/java/META-INF
 *.iml
+.classpath
+.project
+.settings/
+/bin/

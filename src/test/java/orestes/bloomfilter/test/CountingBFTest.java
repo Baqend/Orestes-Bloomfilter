@@ -35,7 +35,7 @@ public class CountingBFTest {
         if (!redis) {
             return createCountingFilter(n, p, hm);
         } else {
-            return createCountingRedisFilter(name, n, p, hm);
+            return createCountingRedisFilter(name, n, p, hm, true);
         }
     }
 

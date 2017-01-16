@@ -9,16 +9,40 @@ import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.redis.helper.RedisPool;
+import orestes.bloomfilter.redis.helper.RedisSentinelConfiguration;
+import orestes.bloomfilter.redis.helper.RedisStandaloneConfiguration;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisSentinelPool;
+import redis.clients.jedis.Protocol;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class Helper {
-    public static String host = "localhost";
+    // Jedis automatically translates any address which is known to refer to a local IP to the system's hostname.
+    // All Redis servers must listen on all networks (bind 0.0.0.0 in redis conf) to workaround this.
+    public static String host = "127.0.0.1";
     public static int port = 6379;
-    public static int connections = 10;
+    public static int slavePort = 6380;
+    private static int connections = 10;
+    
+    private static final String sentinelHostName = host;
+    private static final String sentinelClusterName = "bf-cluster";
+
+    static private Set<String> getSentinelNodes() {
+        Set<String> sentinels = new HashSet<>();
+        sentinels.add(sentinelHostName + ":16385");
+        sentinels.add(sentinelHostName + ":16386");
+        sentinels.add(sentinelHostName + ":16387");
+        return sentinels;
+    }
 
     public static Jedis getJedis() {
         return new Jedis(host, port);
     }
+
+    public static JedisSentinelPool getSentinelJedis() {
+        return new JedisSentinelPool(sentinelClusterName, getSentinelNodes());}
 
     public static RedisPool getPool() {
         return new RedisPool(host, port, connections, null, false);
@@ -40,47 +64,96 @@ public class Helper {
         return new CountingBloomFilterMemory<>(new FilterBuilder(n, p).hashFunction(hm).complete());
     }
 
-    public static <T> BloomFilterRedis<T> createRedisFilter(String name, int m, int k, HashMethod hm) {
+    public static <T> BloomFilterRedis<T> createRedisFilter(String name, int m, int k, HashMethod hm, boolean overwrite) {
         return new BloomFilterRedis<>(new FilterBuilder(m, k).hashFunction(hm)
                 .redisBacked(true)
                 .name(name)
                 .redisHost(host)
                 .redisPort(port)
-                .overwriteIfExists(true)
+                .overwriteIfExists(overwrite)
                 .redisConnections(connections).complete());
     }
 
-    public static <T> BloomFilterRedis<T> createRedisFilter(String name, int n, double p, HashMethod hm) {
+    public static <T> BloomFilterRedis<T> createRedisFilter(String name, int n, double p, HashMethod hm, boolean overwrite) {
+        return createRedisFilter(name, n, p, hm, overwrite, Protocol.DEFAULT_DATABASE);
+    }
+
+    public static <T> BloomFilterRedis<T> createRedisFilter(String name, int n, double p, HashMethod hm, boolean overwrite, int database) {
         return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
                 .redisBacked(true)
                 .name(name)
                 .redisHost(host)
                 .redisPort(port)
-                .overwriteIfExists(true)
+                .overwriteIfExists(overwrite)
+                .database(database)
                 .redisConnections(connections).complete());
     }
 
-    public static <T> CountingBloomFilterRedis<T> createCountingRedisFilter(String name, int m, int k, HashMethod hm) {
+    public static <T> BloomFilterRedis<T> createRedisFilterWithReadSlave(String name, int n, double p, HashMethod hm, boolean overwrite, String slaveName, int slavePort) {
+        return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
+                .redisBacked(true)
+                .name(name)
+                .redisHost(host)
+                .redisPort(port)
+                .addReadSlave(slaveName, slavePort)
+                .overwriteIfExists(overwrite)
+                .redisConnections(connections).complete());
+    }
+
+    public static <T> BloomFilterRedis<T> createRedisPoolFilter(String name, int n, double p, HashMethod hm, boolean overwrite, int database) {
+        return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
+                .redisBacked(true)
+                .name(name)
+                .pool(new RedisPool(RedisStandaloneConfiguration.builder()
+                        .host(host).port(port).database(database).build(), connections))
+                .overwriteIfExists(overwrite)
+                .complete());
+    }
+
+
+    public static <T> BloomFilterRedis<T> createRedisSentinelFilter(String name, int n, double p, HashMethod hm, boolean overwrite, int database) {
+        return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
+                .redisBacked(true)
+                .name(name)
+                .pool(new RedisPool(RedisSentinelConfiguration.builder()
+                                        .master(sentinelClusterName)
+                                        .sentinels(getSentinelNodes())
+                                        .database(database)
+                                        .build(), connections))
+                .overwriteIfExists(overwrite)
+                .redisConnections(connections).complete());
+    }
+
+    public static <T> CountingBloomFilterRedis<T> createCountingRedisFilter(String name, int m, int k, HashMethod hm, boolean overwrite) {
         return new CountingBloomFilterRedis<>(new FilterBuilder(m, k).hashFunction(hm)
                 .redisBacked(true)
                 .name(name)
                 .redisHost(host)
                 .redisPort(port)
-                .overwriteIfExists(true)
+                .overwriteIfExists(overwrite)
                 .redisConnections(connections).complete());
     }
 
-    public static <T> CountingBloomFilterRedis<T> createCountingRedisFilter(String name, int n, double p, HashMethod hm) {
+    public static <T> CountingBloomFilterRedis<T> createCountingRedisFilter(String name, int n, double p, HashMethod hm, boolean overwrite) {
+        return createCountingRedisFilter(name, n, p, hm, overwrite, Protocol.DEFAULT_DATABASE);
+    }
+
+    public static <T> CountingBloomFilterRedis<T> createCountingRedisFilter(String name, int n, double p, HashMethod hm, boolean overwrite, int database) {
         return new CountingBloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
                 .redisBacked(true)
                 .name(name)
                 .redisHost(host)
                 .redisPort(port)
-                .overwriteIfExists(true)
+                .overwriteIfExists(overwrite)
+                .database(database)
                 .redisConnections(connections).complete());
     }
 
     public static void cleanupRedis() {
         getJedis().flushAll();
+    }
+
+    public static void cleanupRedisSentinel() {
+        getSentinelJedis().getResource().flushAll();
     }
 }

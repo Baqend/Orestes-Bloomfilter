@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.*;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
+import redis.clients.util.Pool;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -20,11 +21,13 @@ import java.util.function.Function;
  */
 public class RedisPool {
     private static final Logger LOG = LoggerFactory.getLogger(RedisPool.class);
-    private final JedisPool pool;
-    private final String host;
-    private final int port;
-    private final int redisConnections;
-    private final boolean ssl;
+
+    private final Pool<Jedis> pool;
+    private  String host;
+    private  int port;
+    private  int redisConnections;
+
+    private  boolean ssl = false;
     private List<RedisPool> slavePools;
     private Random random;
 
@@ -33,15 +36,39 @@ public class RedisPool {
         this.port = port;
         this.redisConnections = redisConnections;
         this.ssl = ssl;
-        this.pool = createJedisPool(host, port, redisConnections, password, ssl);
+        this.pool = createJedisPool(host, port, redisConnections, password, Protocol.DEFAULT_DATABASE, ssl);
     }
 
     public RedisPool(String host, int port, int redisConnections, boolean ssl) {
-        this(host, port, redisConnections, (String) null, false);
+        this(host, port, redisConnections, null, false);
     }
 
     public RedisPool(String host, int port, int redisConnections, Set<Entry<String, Integer>> readSlaves, String password, boolean ssl) {
         this(host, port, redisConnections, password, ssl);
+        setupReadSlaves(readSlaves);
+    }
+
+    public RedisPool(RedisSentinelConfiguration sentinelConfiguration, int redisConnections) {
+        this.redisConnections = redisConnections;
+        this.pool = createSentinelPool(sentinelConfiguration, redisConnections);
+    }
+
+    public RedisPool(RedisStandaloneConfiguration standaloneConfiguration, int redisConnections) {
+        this.redisConnections = redisConnections;
+        this.pool = createJedisPool(standaloneConfiguration.getHost(), standaloneConfiguration.getPort(), redisConnections,
+                standaloneConfiguration.getPassword(), standaloneConfiguration.getDatabase(), standaloneConfiguration.isSsl());
+        setupReadSlaves(standaloneConfiguration.getReadSlaves());
+    }
+
+    public RedisPool(Pool<Jedis> externallyManaged) {
+        this.pool = externallyManaged;
+    }
+
+    public Pool<Jedis> getInternalPool() {
+        return pool;
+    }
+
+    private void setupReadSlaves(Set<Entry<String, Integer>> readSlaves) {
         if (readSlaves != null && !readSlaves.isEmpty()) {
             slavePools = new ArrayList<>();
             random = new Random();
@@ -51,19 +78,24 @@ public class RedisPool {
         }
     }
 
-    public JedisPool getInteralPool() {
-        return pool;
+    private JedisPool createJedisPool(String host, int port, int redisConnections, String password, int database, boolean ssl) {
+        return new JedisPool(getPoolConfig(redisConnections), host, port, Protocol.DEFAULT_TIMEOUT * 4, password, database, ssl);            
     }
 
-    private JedisPool createJedisPool(String host, int port, int redisConnections, String password, boolean ssl) {
+    private JedisSentinelPool createSentinelPool(RedisSentinelConfiguration sentinelConfiguration, int redisConnections) {
+        return new JedisSentinelPool(sentinelConfiguration.getMasterName(), 
+                sentinelConfiguration.getSentinels(),
+                getPoolConfig(redisConnections), 
+                sentinelConfiguration.getTimeout(), 
+                sentinelConfiguration.getPassword(),
+                sentinelConfiguration.getDatabase());
+    }
+
+    private JedisPoolConfig getPoolConfig(int redisConnections) {
         JedisPoolConfig config = new JedisPoolConfig();
         config.setBlockWhenExhausted(true);
         config.setMaxTotal(redisConnections);
-        if (password == null) {
-            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT * 4, ssl);
-        } else {
-            return new JedisPool(config, host, port, Protocol.DEFAULT_TIMEOUT * 4, password, ssl);
-        }
+        return config;
     }
 
     public String getHost() {
