@@ -4,6 +4,7 @@
 /doc
 .DS_Store
 /src/main/java/META-INF
+/.idea
 *.iml
 .classpath
 .project
