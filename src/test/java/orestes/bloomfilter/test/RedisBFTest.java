@@ -176,12 +176,10 @@ public class RedisBFTest {
         first.remove();
 
         if (filterTypes == FilterTypes.SENTINEL_CONFIG) {
-            assert(!getSentinelJedis().getResource().exists(name));
+            assertFalse(getSentinelJedis().getResource().exists(name));
+        } else {
+            assertFalse(getJedis().exists(name));
         }
-        else {
-            assert(!getJedis().exists(name));
-        }
-
     }
 
 

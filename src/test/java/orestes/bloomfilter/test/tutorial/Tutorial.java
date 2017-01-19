@@ -32,7 +32,7 @@ public class Tutorial {
 
     public static void redisBenchmark() {
         int connections = 100;
-        RedisPool pool = new RedisPool("localhost", 6379, connections, false);
+        RedisPool pool = RedisPool.builder().host("localhost").port(6379).redisConnections(connections).build();
         ExecutorService exec = Executors.newFixedThreadPool(connections);
 
         int rounds = 200_000;

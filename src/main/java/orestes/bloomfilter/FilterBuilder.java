@@ -2,15 +2,18 @@ package orestes.bloomfilter;
 
 import orestes.bloomfilter.HashProvider.HashFunction;
 import orestes.bloomfilter.HashProvider.HashMethod;
-import orestes.bloomfilter.memory.*;
+import orestes.bloomfilter.memory.BloomFilterMemory;
+import orestes.bloomfilter.memory.CountingBloomFilter16;
+import orestes.bloomfilter.memory.CountingBloomFilter32;
+import orestes.bloomfilter.memory.CountingBloomFilter64;
+import orestes.bloomfilter.memory.CountingBloomFilter8;
+import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.redis.helper.RedisPool;
-import orestes.bloomfilter.redis.helper.RedisStandaloneConfiguration;
 import redis.clients.jedis.Protocol;
 
 import java.io.Serializable;
-import java.lang.reflect.GenericArrayType;
 import java.nio.charset.Charset;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.HashSet;
@@ -161,10 +164,6 @@ public class FilterBuilder implements Cloneable, Serializable {
      */
     public FilterBuilder pool(RedisPool pool) {
         this.redisBacked(true);
-        this.redisHost(pool.getHost());
-        this.redisPort(pool.getPort());
-        this.redisConnections(pool.getRedisConnections());
-        this.redisSsl(pool.getSsl());
         this.pool = pool;
         return this;
     }
@@ -555,15 +554,14 @@ public class FilterBuilder implements Cloneable, Serializable {
 
     public RedisPool pool() {
         if(done && pool == null) {
-            pool = new RedisPool(
-                    RedisStandaloneConfiguration.builder()
-                        .host(redisHost())
-                        .port(redisPort())
-                        .readSlaves(getReadSlaves())
-                        .password(password())
-                        .database(database())
-                        .build(),
-                        redisConnections());
+            pool = RedisPool.builder()
+                .host(redisHost())
+                .port(redisPort())
+                .readSlaves(getReadSlaves())
+                .password(password())
+                .database(database())
+                .redisConnections(redisConnections())
+                .build();
         }
         return pool;
     }

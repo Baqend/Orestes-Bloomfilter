@@ -2,15 +2,13 @@ package orestes.bloomfilter.test.helper;
 
 
 import orestes.bloomfilter.CountingBloomFilter;
-import orestes.bloomfilter.memory.BloomFilterMemory;
-import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
+import orestes.bloomfilter.memory.BloomFilterMemory;
+import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.redis.helper.RedisPool;
-import orestes.bloomfilter.redis.helper.RedisSentinelConfiguration;
-import orestes.bloomfilter.redis.helper.RedisStandaloneConfiguration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.jedis.Protocol;
@@ -45,7 +43,11 @@ public class Helper {
         return new JedisSentinelPool(sentinelClusterName, getSentinelNodes());}
 
     public static RedisPool getPool() {
-        return new RedisPool(host, port, connections, null, false);
+        return RedisPool.builder()
+            .host(host)
+            .port(port)
+            .redisConnections(connections)
+            .build();
     }
 
     public static <T> BloomFilterMemory<T> createFilter(int m, int k, HashMethod hm) {
@@ -104,8 +106,7 @@ public class Helper {
         return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
                 .redisBacked(true)
                 .name(name)
-                .pool(new RedisPool(RedisStandaloneConfiguration.builder()
-                        .host(host).port(port).database(database).build(), connections))
+                .pool(RedisPool.builder().host(host).port(port).database(database).redisConnections(connections).build())
                 .overwriteIfExists(overwrite)
                 .complete());
     }
@@ -115,11 +116,12 @@ public class Helper {
         return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
                 .redisBacked(true)
                 .name(name)
-                .pool(new RedisPool(RedisSentinelConfiguration.builder()
-                                        .master(sentinelClusterName)
-                                        .sentinels(getSentinelNodes())
-                                        .database(database)
-                                        .build(), connections))
+                .pool(RedisPool.sentinelBuilder()
+                        .master(sentinelClusterName)
+                        .sentinels(getSentinelNodes())
+                        .database(database)
+                        .redisConnections(connections)
+                        .build())
                 .overwriteIfExists(overwrite)
                 .redisConnections(connections).complete());
     }
