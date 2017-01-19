@@ -97,7 +97,6 @@ public class BloomFilterMemory<T> implements BloomFilter<T> {
             e.printStackTrace();
         }
         o.bloom = (BitSet) bloom.clone();
-        //TODO clone config
         return o;
     }
 
