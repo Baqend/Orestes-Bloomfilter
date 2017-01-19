@@ -78,8 +78,7 @@ public class RedisBFTest {
     private void cleanupRedis() {
         if (filterTypes == FilterTypes.SENTINEL_CONFIG) {
             cleanupRedisSentinel();
-        }
-        else {
+        } else {
             Helper.cleanupRedis();
         }
     }
@@ -280,8 +279,6 @@ public class RedisBFTest {
 
     @Test
     public void testPool() throws Exception {
-        int n = 1000;
-        double p = 0.01;
         BloomFilter<String> bf = createFilter("pooltest", 10_000, 0.01, true);
         RedisPool pool = bf.config().pool();
 

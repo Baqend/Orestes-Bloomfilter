@@ -3,13 +3,15 @@ If you don't copy the files, Redis will add additional information on startup to
 
 Then start up redis Sentinel by starting the master and the slaves:
 
+```sh
 redis-server node1/redis.conf
 redis-server node1/sentinel.conf --sentinel
 
-Now the two slaves
+#Now the two slaves
 
 redis-server node2/redis.conf
 redis-server node2/sentinel.conf --sentinel
 
 redis-server node3/redis.conf
 redis-server node3/sentinel.conf --sentinel
+```

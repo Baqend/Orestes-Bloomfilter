@@ -409,7 +409,12 @@ In the following example the Sentinel Nodes are a simple Set of form "host:port"
         return new BloomFilterRedis<>(new FilterBuilder(n, p).hashFunction(hm)
                 .redisBacked(true)
                 .name(name)
-                .pool(new RedisPool(new RedisSentinelConfiguration(sentinelClusterName, getSentinelNodes(), 100), connections))
+                .pool(RedisPool.sentinelBuilder()
+                      .master(sentinelClusterName)
+                      .sentinels(getSentinelNodes())
+                      .database(database)
+                      .redisConnections(connections)
+                      .build())
                 .overwriteIfExists(overwrite)
                 .redisConnections(connections).complete());
 ```
