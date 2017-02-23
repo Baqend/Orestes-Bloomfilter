@@ -5,8 +5,6 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
-import redis.clients.jedis.exceptions.JedisConnectionException;
-import redis.clients.jedis.exceptions.JedisDataException;
 import redis.clients.util.Pool;
 
 import java.time.Clock;
@@ -156,27 +154,29 @@ public class RedisPool {
         Thread thread = new Thread(() -> {
             boolean connected = false;
             while (!connected && !Thread.currentThread().isInterrupted()) {
-                try {
+                try (Jedis jedis = new Jedis(redisHost, redisPort)) {
                     //pubsub has its own Redis connection
-                    Jedis jedis = new Jedis(redisHost, redisPort);
                     jedis.ping();
                     connected = true;
+                    LOG.info("PubSub Redis connection established.");
                     whenConnected.accept(jedis);
-                } catch (JedisConnectionException | JedisDataException e) {
+                } catch (Exception e) {
                     connected = false;
                     if (abort.apply(e)) {
+                        LOG.info("PubSub Redis connection aborted.", e);
                         break;
                     } else {
-                        LOG.error("Could not establish connection to Redis server.", e);
+                        LOG.warn("PubSub Redis connection failed with an exception:", e);
                         //Rate Limit to 4 reconnects per second
                         try {
                             Thread.sleep(250);
                         } catch (InterruptedException e1) {
-                            LOG.error("Interrupted {}", e1);
+                            LOG.warn("PubSub Redis connection Interrupted", e1);
                         }
                     }
                 }
             }
+            LOG.info("PubSub Redis connection closed.");
         });
         thread.start();
         return thread;
