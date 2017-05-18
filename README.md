@@ -31,7 +31,7 @@ So what's the catch? Bloom filters allow false positives (i.e. URL contained tho
 * All Bloom filters are thread-safe and drastically improved in performance
 * Arbitrarily many Bloom filter instances in a single Redis server by using `name("myfilter")` to distinguish filters
 * Existing filter can be loaded or overwritten and be shared from different processes without concurrency anomalies
-* New and improved Hash functions: All cryptographic hash functions, Murmur3 and Murmur3 with the <a href="http://www.eecs.harvard.edu/~kirsch/pubs/bbbf/esa06.pdf">Kirsch&Mitzenmacher trick</a>, advanced distribution and performance testing of hash functions
+* New and improved Hash functions: All cryptographic hash functions, Murmur3 and Murmur3 with the <a href="https://www.eecs.harvard.edu/~michaelm/postscripts/tr-02-05.pdf">Kirsch&Mitzenmacher trick</a>, advanced distribution and performance testing of hash functions
 * Redis Bloom filters are much faster and simpler, fixed a very rare race-condition
 * Memory and Redis Bloom filters now share a common interface `BloomFilter` resp. `CountingBloomFilter` instead of being subclasses
 * Extensive JavaDoc documentation, test-coverage increased by a factor of at least 2, cleaner a streamlined (Java 8) design
@@ -454,7 +454,7 @@ If about 5 runs fail the test an 95 pass it, we can be very confident that the h
 
 Here the LCG is too evenly distributed (due to its modulo arithmetics) which is a good thing here, but shows, that LCGs do not have a random uniform distribution.
 
-The performance optimization of using two hash functions and combining them through the formula hash_i = hash1 + i * hash2 as suggested by <a href="http://www.eecs.harvard.edu/~kirsch/pubs/bbbf/esa06.pdf">Kirsch and Mitzenmacher</a> is theoretically sound as asymptotically hash values are perfectly uniform given to perfect hash values. In practice however, the distribution grows uneven for some inputs (the Cassandra team which uses this trick should have a look at that).
+The performance optimization of using two hash functions and combining them through the formula hash_i = hash1 + i * hash2 as suggested by <a href="https://www.eecs.harvard.edu/~michaelm/postscripts/tr-02-05.pdf">Kirsch and Mitzenmacher</a> is theoretically sound as asymptotically hash values are perfectly uniform given to perfect hash values. In practice however, the distribution grows uneven for some inputs (the Cassandra team which uses this trick should have a look at that).
 
 Now a real example of inserting random words in the Bloom filter with the resulting false positive rate after 30000 inserted elements demanding a false positive probability of 0.01:
 
