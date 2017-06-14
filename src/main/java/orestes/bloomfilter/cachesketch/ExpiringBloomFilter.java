@@ -3,7 +3,9 @@ package orestes.bloomfilter.cachesketch;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 /**
@@ -29,6 +31,17 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
      * @return the remaining ttl
      */
     Long getRemainingTTL(T element, TimeUnit unit);
+
+    /**
+     * Return the expiration timestamps of the given object
+     *
+     * @param elements elements to check
+     * @param unit    the time unit of the returned ttl
+     * @return the remaining ttl
+     */
+    default List<Long> getRemainingTTLs(List<T> elements, TimeUnit unit){
+        return elements.stream().map(el -> getRemainingTTL(el, unit)).collect(Collectors.toList());
+    }
 
     /**
      * Reports a read on element that is to be cached for a certain ttl

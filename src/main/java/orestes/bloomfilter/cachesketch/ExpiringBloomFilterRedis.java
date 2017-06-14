@@ -8,8 +8,11 @@ import redis.clients.jedis.ScanParams;
 import redis.clients.jedis.ScanResult;
 
 import java.time.Clock;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
     private final Clock clock;
@@ -57,6 +60,18 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         return pool.safelyReturn(jedis -> {
             String tsString = jedis.get(key(element));
             return tsString != null ? unit.convert(Long.valueOf(tsString) - now(), TimeUnit.MILLISECONDS) : null;
+        });
+    }
+
+    @Override
+    public List<Long> getRemainingTTLs(List<T> elements, TimeUnit unit) {
+        //Mget limitation: will be stored in Redis memory before being send, i.e. only scales to hundreds of thousands elements
+        return pool.safelyReturn(jedis -> {
+            String[] keys = elements.stream().map(this::key).toArray(String[]::new);
+            List<String> vals = jedis.mget(keys);
+            return vals.stream().
+                map(tsString -> tsString != null ? unit.convert(Long.valueOf(tsString) - now(), TimeUnit.MILLISECONDS) : null)
+                .collect(Collectors.toList());
         });
     }
 
