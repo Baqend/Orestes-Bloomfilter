@@ -183,4 +183,22 @@ public class ExpiringTest {
         assertNull(filter.getRemainingTTL("1", TimeUnit.MILLISECONDS));
         assertNull(filter.getRemainingTTL("2", TimeUnit.MILLISECONDS));
     }
+
+    @Test
+    public void testGetTtls() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.05);
+        createFilter(b);
+        List<String> keys = new ArrayList<>();
+        for (int i = 0; i < 1000; i++) {
+            String key = String.valueOf(i);
+            keys.add(key);
+            filter.reportRead(key, 50, TimeUnit.SECONDS);
+        }
+
+        List<Long> ttls = filter.getRemainingTTLs(keys, TimeUnit.SECONDS);
+
+        for (Long ttl : ttls) {
+            assertTrue(ttl >= 49);
+        }
+    }
 }
