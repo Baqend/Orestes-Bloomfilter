@@ -53,7 +53,41 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
         return results.stream().skip(config().hashes()).map(i -> (Long) i).min(Comparator.<Long>naturalOrder()).get();
     }
 
-    //TODO removeALL addAll
+    @Override
+    public List<Boolean> addAll(Collection<T> elements) {
+        return addAndEstimateCountRaw(elements).stream().map(el -> el == 1).collect(Collectors.toList());
+    }
+
+    private List<Long> addAndEstimateCountRaw(Collection<T> elements) {
+        List<int[]> allHashes = elements.stream().map(el -> hash(toBytes(el))).collect(Collectors.toList());
+        List<Object> results = pool.transactionallyRetry(p -> {
+            for (int[] hashes : allHashes) {
+                for (int position : hashes) {
+                    bloom.set(p, position, true);
+                }
+            }
+            for (int[] hashes : allHashes) {
+                for (int position : hashes) {
+                    p.hincrBy(keys.COUNTS_KEY, encode(position), 1);
+                }
+            }
+        }, keys.BITS_KEY, keys.COUNTS_KEY);
+
+        //Walk through result in blocks of #hashes and skip the return values from set-bit calls
+        List<Long> mins = new LinkedList<>();
+        for (int i = results.size() / 2; i < results.size(); i += config().hashes()) {
+            long min = results.subList(i, i + config().hashes())
+                .stream()
+                .map(val -> (Long) val)
+                .min(Comparator.<Long>naturalOrder())
+                .get();
+            mins.add(min);
+        }
+        return mins;
+    }
+
+    //TODO removeALL
+
 
     @Override
     public boolean removeRaw(byte[] value) {
@@ -114,7 +148,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
         return pool.allowingSlaves().safelyReturn(jedis -> {
             String[] hashesString = encode(hash(toBytes(element)));
             List<String> hmget = jedis.hmget(keys.COUNTS_KEY, hashesString);
-            return hmget.stream().mapToLong(i -> i == null? 0L: Long.valueOf(i)).min().orElse(0L);
+            return hmget.stream().mapToLong(i -> i == null ? 0L : Long.valueOf(i)).min().orElse(0L);
         });
     }
 

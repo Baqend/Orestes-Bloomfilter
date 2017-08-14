@@ -171,6 +171,17 @@ public class ExpiringTest {
     }
 
     @Test
+    public void testReportMultipleWrites() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.05);
+        createFilter(b);
+        filter.reportRead("1", 50, TimeUnit.MILLISECONDS);
+        filter.reportRead("2", 50, TimeUnit.MILLISECONDS);
+        filter.reportWrites(Arrays.asList("1","2"));
+        assertTrue(filter.contains("1"));
+        assertTrue(filter.contains("2"));
+    }
+
+    @Test
     public void testClear() throws Exception {
         FilterBuilder b = new FilterBuilder(100000, 0.05);
         createFilter(b);

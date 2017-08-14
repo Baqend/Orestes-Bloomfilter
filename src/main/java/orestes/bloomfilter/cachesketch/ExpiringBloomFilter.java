@@ -72,7 +72,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
     }
 
     /**
-     * Reports a write.
+     * Reports multiple writes.
      *
      * @param elements the elements (or its ids)
      * @return List of booleans. <code>true</code>, if the elements needs invalidation

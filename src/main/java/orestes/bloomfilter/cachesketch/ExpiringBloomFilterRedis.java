@@ -10,6 +10,7 @@ import redis.clients.jedis.ScanResult;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -95,6 +96,22 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         return remaining != null ? unit.convert(remaining, TimeUnit.NANOSECONDS) : null;
     }
 
+    @Override
+    public List<Long> reportWrites(List<T> elements, TimeUnit unit) {
+        List<Long> remainingTTLs = getRemainingTTLs(elements, TimeUnit.NANOSECONDS);
+        List<T> filteredElements = new LinkedList<>();
+        List<Long> reportedTTLs = new LinkedList<>();
+        for (int i = 0; i < remainingTTLs.size() ; i++) {
+            Long remaining = remainingTTLs.get(i);
+            T element = elements.get(i);
+            if(remaining != null && remaining >= 0) {
+                filteredElements.add(element);
+                queue.addTTL(element, remaining);
+            }
+        }
+        addAll(filteredElements);
+        return reportedTTLs;
+    }
 
     @Override
     public void clear() {
