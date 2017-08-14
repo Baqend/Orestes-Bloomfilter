@@ -71,5 +71,26 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
         return reportWrite(element, TimeUnit.MILLISECONDS) != null;
     }
 
+    /**
+     * Reports a write.
+     *
+     * @param elements the elements (or its ids)
+     * @return List of booleans. <code>true</code>, if the elements needs invalidation
+     */
+    default List<Boolean> reportWrites(List<T> elements) {
+        return elements.stream().map(this::reportWrite).collect(Collectors.toList());
+    }
+
+    /**
+     * Reports a write on a list of objects, adding it to the underlying Bloom filter for the remaining ttl
+     *
+     * @param elements the elements (or its ids)
+     * @param unit the time unit of the returned ttl
+     * @return the list of remaining TTLs, if a object was still cached, else <code>null</code>
+     */
+    default List<Long> reportWrites(List<T> elements, TimeUnit unit) {
+        return elements.stream().map(el -> reportWrite(el, unit)).collect(Collectors.toList());
+    }
+
     BloomFilter<T> getClonedBloomFilter();
 }
