@@ -167,24 +167,24 @@ public class HashProvider {
         return result;
     }
 
-    public static int murmur3_signed(int seed, byte[] bytes) {
-        return (int) murmur3(seed, bytes);
+    public static long murmur3(int seed, byte[] bytes) {
+        return Integer.toUnsignedLong(murmur3_signed(seed, bytes));
     }
 
-    public static long murmur3(int seed, byte[] bytes) {
+    public static int murmur3_signed(int seed, byte[] bytes) {
         int h1 = seed;
         //Standard in Guava
-        int c1 = 0xcc9e2d51;
-        int c2 = 0x1b873593;
+        final int c1 = 0xcc9e2d51;
+        final int c2 = 0x1b873593;
         int len = bytes.length;
         int i = 0;
 
         while (len >= 4) {
             //process()
-            int k1 = bytes[i + 0] & 0xFF;
-            k1 |= (bytes[i + 1] & 0xFF) << 8;
-            k1 |= (bytes[i + 2] & 0xFF) << 16;
-            k1 |= (bytes[i + 3] & 0xFF) << 24;
+            int k1  = (bytes[i++] & 0xFF);
+                k1 |= (bytes[i++] & 0xFF) << 8;
+                k1 |= (bytes[i++] & 0xFF) << 16;
+                k1 |= (bytes[i++] & 0xFF) << 24;
 
             k1 *= c1;
             k1 = Integer.rotateLeft(k1, 15);
@@ -195,31 +195,26 @@ public class HashProvider {
             h1 = h1 * 5 + 0xe6546b64;
 
             len -= 4;
-            i += 4;
         }
 
+        //processingRemaining()
+        int k1 = 0;
+        switch (len) {
+            case 3:
+                k1 ^= (bytes[i + 2] & 0xFF) << 16;
+                // fall through
+            case 2:
+                k1 ^= (bytes[i + 1] & 0xFF) << 8;
+                // fall through
+            case 1:
+                k1 ^= (bytes[i] & 0xFF);
 
-        if (len > 0) {
-            //processingRemaining()
-            int k1 = 0;
-            switch (len) {
-                case 3:
-                    k1 ^= (bytes[i + 2] & 0xFF) << 16;
-                    // fall through
-                case 2:
-                    k1 ^= (bytes[i + 1] & 0xFF) << 8;
-                    // fall through
-                case 1:
-                    k1 ^= (bytes[i] & 0xFF);
-                    // fall through
-                default:
-                    k1 *= c1;
-                    k1 = Integer.rotateLeft(k1, 15);
-                    k1 *= c2;
-                    h1 ^= k1;
-            }
-            i += len;
+                k1 *= c1;
+                k1 = Integer.rotateLeft(k1, 15);
+                k1 *= c2;
+                h1 ^= k1;
         }
+        i += len;
 
         //makeHash()
         h1 ^= i;
@@ -230,7 +225,7 @@ public class HashProvider {
         h1 *= 0xc2b2ae35;
         h1 ^= h1 >>> 16;
 
-        return Integer.toUnsignedLong(h1);
+        return h1;
     }
 
 
