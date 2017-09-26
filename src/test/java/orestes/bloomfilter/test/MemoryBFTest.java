@@ -15,6 +15,8 @@ import java.util.stream.IntStream;
 
 import static orestes.bloomfilter.test.helper.Helper.createCountingFilter;
 import static orestes.bloomfilter.test.helper.Helper.createFilter;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class MemoryBFTest {
@@ -203,10 +205,13 @@ public class MemoryBFTest {
     @Test
     @SuppressWarnings("unchecked")
     public void serializeBloomFilter() throws IOException, ClassNotFoundException {
-        BloomFilter<String> b = createFilter(1000, 0.02, HashMethod.MD5);
-        CountingBloomFilterMemory<String> b2 = new CountingBloomFilterMemory<>(new FilterBuilder(1000, 0.2).hashFunction
-            (HashMethod.MD5).countingBits(3).complete());
-        b2.setOverflowHandler(() -> System.out.println("bla"));
+        final int countingBits = 3;
+
+        // Create a flat Bloom filter
+        final BloomFilter<String> fbf = createFilter(1000, 0.02, HashMethod.MD5);
+        // Create a counting Bloom filter
+        CountingBloomFilterMemory<String> cbf = new CountingBloomFilterMemory<>(new FilterBuilder(1000, 0.2).hashFunction
+            (HashMethod.MD5).countingBits(countingBits).complete());
 
         byte[] byteArray;
         byte[] byteArray2;
@@ -215,18 +220,46 @@ public class MemoryBFTest {
              ObjectOutput out = new ObjectOutputStream(bos);
              ObjectOutput out2 = new ObjectOutputStream(bos2)) {
 
-            b.add("foo");
-            b2.add("foo");
-            b.add("bar");
-            b2.add("bar");
+            // Assert we can add to Bloom filter
+            assertTrue(fbf.add("foo"));
+            assertTrue(cbf.add("foo"));
+            assertTrue(fbf.add("bar"));
+            assertTrue(cbf.add("bar"));
 
-            assertTrue(b.contains("foo"));
-            assertTrue(b2.contains("foo"));
-            assertTrue(b.contains("bar"));
-            assertTrue(b2.contains("bar"));
+            // Assert element is now contained
+            assertTrue(fbf.contains("foo"));
+            assertTrue(cbf.contains("foo"));
+            assertTrue(fbf.contains("bar"));
+            assertTrue(cbf.contains("bar"));
 
-            out.writeObject(b);
-            out2.writeObject(b2);
+            // Assert element is contained once
+            assertEquals(1, cbf.getEstimatedCount("foo"));
+
+            // Test all possible additions
+            for (int i = 2; i < 1 << countingBits; i++) {
+                assertFalse(cbf.add("foo"));
+                assertEquals(i, cbf.getEstimatedCount("foo"));
+            }
+
+            // Test an overflow
+            assertFalse(cbf.add("foo"));
+            assertEquals((1 << countingBits) - 1, cbf.getEstimatedCount("foo"));
+
+            // Test element is not contained
+            assertFalse(fbf.contains("ksm"));
+            assertFalse(cbf.contains("ksm"));
+
+            // Test all possible removals
+            for (int i = (1 << countingBits) - 2; i >= 0; i--) {
+                assertEquals(i == 0, cbf.remove("foo"));
+                assertEquals(i, cbf.getEstimatedCount("foo"));
+            }
+
+            // And reinsert it for later
+            assertTrue(cbf.add("foo"));
+
+            out.writeObject(fbf);
+            out2.writeObject(cbf);
 
             byteArray = bos.toByteArray();
             byteArray2 = bos2.toByteArray();
