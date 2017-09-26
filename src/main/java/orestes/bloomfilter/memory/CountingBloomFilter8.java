@@ -40,6 +40,11 @@ public class CountingBloomFilter8<T> extends CountingBloomFilterMemory<T>{
     }
 
     @Override
+    protected void set(int index, long newValue) {
+        counters[index] = (byte) (newValue & 0xff);
+    }
+
+    @Override
     public Map<Integer, Long> getCountMap() {
         final Map<Integer, Long> result = new HashMap<>();
         for (int i = 0; i < counters.length; i++) {

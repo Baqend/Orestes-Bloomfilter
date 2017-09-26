@@ -3,6 +3,7 @@ package orestes.bloomfilter.memory;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.MigratableBloomFilter;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -12,7 +13,7 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 
-public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
+public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, MigratableBloomFilter<T, CountingBloomFilter<T>> {
     private static final long serialVersionUID = -3207752201903871264L;
     protected FilterBuilder config;
     protected BloomFilterMemory<T> filter;
@@ -135,19 +136,29 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
     }
 
     protected long count(int index) {
-        int low = index * config().countingBits();
-        int high = low + config().countingBits();
+        final int low = index * config().countingBits();
+        final int high = low + config().countingBits();
 
         long count = 0;
-        int pos = 0;
         //bit * 2^0 + bit * 2^1 ...
-        for (int i = (high - 1); i >= low; i--) {
+        for (int i = low; i < high; i++) {
+            count <<= 1;
             if (counts.get(i)) {
-                count |= 1 << pos;
+                count |= 1;
             }
-            pos++;
         }
         return count;
+    }
+
+    protected void set(int index, long newValue) {
+        final int low = index * config().countingBits();
+        final int high = low + config().countingBits() - 1;
+
+        //bit * 2^0 + bit * 2^1 ...
+        for (int i = high; i >= low; i--) {
+            counts.set(i, (newValue & 1) > 0);
+            newValue >>>= 1;
+        }
     }
 
     /**
@@ -287,5 +298,17 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
     public BloomFilterMemory<T> getBloomFilter() {
         return filter;
+    }
+
+    @Override
+    public CountingBloomFilter<T> migrateFrom(BloomFilter<T> source) {
+        if (!(source instanceof CountingBloomFilter) || compatible(source)) {
+            throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
+        }
+
+        final CountingBloomFilter<T> cbf = (CountingBloomFilter<T>) source;
+        cbf.getCountMap().forEach(this::set);
+
+        return this;
     }
 }
