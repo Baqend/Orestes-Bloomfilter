@@ -305,5 +305,15 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
         return sb.toString();
     }
 
+    /**
+     * Migrates from this Bloom filter to the given destination.
+     *
+     * @param destination The Bloom filter implementation to migrate to.
+     * @param <U> The type of the destination Bloom filter.
+     * @return The migrated Bloom filter.
+     */
+    default <U extends BloomFilter<T>> U migrateTo(MigratableBloomFilter<U> destination) {
+        return destination.migrateFrom(this);
+    }
 
 }
