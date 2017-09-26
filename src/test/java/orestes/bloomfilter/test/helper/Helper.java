@@ -55,7 +55,11 @@ public class Helper {
     }
 
     public static <T> BloomFilterMemory<T> createFilter(int n, double p, HashMethod hm) {
-        return new BloomFilterMemory<>(new FilterBuilder(n, p).hashFunction(hm).complete());
+        return new BloomFilterMemory<>(configure(n, p, hm));
+    }
+
+    public static FilterBuilder configure(int n, double p, HashMethod hm) {
+        return new FilterBuilder(n, p).hashFunction(hm).complete();
     }
 
     public static <T> CountingBloomFilter<T> createCountingFilter(int m, int k, HashMethod hm) {

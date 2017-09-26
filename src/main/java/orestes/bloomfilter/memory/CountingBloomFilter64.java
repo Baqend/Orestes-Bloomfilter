@@ -12,7 +12,7 @@ public class CountingBloomFilter64<T> extends CountingBloomFilterMemory<T>{
     private static final long MAX = Long.MAX_VALUE;
 
     public CountingBloomFilter64(FilterBuilder config) {
-        config.complete();
+        config.countingBits(64).complete();
         this.config = config;
         this.filter = new BloomFilterMemory<>(config.clone());
         this.counters = new long[config.size()];
