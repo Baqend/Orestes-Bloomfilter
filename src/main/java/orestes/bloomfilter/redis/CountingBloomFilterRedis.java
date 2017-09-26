@@ -3,6 +3,7 @@ package orestes.bloomfilter.redis;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.MigratableBloomFilter;
 import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.redis.helper.RedisKeys;
 import orestes.bloomfilter.redis.helper.RedisPool;
@@ -21,7 +22,7 @@ import java.util.stream.IntStream;
  *
  * @param <T> The type of the containing elements
  */
-public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
+public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, MigratableBloomFilter<CountingBloomFilterRedis<T>> {
     protected final RedisKeys keys;
     protected final RedisPool pool;
     protected final RedisBitSet bloom;
@@ -61,11 +62,13 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
     private List<Long> addAndEstimateCountRaw(Collection<T> elements) {
         List<int[]> allHashes = elements.stream().map(el -> hash(toBytes(el))).collect(Collectors.toList());
         List<Object> results = pool.transactionallyRetry(p -> {
+            // Add to flattened Bloom filter
             for (int[] hashes : allHashes) {
                 for (int position : hashes) {
                     bloom.set(p, position, true);
                 }
             }
+            // Add to counting Bloom filter
             for (int[] hashes : allHashes) {
                 for (int position : hashes) {
                     p.hincrBy(keys.COUNTS_KEY, encode(position), 1);
@@ -258,4 +261,21 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T> {
         return true;
     }
 
+    @Override
+    public CountingBloomFilterRedis<T> migrateFrom(BloomFilter<T> source) {
+
+        if (!(source instanceof CountingBloomFilter)) {
+            throw new IncompatibleMigrationSourceException("Non counting Bloom filter cannot be migrated to counting Bloom filter.");
+        }
+
+        // Check if configs are compatible
+        if (!compatible(source)) {
+            throw new IncompatibleMigrationSourceException("The config of this Bloom filter is not compatible with the source Bloom fitler.");
+        }
+
+
+
+
+        return null;
+    }
 }

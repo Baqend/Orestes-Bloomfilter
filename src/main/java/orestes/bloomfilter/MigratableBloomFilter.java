@@ -6,14 +6,24 @@ package orestes.bloomfilter;
  * @author Erik Witt
  * @author Konstantin Simon Maria Möllers
  */
-public interface MigratableBloomFilter<T extends BloomFilter> {
+public interface MigratableBloomFilter<U, T extends BloomFilter<U>> {
 
     /**
      * Migrates to this Bloom filter from a given source.
      *
      * @param source The Bloom filter source.
-     * @param <U> The type of the Bloom filter source.
      * @return The migrated Bloom filter.
      */
-    <U> T migrateFrom(BloomFilter<U> source);
+    T migrateFrom(BloomFilter<U> source);
+
+    static class IncompatibleMigrationSourceException extends RuntimeException {
+
+        public IncompatibleMigrationSourceException(String msg) {
+            super(msg);
+        }
+
+        public IncompatibleMigrationSourceException(String msg, Throwable t) {
+            super(msg, t);
+        }
+    }
 }
