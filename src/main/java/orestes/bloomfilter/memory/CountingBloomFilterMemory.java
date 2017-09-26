@@ -302,7 +302,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
 
     @Override
     public CountingBloomFilter<T> migrateFrom(BloomFilter<T> source) {
-        if (!(source instanceof CountingBloomFilter) || compatible(source)) {
+        if (!(source instanceof CountingBloomFilter) || !compatible(source)) {
             throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
 
