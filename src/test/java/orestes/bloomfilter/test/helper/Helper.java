@@ -9,12 +9,12 @@ import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.redis.BloomFilterRedis;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.redis.helper.RedisPool;
+import org.junit.Assert;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.jedis.Protocol;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class Helper {
     // Jedis automatically translates any address which is known to refer to a local IP to the system's hostname.
@@ -161,5 +161,29 @@ public class Helper {
 
     public static void cleanupRedisSentinel() {
         getSentinelJedis().getResource().flushAll();
+    }
+
+    public static void assertBitsSet(BitSet actual, int ...expectedIndexes) {
+        Assert.assertEquals("Cardinality should match the number of expected indexes", expectedIndexes.length, actual.cardinality());
+        Assert.assertEquals("Length should match the max expected index plus one", max(expectedIndexes) + 1, actual.length());
+        for (int index : expectedIndexes) {
+            Assert.assertTrue(actual.get(index));
+        }
+    }
+
+    public static void assertAllEqual(long expected, Map<Integer, Long> actual, int ...expectedIndexes) {
+        Assert.assertEquals("Size should match the number of expected indexes", expectedIndexes.length, actual.size());
+        for (int index : expectedIndexes) {
+            Assert.assertTrue(actual.containsKey(index));
+            Assert.assertEquals(expected, (long) actual.get(index));
+        }
+    }
+
+    public static int max(int[] as) {
+        int result = -1;
+        for (int a : as) {
+            result = Math.max(result, a);
+        }
+        return result;
     }
 }

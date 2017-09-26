@@ -74,24 +74,11 @@ public class CountingBloomFilterMemoryTest {
 
         // Test the bits set
         final BitSet bitSet = cbf.getBitSet();
-        assertEquals(6, bitSet.cardinality());
-        assertEquals(7597, bitSet.length());
-        assertTrue(bitSet.get(4484));
-        assertTrue(bitSet.get(4918));
-        assertTrue(bitSet.get(5583));
-        assertTrue(bitSet.get(6134));
-        assertTrue(bitSet.get(6341));
-        assertTrue(bitSet.get(7596));
+        assertBitsSet(bitSet, 4484, 4918, 5583, 6134, 6341, 7596);
 
         // Test the new count map
         final Map<Integer, Long> countMap = cbf.getCountMap();
-        assertEquals(6, countMap.size());
-        assertEquals(1L, (long) countMap.get(4484));
-        assertEquals(1L, (long) countMap.get(4918));
-        assertEquals(1L, (long) countMap.get(5583));
-        assertEquals(1L, (long) countMap.get(6134));
-        assertEquals(1L, (long) countMap.get(6341));
-        assertEquals(1L, (long) countMap.get(7596));
+        assertAllEqual(1L, countMap, 4484, 4918, 5583, 6134, 6341, 7596);
     }
 
     @Test
@@ -110,36 +97,11 @@ public class CountingBloomFilterMemoryTest {
 
         // Test the bits set
         final BitSet bitSet = cbf.getBitSet();
-        assertEquals(12, bitSet.cardinality());
-        assertEquals(7746, bitSet.length());
-        assertTrue(bitSet.get(1770));
-        assertTrue(bitSet.get(2285));
-        assertTrue(bitSet.get(2861));
-        assertTrue(bitSet.get(4484));
-        assertTrue(bitSet.get(4742));
-        assertTrue(bitSet.get(4918));
-        assertTrue(bitSet.get(5431));
-        assertTrue(bitSet.get(5583));
-        assertTrue(bitSet.get(6134));
-        assertTrue(bitSet.get(6341));
-        assertTrue(bitSet.get(7596));
-        assertTrue(bitSet.get(7745));
+        assertBitsSet(bitSet, 1770, 2285, 2861, 4484, 4742, 4918, 5431, 5583, 6134, 6341, 7596, 7745);
 
         // Test the new count map
         final Map<Integer, Long> countMap = cbf.getCountMap();
-        assertEquals(12, countMap.size());
-        assertEquals(1L, (long) countMap.get(1770));
-        assertEquals(1L, (long) countMap.get(2285));
-        assertEquals(1L, (long) countMap.get(2861));
-        assertEquals(1L, (long) countMap.get(4484));
-        assertEquals(1L, (long) countMap.get(4742));
-        assertEquals(1L, (long) countMap.get(4918));
-        assertEquals(1L, (long) countMap.get(5431));
-        assertEquals(1L, (long) countMap.get(5583));
-        assertEquals(1L, (long) countMap.get(6134));
-        assertEquals(1L, (long) countMap.get(6341));
-        assertEquals(1L, (long) countMap.get(7596));
-        assertEquals(1L, (long) countMap.get(7745));
+        assertAllEqual(1L, countMap, 1770, 2285, 2861, 4484, 4742, 4918, 5431, 5583, 6134, 6341, 7596, 7745);
 
         // Add the second foo entry
         assertTrue(cbf.contains("foo"));
@@ -149,20 +111,7 @@ public class CountingBloomFilterMemoryTest {
 
 
         // Test the bits set
-        assertEquals(12, bitSet.cardinality());
-        assertEquals(7746, bitSet.length());
-        assertTrue(bitSet.get(1770));
-        assertTrue(bitSet.get(2285));
-        assertTrue(bitSet.get(2861));
-        assertTrue(bitSet.get(4484));
-        assertTrue(bitSet.get(4742));
-        assertTrue(bitSet.get(4918));
-        assertTrue(bitSet.get(5431));
-        assertTrue(bitSet.get(5583));
-        assertTrue(bitSet.get(6134));
-        assertTrue(bitSet.get(6341));
-        assertTrue(bitSet.get(7596));
-        assertTrue(bitSet.get(7745));
+        assertBitsSet(bitSet, 1770, 2285, 2861, 4484, 4742, 4918, 5431, 5583, 6134, 6341, 7596, 7745);
 
         // Test the new count map
         final Map<Integer, Long> countMap2 = cbf.getCountMap();
@@ -179,6 +128,24 @@ public class CountingBloomFilterMemoryTest {
         assertEquals(2L, (long) countMap2.get(6341));
         assertEquals(2L, (long) countMap2.get(7596));
         assertEquals(1L, (long) countMap2.get(7745));
+    }
+
+    @Test
+    public void testAddTwice() {
+        // Add the first entry
+        assertFalse(cbf.contains("foo"));
+        assertTrue(cbf.add("foo"));
+        assertTrue(cbf.contains("foo"));
+        assertEquals(1L, cbf.getEstimatedCount("foo"));
+        assertBitsSet(cbf.getBitSet(), 4484, 4918, 5583, 6134, 6341, 7596);
+        assertAllEqual(1L, cbf.getCountMap(), 4484, 4918, 5583, 6134, 6341, 7596);
+
+        // Add the second entry
+        assertFalse(cbf.add("foo"));
+        assertTrue(cbf.contains("foo"));
+        assertEquals(2L, cbf.getEstimatedCount("foo"));
+        assertBitsSet(cbf.getBitSet(), 4484, 4918, 5583, 6134, 6341, 7596);
+        assertAllEqual(2L, cbf.getCountMap(), 4484, 4918, 5583, 6134, 6341, 7596);
     }
 
     @Test
