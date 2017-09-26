@@ -39,15 +39,13 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
     @Override
     public Map<Integer, Long> getCountMap() {
         final Map<Integer, Long> result = new HashMap<>();
-        for (int i = 0, low = 0, high = low + config().countingBits() - 1; high < counts.length(); i++, low += config.countingBits(), high += config.countingBits()) {
+        for (int i = 0, low = 0, high = low + config().countingBits(); low < counts.length(); i++, low += config.countingBits(), high += config.countingBits()) {
             long count = 0;
-            int pos = 0;
-
-            for (int j = high; j >= low; j--) {
+            for (int j = low; j < high; j++) {
+                count <<= 1;
                 if (counts.get(j)) {
-                    count |= 1 << pos;
+                    count |= 1;
                 }
-                pos++;
             }
 
             if (count > 0) {
