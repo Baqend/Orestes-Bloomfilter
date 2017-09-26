@@ -312,7 +312,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * @param <U> The type of the destination Bloom filter.
      * @return The migrated Bloom filter.
      */
-    default <U extends BloomFilter<T>> U migrateTo(MigratableBloomFilter<U> destination) {
+    default <U extends BloomFilter<T>> U migrateTo(MigratableBloomFilter<T, U> destination) {
         return destination.migrateFrom(this);
     }
 
