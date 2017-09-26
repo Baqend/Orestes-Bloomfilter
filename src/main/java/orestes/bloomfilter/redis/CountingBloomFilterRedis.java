@@ -7,13 +7,16 @@ import orestes.bloomfilter.MigratableBloomFilter;
 import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.redis.helper.RedisKeys;
 import orestes.bloomfilter.redis.helper.RedisPool;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 import redis.clients.util.SafeEncoder;
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Uses regular key-value pairs for counting instead of a bitarray. This introduces a space overhead but allows
@@ -22,7 +25,7 @@ import java.util.stream.IntStream;
  *
  * @param <T> The type of the containing elements
  */
-public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, MigratableBloomFilter<CountingBloomFilterRedis<T>> {
+public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, MigratableBloomFilter<T, CountingBloomFilterRedis<T>> {
     protected final RedisKeys keys;
     protected final RedisPool pool;
     protected final RedisBitSet bloom;
@@ -72,6 +75,11 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         return addAndEstimateCountRaw(elements).stream().map(el -> el == 1).collect(Collectors.toList());
     }
 
+    /**
+     * Adds all elements to the Bloom filter and returns the estimated count of the inserted elements.
+     * @param elements The elements to add.
+     * @return An estimation of how often the respective elements are in the Bloom filter.
+     */
     private List<Long> addAndEstimateCountRaw(Collection<T> elements) {
         List<int[]> allHashes = elements.stream().map(el -> hash(toBytes(el))).collect(Collectors.toList());
         List<Object> results = pool.transactionallyRetry(p -> {
@@ -89,7 +97,8 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
             }
         }, keys.BITS_KEY, keys.COUNTS_KEY);
 
-        //Walk through result in blocks of #hashes and skip the return values from set-bit calls
+        // Walk through result in blocks of #hashes and skip the return values from set-bit calls.
+        // Get the minimum count for each added element to estimate how often the element is in the Bloom filter.
         List<Long> mins = new LinkedList<>();
         for (int i = results.size() / 2; i < results.size(); i += config().hashes()) {
             long min = results.subList(i, i + config().hashes())
@@ -276,19 +285,30 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
 
     @Override
     public CountingBloomFilterRedis<T> migrateFrom(BloomFilter<T> source) {
-
-        if (!(source instanceof CountingBloomFilter)) {
-            throw new IncompatibleMigrationSourceException("Non counting Bloom filter cannot be migrated to counting Bloom filter.");
+        if (!(source instanceof CountingBloomFilter) || !compatible(source)) {
+            throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
 
-        // Check if configs are compatible
-        if (!compatible(source)) {
-            throw new IncompatibleMigrationSourceException("The config of this Bloom filter is not compatible with the source Bloom fitler.");
-        }
+        final CountingBloomFilter<T> cbf = (CountingBloomFilter<T>) source;
 
+        Map<Integer, Long> countSetToMigrate = cbf.getCountMap();
 
+        pool.transactionallyRetry(p -> {
+            cbf.getCountMap().forEach((position, value) -> set(position, value, p));
+        }, keys.BITS_KEY, keys.COUNTS_KEY);
 
+        return this;
+    }
 
-        return null;
+    /**
+     * Sets the value at the given position.
+     *
+     * @param position The position in the Bloom filter
+     * @param value The value to set
+     * @param p The jedis pipeline to use
+     */
+    private void set(int position, long value, Pipeline p) {
+        bloom.set(p, position, value > 0);
+        p.hset(keys.COUNTS_KEY, encode(position), String.valueOf(value));
     }
 }

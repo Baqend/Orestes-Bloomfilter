@@ -307,7 +307,10 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
         }
 
         final CountingBloomFilter<T> cbf = (CountingBloomFilter<T>) source;
-        cbf.getCountMap().forEach(this::set);
+        cbf.getCountMap().forEach((position, value) -> {
+            set(position, value);
+            filter.setBit(position, value > 0);
+        });
 
         return this;
     }
