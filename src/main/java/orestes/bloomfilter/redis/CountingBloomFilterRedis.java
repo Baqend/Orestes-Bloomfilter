@@ -41,6 +41,19 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     }
 
     @Override
+    public Map<Integer, Long> getCountMap() {
+        return pool.allowingSlaves().safelyReturn(r -> r.hgetAll(keys.COUNTS_KEY)
+            .entrySet()
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    e -> Integer.valueOf(e.getKey()),
+                    e -> Long.valueOf(e.getValue())
+                )
+            ));
+    }
+
+    @Override
     public long addAndEstimateCountRaw(byte[] element) {
         List<Object> results = pool.transactionallyRetry(p -> {
             int[] hashes = hash(element);

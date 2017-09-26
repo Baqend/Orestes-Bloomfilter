@@ -7,6 +7,8 @@ import orestes.bloomfilter.FilterBuilder;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 
@@ -32,6 +34,28 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
         return filter.contains(element);
     }
 
+
+    @Override
+    public Map<Integer, Long> getCountMap() {
+        final Map<Integer, Long> result = new HashMap<>();
+        for (int i = 0, low = 0, high = low + config().countingBits() - 1; high < counts.length(); i++, low += config.countingBits(), high += config.countingBits()) {
+            long count = 0;
+            int pos = 0;
+
+            for (int j = high; j >= low; j--) {
+                if (counts.get(j)) {
+                    count |= 1 << pos;
+                }
+                pos++;
+            }
+
+            if (count > 0) {
+                result.put(i, count);
+            }
+        }
+
+        return result;
+    }
 
     @Override
     public synchronized long addAndEstimateCountRaw(byte[] element) {
@@ -112,14 +136,14 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
     protected long count(int index) {
         int low = index * config().countingBits();
-        int high = (index + 1) * config().countingBits();
+        int high = low + config().countingBits();
 
         long count = 0;
         int pos = 0;
         //bit * 2^0 + bit * 2^1 ...
         for (int i = (high - 1); i >= low; i--) {
             if (counts.get(i)) {
-                count += Math.pow(2, pos);
+                count |= 1 << pos;
             }
             pos++;
         }

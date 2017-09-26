@@ -2,6 +2,7 @@ package orestes.bloomfilter;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -15,6 +16,13 @@ public interface CountingBloomFilter<T> extends BloomFilter<T> {
     public default int getCountingBits() {
         return config().countingBits();
     }
+
+    /**
+     * Returns the counts contained by this Bloom filter as a map.
+     *
+     * @return a map of positions to Bloom filter counts
+     */
+    public Map<Integer, Long> getCountMap();
 
 
     @Override

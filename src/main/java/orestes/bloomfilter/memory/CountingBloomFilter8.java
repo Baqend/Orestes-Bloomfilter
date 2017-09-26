@@ -3,6 +3,8 @@ package orestes.bloomfilter.memory;
 
 import orestes.bloomfilter.FilterBuilder;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class CountingBloomFilter8<T> extends CountingBloomFilterMemory<T>{
@@ -35,6 +37,19 @@ public class CountingBloomFilter8<T> extends CountingBloomFilterMemory<T>{
     @Override
     protected long count(int index) {
         return Byte.toUnsignedLong(counters[index]);
+    }
+
+    @Override
+    public Map<Integer, Long> getCountMap() {
+        final Map<Integer, Long> result = new HashMap<>();
+        for (int i = 0; i < counters.length; i++) {
+            final long count = Byte.toUnsignedLong(counters[i]);
+            if (count > 0) {
+                result.put(i, count);
+            }
+        }
+
+        return result;
     }
 
     @Override
