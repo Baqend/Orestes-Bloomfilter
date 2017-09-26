@@ -35,10 +35,17 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
 
     @Override
     public synchronized long addAndEstimateCountRaw(byte[] element) {
-        return IntStream.of(hash(element)).mapToLong(hash -> {
-            filter.setBit(hash, true);
-            return increment(hash);
-        }).min().getAsLong();
+        // Calculate the hashes of this element
+        return IntStream.of(hash(element))
+            .mapToLong(hash -> {
+                // Set each bit at the position "hash"
+                filter.setBit(hash, true);
+
+                // Increment the count at the position "hash" and return the new value
+                return increment(hash);
+            })
+            // Get the estimated count for the element by finding the minimal value
+            .min().getAsLong();
     }
 
 
@@ -46,14 +53,19 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T> {
     public synchronized long removeAndEstimateCountRaw(byte[] element) {
         if (!contains(element)) { return 0; }
 
-        long min = Long.MAX_VALUE;
-        for (int hash : hash(element)) {
-            long count = decrement(hash);
-            filter.setBit(hash, count > 0);
-            min = (min >= count ? count : min);
-        }
+        // Calculate the hashes of this element
+        return IntStream.of(hash(element))
+            .mapToLong(hash -> {
+                // Decrement the count at the position "hash" and return the new value
+                final long count = decrement(hash);
 
-        return min;
+                // Remove each bit at the position "hash" if count is now zero
+                filter.setBit(hash, count > 0);
+
+                return count;
+            })
+            // Get the estimated count for the element by finding the minimal value
+            .min().getAsLong();
     }
 
 
