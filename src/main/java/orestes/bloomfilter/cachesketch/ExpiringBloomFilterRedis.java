@@ -16,35 +16,46 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
-    private final Clock clock;
-    private ExpirationQueue<T> queue;
-    private final String read_lua = "local current = redis.call('get', KEYS[1]); if current == false or tonumber(ARGV[1]) > tonumber(current) then redis.call('psetex', KEYS[1], ARGV[2], ARGV[1]) end";
-    private String read_lua_hash = "";
+    private static final String REPORT_READ_LUA_SCRIPT =
+        "local current = redis.call('get', KEYS[1]); " +
+        "if current == false or tonumber(ARGV[1]) > tonumber(current) then " +
+        "  redis.call('psetex', KEYS[1], ARGV[2], ARGV[1]) " +
+        "end";
 
+    private final Clock clock;
+    private final ExpirationQueue<T> queue;
+    private final String reportReadLuaScriptHandle;
 
     public ExpiringBloomFilterRedis(FilterBuilder builder) {
         super(builder);
+
         this.clock = pool.getClock();
-        this.queue = new ExpirationQueue<>(this::onExpire);
-        this.read_lua_hash = pool.safelyReturn(jedis -> jedis.scriptLoad(read_lua));
-    }
-
-
-    private void onExpire(ExpiringItem<T> entry) {
-        double current = this.removeAndEstimateCount(entry.getItem());
+        // Init expiration queue which removes elements from Bloom filter if entry expires
+        this.queue = new ExpirationQueueMemory<>(this::onExpire);
+        // Load the "report read" Lua script
+        this.reportReadLuaScriptHandle = pool.safelyReturn(jedis -> jedis.scriptLoad(REPORT_READ_LUA_SCRIPT));
     }
 
     /**
-     * @return current timestamp in second
+     * Handler for the expiration queue, removes entry from Bloom filter
+     *
+     * @param entry The entry which expired in the ExpirationQueue
+     */
+    private void onExpire(ExpiringItem<T> entry) {
+        this.removeAndEstimateCount(entry.getItem());
+    }
+
+    /**
+     * @return current timestamp in milliseconds
      */
     private Long now() {
         return clock.instant().toEpochMilli();
     }
 
     /**
-     * @param TTL
-     * @param unit
-     * @return timestamp from ttl in second
+     * @param TTL the TTL to convert
+     * @param unit the unit of the TTL
+     * @return timestamp from TTL in milliseconds
      */
     private Long ttlToTimestamp(long TTL, TimeUnit unit) {
         return clock.instant().plusMillis(TimeUnit.MILLISECONDS.convert(TTL, unit)).toEpochMilli();
@@ -70,20 +81,20 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         return pool.safelyReturn(jedis -> {
             String[] keys = elements.stream().map(this::key).toArray(String[]::new);
             List<String> vals = jedis.mget(keys);
-            return vals.stream().
-                map(tsString -> tsString != null ? unit.convert(Long.valueOf(tsString) - now(), TimeUnit.MILLISECONDS) : null)
+            return vals.stream()
+                .map(tsString -> tsString != null ? unit.convert(Long.valueOf(tsString) - now(), TimeUnit.MILLISECONDS) : null)
                 .collect(Collectors.toList());
         });
     }
 
     @Override
     public void reportRead(T element, long TTL, TimeUnit unit) {
-        String ttl_str = String.valueOf(TimeUnit.MILLISECONDS.convert(TTL, unit));
+        // Create timestamp from TTL
         String ts = ttlToTimestamp(TTL, unit).toString();
-        pool.safelyDo(jedis -> {
-            jedis.evalsha(read_lua_hash, Collections.singletonList(key(element)),
-                Arrays.asList(ts, ttl_str));
-        });
+        // Convert to TTL string Redis format
+        String ttl_str = String.valueOf(TimeUnit.MILLISECONDS.convert(TTL, unit));
+        pool.safelyDo(jedis -> jedis.evalsha(reportReadLuaScriptHandle, Collections.singletonList(key(element)),
+            Arrays.asList(ts, ttl_str)));
     }
 
     @Override
@@ -104,7 +115,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         for (int i = 0; i < remainingTTLs.size() ; i++) {
             Long remaining = remainingTTLs.get(i);
             T element = elements.get(i);
-            if(remaining != null && remaining >= 0) {
+            if (remaining != null && remaining >= 0) {
                 filteredElements.add(element);
                 queue.addTTL(element, remaining);
             }

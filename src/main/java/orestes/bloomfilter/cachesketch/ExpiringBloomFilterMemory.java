@@ -16,7 +16,7 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
 
     public ExpiringBloomFilterMemory(FilterBuilder config) {
         super(config);
-        this.queue = new ExpirationQueue<>(this::onExpire);
+        this.queue = new ExpirationQueueMemory<>(this::onExpire);
     }
 
     private Long ttlToTimestamp(long TTL, TimeUnit unit) {

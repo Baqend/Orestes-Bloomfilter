@@ -2,6 +2,7 @@ package orestes.bloomfilter.test.cachesketch;
 
 import com.google.common.collect.Lists;
 import orestes.bloomfilter.cachesketch.ExpirationQueue;
+import orestes.bloomfilter.cachesketch.ExpirationQueueMemory;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -15,11 +16,11 @@ import static org.junit.Assert.*;
  *
  * @author Konstantin Simon Maria Möllers
  */
-public class ExpirationQueueTest {
+public class ExpirationQueueMemoryTest {
 
     @Test
     public void testAddElements() throws Exception {
-        final ExpirationQueue<String> queue = new ExpirationQueue<>(str -> {
+        final ExpirationQueue<String> queue = new ExpirationQueueMemory<>(str -> {
         });
 
         assertEquals(0, queue.size());
@@ -41,7 +42,7 @@ public class ExpirationQueueTest {
 
     @Test
     public void testRemoveElements() throws Exception {
-        final ExpirationQueue<String> queue = new ExpirationQueue<>(str -> {
+        final ExpirationQueue<String> queue = new ExpirationQueueMemory<>(str -> {
         });
 
         assertTrue(queue.addTTL("demo", 10, TimeUnit.SECONDS));
@@ -64,7 +65,7 @@ public class ExpirationQueueTest {
     @Test
     public void testElementsAreRemoved() throws Exception {
         final int[] calls = {0};
-        final ExpirationQueue<String> queue = new ExpirationQueue<>(str -> {
+        final ExpirationQueue<String> queue = new ExpirationQueueMemory<>(str -> {
             calls[0]++;
         });
 
@@ -86,7 +87,7 @@ public class ExpirationQueueTest {
 
     @Test
     public void testIterable() throws Exception {
-        final ExpirationQueue<String> queue = new ExpirationQueue<>(str -> {
+        final ExpirationQueue<String> queue = new ExpirationQueueMemory<>(str -> {
         });
 
         assertTrue(queue.addTTL("demo", 12, TimeUnit.SECONDS));
