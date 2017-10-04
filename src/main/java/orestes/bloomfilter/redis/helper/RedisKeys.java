@@ -22,11 +22,13 @@ public class RedisKeys {
     public final String BITS_KEY;
     public final String COUNTS_KEY;
     public final String TTL_KEY;
+    public final String EXPIRATION_QUEUE_KEY;
 
     public RedisKeys(String instanceName) {
         this.BITS_KEY = instanceName + ":bits";
         this.COUNTS_KEY = instanceName + ":counts";
         this.TTL_KEY = instanceName + ":ttl";
+        this.EXPIRATION_QUEUE_KEY = instanceName + ":queue";
     }
 
 

@@ -31,21 +31,6 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     }
 
     @Override
-    public boolean addTTL(T item, long ttl) {
-        return addTTL(item, ttl, TimeUnit.NANOSECONDS);
-    }
-
-    @Override
-    public boolean addTTL(T item, long ttl, TimeUnit ttlUnit) {
-        return add(new ExpiringItem<>(item, System.nanoTime() + TimeUnit.NANOSECONDS.convert(ttl, ttlUnit)));
-    }
-
-    @Override
-    public boolean addExpiration(T item, long timestamp) {
-        return add(new ExpiringItem<>(item, timestamp));
-    }
-
-    @Override
     public int size() {
         return delayedQueue.size();
     }
@@ -74,10 +59,5 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     public boolean remove(T item) {
         final Optional<ExpiringItem<T>> found = delayedQueue.stream().filter(it -> it.getItem().equals(item)).findFirst();
         return found.filter(delayedQueue::remove).isPresent();
-    }
-
-    @Override
-    public Iterator<T> iterator() {
-        return delayedQueue.stream().map(ExpiringItem::getItem).iterator();
     }
 }

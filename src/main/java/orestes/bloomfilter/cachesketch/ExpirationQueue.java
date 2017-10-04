@@ -1,5 +1,7 @@
 package orestes.bloomfilter.cachesketch;
 
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
@@ -13,21 +15,25 @@ public interface ExpirationQueue<T> extends Iterable<T> {
     /**
      * Adds an item with a time to live (TTL) to the queue.
      *
-     * @param item The item to add to the queue
-     * @param ttl  The time to live of the item, in nanoseconds
-     * @return whether the item has been added
-     */
-    boolean addTTL(T item, long ttl);
-
-    /**
-     * Adds an item with a time to live (TTL) to the queue.
-     *
      * @param item    The item to add to the queue
      * @param ttl     The time to live of the item
      * @param ttlUnit The unit of the ttl
      * @return whether the item has been added
      */
-    boolean addTTL(T item, long ttl, TimeUnit ttlUnit);
+    default boolean addTTL(T item, long ttl, TimeUnit ttlUnit) {
+        return add(new ExpiringItem<>(item, System.nanoTime() + TimeUnit.NANOSECONDS.convert(ttl, ttlUnit)));
+    }
+
+    /**
+     * Adds an item with a time to live (TTL) to the queue.
+     *
+     * @param item The item to add to the queue
+     * @param ttl  The time to live of the item, in nanoseconds
+     * @return whether the item has been added
+     */
+    default boolean addTTL(T item, long ttl) {
+        return addTTL(item, ttl, TimeUnit.NANOSECONDS);
+    }
 
     /**
      * Adds an item with an expiration timestamp to the queue.
@@ -36,7 +42,9 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      * @param timestamp The timestamp when the item expires, in nanoseconds since {@link System#nanoTime()}
      * @return whether the item has been added
      */
-    boolean addExpiration(T item, long timestamp);
+    default boolean addExpiration(T item, long timestamp) {
+        return add(new ExpiringItem<>(item, timestamp));
+    }
 
     /**
      * Returns the queue's size.
@@ -58,7 +66,7 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      *
      * @return a queue of non-expired items
      */
-    Queue<ExpiringItem<T>> getNonExpired();
+    Collection<ExpiringItem<T>> getNonExpired();
 
     /**
      * Clears the queue.
@@ -80,6 +88,11 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      * @return true, if item has been removed
      */
     boolean remove(T item);
+
+    @Override
+    default Iterator<T> iterator() {
+        return getNonExpired().stream().map(ExpiringItem::getItem).iterator();
+    }
 
     /**
      * An item of the ExpirationQueue
