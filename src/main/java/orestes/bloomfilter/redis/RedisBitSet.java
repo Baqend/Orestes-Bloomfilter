@@ -1,7 +1,7 @@
 package orestes.bloomfilter.redis;
 
 import orestes.bloomfilter.redis.helper.RedisPool;
-import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.PipelineBase;
 import redis.clients.util.SafeEncoder;
 
 import java.util.BitSet;
@@ -58,7 +58,7 @@ public class RedisBitSet extends BitSet {
     }
 
 
-    public void get(Pipeline p, int position) {
+    public void get(PipelineBase p, int position) {
         p.getbit(name, position);
     }
 
@@ -69,7 +69,7 @@ public class RedisBitSet extends BitSet {
      * @param bitIndex a bit index
      * @param value    a boolean value to set
      */
-    public void set(Pipeline p, int bitIndex, boolean value) {
+    public void set(PipelineBase p, int bitIndex, boolean value) {
         p.setbit(name, bitIndex, value);
     }
 
