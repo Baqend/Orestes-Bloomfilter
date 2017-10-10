@@ -12,6 +12,7 @@ import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 import redis.clients.util.SafeEncoder;
 
+import java.awt.print.PrinterIOException;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
@@ -125,41 +126,44 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
             int[] hashes = hash(value);
             String[] hashesString = encode(hashes);
 
-            Pipeline p = jedis.pipelined();
-            p.watch(keys.COUNTS_KEY, keys.BITS_KEY);
-
-            List<Long> counts;
+            // Decrement counters in CBF and return their new value
+            final Pipeline p1 = jedis.pipelined();
+            p1.watch(keys.COUNTS_KEY, keys.BITS_KEY); // Forbid writing to CBF and FBF in the meantime
             List<Response<Long>> responses = new ArrayList<>(config().hashes());
             for (String position : hashesString) {
-                responses.add(p.hincrBy(keys.COUNTS_KEY, position, -1));
+                responses.add(p1.hincrBy(keys.COUNTS_KEY, position, -1));
             }
-            p.sync();
-            counts = responses.stream().map(Response::get).collect(Collectors.toList());
+            p1.sync();
+            List<Long> counts = responses.stream().map(Response::get).collect(Collectors.toList());
 
-            //Fast lane: don't set BF bits
+            // Fast lane: don't set BF bits
             long min = Collections.min(counts);
             if (min > 0) {
                 return min;
             }
 
             while (true) {
-                p = jedis.pipelined();
-                p.multi();
+                // Transactionally set FBF bits to 0
+                final Pipeline p2 = jedis.pipelined();
+                p2.multi();
                 for (int i = 0; i < config().hashes(); i++) {
                     if (counts.get(i) <= 0) {
-                        bloom.set(p, hashes[i], false);
+                        bloom.set(p2, hashes[i], false);
                     }
                 }
-                Response<List<Object>> exec = p.exec();
-                p.sync();
+                Response<List<Object>> exec = p2.exec();
+                p2.sync();
+
+                // Did the transaction fail?
                 if (exec.get() == null) {
-                    p = jedis.pipelined();
-                    p.watch(keys.COUNTS_KEY, keys.BITS_KEY);
-                    Response<List<String>> hmget = p.hmget(keys.COUNTS_KEY, hashesString);
-                    p.sync();
+                    // Update counts from Redis
+                    final Pipeline p3 = jedis.pipelined();
+                    p3.watch(keys.COUNTS_KEY, keys.BITS_KEY); // Forbid writing to CBF and FBF in the meantime
+                    Response<List<String>> hmget = p3.hmget(keys.COUNTS_KEY, hashesString);
+                    p3.sync();
                     counts = hmget.get()
                         .stream()
-                        .map(o -> o != null ? Long.parseLong(o) : 0l)
+                        .map(o -> o != null ? Long.parseLong(o) : 0L)
                         .collect(Collectors.toList());
                 } else {
                     return Collections.min(counts);
@@ -294,7 +298,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         Map<Integer, Long> countSetToMigrate = cbf.getCountMap();
 
         pool.transactionallyRetry(p -> {
-            cbf.getCountMap().forEach((position, value) -> set(position, value, p));
+            countSetToMigrate.forEach((position, value) -> set(position, value, p));
         }, keys.BITS_KEY, keys.COUNTS_KEY);
 
         return this;

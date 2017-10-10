@@ -4,6 +4,7 @@ import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterMemory;
+import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,23 +24,35 @@ import static org.junit.Assert.*;
 @RunWith(Parameterized.class)
 public class ExpiringTest {
     private final boolean inMemory;
+    private final Class<?> type;
     private ExpiringBloomFilter<String> filter;
 
     @Parameterized.Parameters(name = "Expiring Bloom Filter test {0}")
     public static Collection<Object[]> data() throws Exception {
-        Object[][] data = {{"in-memory", true}, {"with redis", false}
-        };
+        Object[][] data = {{"in-memory", ExpiringBloomFilterMemory.class}, {"with redis", ExpiringBloomFilterRedis.class},
+            {"pure redis", ExpiringBloomFilterPureRedis.class}};
 
         return Arrays.asList(data);
     }
 
-    public ExpiringTest(String name, boolean inMemory) {
-        this.inMemory = inMemory;
+    public ExpiringTest(String name, Class<?> type) {
+        this.type = type;
+        this.inMemory = type == ExpiringBloomFilterMemory.class;
     }
 
     public <T> void createFilter(FilterBuilder b) {
         b.overwriteIfExists(true);
-        filter = inMemory ? new ExpiringBloomFilterMemory<>(b) : new ExpiringBloomFilterRedis<>(b);
+
+        if (type == ExpiringBloomFilterMemory.class) {
+            filter = new ExpiringBloomFilterMemory<>(b);
+        }
+        if (type == ExpiringBloomFilterRedis.class) {
+            filter = new ExpiringBloomFilterRedis<>(b);
+        }
+        if (type == ExpiringBloomFilterPureRedis.class) {
+            filter = new ExpiringBloomFilterPureRedis(b);
+        }
+
         filter.clear();
     }
 
@@ -81,7 +94,7 @@ public class ExpiringTest {
                 assertTrue(invalidation);
                 assertTrue(filter.contains(item));
                 try {
-                    Thread.sleep(delay + 1000);
+                    Thread.sleep(delay + 2000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -128,7 +141,7 @@ public class ExpiringTest {
         assertEquals(1, Math.round(filter.getEstimatedPopulation()));
         Thread.sleep(30);
         assertTrue(filter.getRemainingTTL("1", TimeUnit.MILLISECONDS) <= 70);
-        assertTrue(filter.getRemainingTTL("1", TimeUnit.MILLISECONDS) >= 50);
+        assertTrue(filter.getRemainingTTL("1", TimeUnit.MILLISECONDS) >= 40);
         Thread.sleep(100);
         assertEquals(null, filter.getRemainingTTL("1", TimeUnit.MILLISECONDS));
         assertFalse(filter.contains("1"));

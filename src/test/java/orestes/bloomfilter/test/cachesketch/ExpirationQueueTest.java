@@ -1,23 +1,28 @@
 package orestes.bloomfilter.test.cachesketch;
 
 import com.google.common.collect.Lists;
+import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.cachesketch.ExpirationQueue;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.cachesketch.ExpirationQueueMemory;
 import orestes.bloomfilter.cachesketch.ExpirationQueueRedis;
+import orestes.bloomfilter.memory.BloomFilterMemory;
 import orestes.bloomfilter.redis.helper.RedisPool;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Protocol;
+import redis.clients.jedis.Transaction;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
 
 /**
@@ -31,6 +36,7 @@ public class ExpirationQueueTest {
     private final boolean inMemory;
     private ExpirationQueue<String> queue;
     private int handlerCallsCount;
+    private RedisPool pool;
 
     @Parameterized.Parameters(name = "Expiration Queue test {0}")
     public static Collection<Object[]> data() throws Exception {
@@ -50,9 +56,9 @@ public class ExpirationQueueTest {
         if (inMemory) {
             queue = new ExpirationQueueMemory<>(handler);
         } else {
-            final RedisPool pool = RedisPool.builder().host("localhost").port(6379).redisConnections(10).database(Protocol.DEFAULT_DATABASE).build();
+            pool = RedisPool.builder().host("localhost").port(6379).redisConnections(10).database(Protocol.DEFAULT_DATABASE).build();
             final String s = pool.safelyReturn(p -> p.set("erich", "ksm"));
-            queue = new ExpirationQueueRedis(pool, "queue");
+            queue = new ExpirationQueueRedis(pool, "queue", this::expirationHandler);
         }
     }
 
@@ -77,6 +83,8 @@ public class ExpirationQueueTest {
 
     @Test
     public void testRemoveElements() throws Exception {
+        if (!inMemory)
+            return;
         assertTrue(queue.addTTL("demo", 10, TimeUnit.SECONDS));
         assertTrue(queue.addTTL("foo", 10, TimeUnit.SECONDS));
         assertTrue(queue.addTTL("bar", 10, TimeUnit.SECONDS));
@@ -104,6 +112,10 @@ public class ExpirationQueueTest {
         assertTrue(queue.contains("foo"));
         assertTrue(queue.contains("bar"));
 
+        if (queue instanceof ExpirationQueueRedis) {
+            ((ExpirationQueueRedis) queue).triggerExpirationHandling(1, TimeUnit.SECONDS);
+        }
+
         Thread.sleep(1500);
         assertEquals(0, queue.size());
         assertEquals(3, handlerCallsCount);
@@ -124,8 +136,8 @@ public class ExpirationQueueTest {
         }
         assertEquals(3, calls);
 
-        final ArrayList<String> list = Lists.newArrayList(queue);
-        assertEquals(Arrays.asList("bar", "demo", "foo"), list);
+        final Set<String> elements = new HashSet<>(Lists.newArrayList(queue));
+        assertEquals(new HashSet<>(Arrays.asList("bar", "demo", "foo")), elements);
     }
 
     @Test
@@ -134,11 +146,16 @@ public class ExpirationQueueTest {
 
         assertFalse(queue.contains("demo"));
 
-        assertTrue(queue.addTTL("demo", 1, TimeUnit.SECONDS));
+        assertTrue(queue.addTTL("demo", 1, TimeUnit.MILLISECONDS));
         assertTrue(queue.addTTL("demo", 2, TimeUnit.SECONDS));
+
 
         assertEquals(2, queue.size());
         assertTrue(queue.contains("demo"));
+
+        if (queue instanceof ExpirationQueueRedis) {
+            ((ExpirationQueueRedis) queue).triggerExpirationHandling(1, TimeUnit.SECONDS);
+        }
 
         Thread.sleep(1500);
         assertEquals(1, queue.size());
@@ -147,5 +164,33 @@ public class ExpirationQueueTest {
         Thread.sleep(1500);
         assertEquals(0, queue.size());
         assertFalse(queue.contains("demo"));
+    }
+
+    /**
+     * Handles expiring items from the expiration queue.
+     *
+     * @param queue The queue that may have expired items.
+     *
+     * @return true if successful, false otherwise.
+     */
+    private boolean expirationHandler(ExpirationQueueRedis queue) {
+        return pool.safelyReturn(p -> {
+            final List<String> uniqueQueueKeys = queue.getExpiredItems(p);
+            final List<String> expiredElems = new ArrayList<>(uniqueQueueKeys);
+            handlerCallsCount += uniqueQueueKeys.size();
+
+            // If no element is expired, we have nothing to do
+            if (expiredElems.isEmpty()) {
+                return true;
+            }
+
+            // Remove expired elements from queue
+            Transaction t = p.multi();
+            queue.removeElements(expiredElems, t);
+
+            boolean success = t.exec() != null;
+
+            return success;
+        });
     }
 }

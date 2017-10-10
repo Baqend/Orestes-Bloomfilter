@@ -6,6 +6,7 @@ import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import redis.clients.jedis.ScanParams;
 import redis.clients.jedis.ScanResult;
+import redis.clients.jedis.Transaction;
 
 import java.time.Clock;
 import java.util.Arrays;
@@ -14,6 +15,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static java.util.stream.Collectors.toList;
 
 public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
     private static final String REPORT_READ_LUA_SCRIPT =
@@ -23,17 +27,37 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         "end";
 
     private final Clock clock;
-    private final ExpirationQueue<T> queue;
+    private ExpirationQueue<T> queue;
     private final String reportReadLuaScriptHandle;
 
     public ExpiringBloomFilterRedis(FilterBuilder builder) {
+        this(builder, true);
+    }
+
+    public ExpiringBloomFilterRedis(FilterBuilder builder, boolean initQueue) {
         super(builder);
 
         this.clock = pool.getClock();
-        // Init expiration queue which removes elements from Bloom filter if entry expires
-        this.queue = new ExpirationQueueMemory<>(this::onExpire);
+
+        if (initQueue){
+            // Init expiration queue which removes elements from Bloom filter if entry expires
+            this.queue = new ExpirationQueueMemory<>(this::onExpire);
+        }
+
         // Load the "report read" Lua script
         this.reportReadLuaScriptHandle = pool.safelyReturn(jedis -> jedis.scriptLoad(REPORT_READ_LUA_SCRIPT));
+    }
+
+    /**
+     * Sets the given expiration queue.
+     *
+     * @param queue The expiration queue to set
+     */
+    public void setQueue(ExpirationQueue<T> queue) {
+        if (this.queue != null) {
+            throw new RuntimeException("You cannot set a queue if there is already one.");
+        }
+        this.queue = queue;
     }
 
     /**
@@ -114,10 +138,14 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         List<Long> reportedTTLs = new LinkedList<>();
         for (int i = 0; i < remainingTTLs.size() ; i++) {
             Long remaining = remainingTTLs.get(i);
-            T element = elements.get(i);
             if (remaining != null && remaining >= 0) {
+                reportedTTLs.add(unit.convert(remaining, TimeUnit.NANOSECONDS));
+
+                T element = elements.get(i);
                 filteredElements.add(element);
                 queue.addTTL(element, remaining);
+            } else {
+                reportedTTLs.add(null);
             }
         }
         addAll(filteredElements);
