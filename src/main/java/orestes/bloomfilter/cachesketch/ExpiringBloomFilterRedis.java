@@ -6,8 +6,6 @@ import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import redis.clients.jedis.ScanParams;
 import redis.clients.jedis.ScanResult;
-import redis.clients.jedis.Transaction;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.time.Clock;
 import java.util.Arrays;
@@ -16,17 +14,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
-
 public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
-    private static final String REPORT_READ_LUA_SCRIPT =
-        "local current = redis.call('get', KEYS[1]); " +
-        "if current == false or tonumber(ARGV[1]) > tonumber(current) then " +
-        "  redis.call('psetex', KEYS[1], ARGV[2], ARGV[1]) " +
-        "end";
+    private static final String REPORT_READ_LUA_SCRIPT = "local current = redis.call('get', KEYS[1]); " + "if current == false or tonumber(ARGV[1]) > tonumber(current) then " + "  redis.call('psetex', KEYS[1], ARGV[2], ARGV[1]) " + "end";
 
     private final Clock clock;
     private ExpirationQueue<T> queue;
@@ -41,7 +32,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
 
         this.clock = pool.getClock();
 
-        if (initQueue){
+        if (initQueue) {
             // Init expiration queue which removes elements from Bloom filter if entry expires
             this.queue = new ExpirationQueueMemory<>(this::onExpire);
         }
@@ -79,7 +70,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     }
 
     /**
-     * @param TTL the TTL to convert
+     * @param TTL  the TTL to convert
      * @param unit the unit of the TTL
      * @return timestamp from TTL in milliseconds
      */
@@ -108,7 +99,9 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
             String[] keys = elements.stream().map(this::key).toArray(String[]::new);
             List<String> vals = jedis.mget(keys);
             return vals.stream()
-                .map(tsString -> tsString != null ? unit.convert(Long.valueOf(tsString) - now(), TimeUnit.MILLISECONDS) : null)
+                .map(
+                    tsString -> tsString != null ? unit.convert(Long.valueOf(tsString) - now(), TimeUnit.MILLISECONDS) :
+                        null)
                 .collect(Collectors.toList());
         });
     }
@@ -138,7 +131,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         List<Long> remainingTTLs = getRemainingTTLs(elements, TimeUnit.NANOSECONDS);
         List<T> filteredElements = new LinkedList<>();
         List<Long> reportedTTLs = new LinkedList<>();
-        for (int i = 0; i < remainingTTLs.size() ; i++) {
+        for (int i = 0; i < remainingTTLs.size(); i++) {
             Long remaining = remainingTTLs.get(i);
             if (remaining != null && remaining >= 0) {
                 reportedTTLs.add(unit.convert(remaining, TimeUnit.NANOSECONDS));
@@ -159,7 +152,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         //Clear CBF
         super.clear();
         //During init ONLY clear CBF
-        if(queue == null) {
+        if (queue == null) {
             return;
         }
         //Clear Queue
@@ -193,7 +186,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     @Override
     public Stream<ExpiringItem<T>> streamExpirations() {
         // TODO Refactor TTL list to use a redis map before implementing this.
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
