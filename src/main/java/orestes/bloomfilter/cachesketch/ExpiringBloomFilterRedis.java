@@ -7,6 +7,7 @@ import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import redis.clients.jedis.ScanParams;
 import redis.clients.jedis.ScanResult;
 import redis.clients.jedis.Transaction;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.time.Clock;
 import java.util.Arrays;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -186,5 +188,34 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     @Override
     public BloomFilter<T> getClonedBloomFilter() {
         return toMemoryFilter();
+    }
+
+    @Override
+    public Stream<ExpiringItem<T>> streamExpirations() {
+        // TODO Refactor TTL list to use a redis map before implementing this.
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public Stream<ExpiringItem<T>> streamExpiringBFItems() {
+        return queue.streamEntries();
+    }
+
+    @Override
+    public CountingBloomFilterRedis<T> migrateFrom(BloomFilter<T> source) {
+        // Migrate CBF and FBF
+        super.migrateFrom(source);
+
+        if (!(source instanceof ExpiringBloomFilter) || !compatible(source)) {
+            throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
+        }
+
+        // TODO migrate TLL list
+        ((ExpiringBloomFilter<T>) source).streamExpirations();
+
+        // migrate queue
+        ((ExpiringBloomFilter<T>) source).streamExpiringBFItems().forEach(queue::add);
+
+        return this;
     }
 }

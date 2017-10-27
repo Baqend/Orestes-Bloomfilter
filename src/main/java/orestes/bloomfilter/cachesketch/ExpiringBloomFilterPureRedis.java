@@ -1,11 +1,17 @@
 package orestes.bloomfilter.cachesketch;
 
+import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.redis.helper.RedisPool;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 
 import java.util.List;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -62,11 +68,15 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
      * @return true if successful, false otherwise.
      */
     private boolean expirationHandler(ExpirationQueueRedis queue) {
-        return pool.safelyReturn(p -> {
-            p.watch(keys.COUNTS_KEY, keys.EXPIRATION_QUEUE_KEY);
+        return pool.safelyReturn((Jedis p) -> {
+            Pipeline pipe = p.pipelined();
 
-            final List<String> uniqueQueueKeys = queue.getExpiredItems(p);
-            final List<String> expiredElems = uniqueQueueKeys.stream().map(queue::normalize).collect(toList());
+            pipe.watch(keys.COUNTS_KEY, keys.EXPIRATION_QUEUE_KEY);
+
+            Response<Set<String>> uniqueQueueKeys = queue.getExpiredItems(pipe);
+            pipe.sync();
+
+            final List<String> expiredElems = uniqueQueueKeys.get().stream().map(queue::normalize).collect(toList());
 
             // If no element is expired, we have nothing to do
             if (expiredElems.isEmpty()) {
@@ -101,7 +111,7 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
             Transaction t = p.multi();
 
             // Remove expired elements from queue
-            queue.removeElements(uniqueQueueKeys, t);
+            queue.removeElements(uniqueQueueKeys.get(), t);
 
             // Decrement counts in CBF
             keysToDec.forEach(pos -> t.hincrBy(keys.COUNTS_KEY, pos, -1));
@@ -112,5 +122,10 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
             List<Object> commit = t.exec();
             return commit != null;
         });
+    }
+
+    @Override
+    public CountingBloomFilterRedis<String> migrateFrom(BloomFilter<String> source) {
+        return super.migrateFrom(source);
     }
 }

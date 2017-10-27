@@ -11,6 +11,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -61,19 +62,19 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
      * @param elements The elements to remove.
      * @param p The redis pipeline to use.
      */
-    public void removeElements(List<String> elements, PipelineBase p) {
+    public void removeElements(Collection<String> elements, PipelineBase p) {
         p.zrem(queueKey, elements.toArray(new String[elements.size()]));
     }
 
     /**
-     * Returns all expired elements from this queue with their unique identifier. To the get actual element keys use the normalize.
+     * Returns all expired elements from this queue with their unique identifier. To get the actual element keys use the normalize.
      *
-     * @param p The redis connection.
-     * @return All expired elements from this queue with their unique identifier. To the get actual element keys use the normalize
+     * @param p The redis pipeline
+     * @return All expired elements from this queue with their unique identifier. To get the actual element keys use the normalize
      */
-    public List<String> getExpiredItems(Jedis p) {
+    public Response<Set<String>> getExpiredItems(PipelineBase p) {
         final long now = System.nanoTime();
-        return new ArrayList<>(p.zrangeByScore(queueKey, 0, now));
+        return p.zrangeByScore(queueKey, 0, now);
     }
 
     /**
@@ -139,6 +140,12 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
         throw new UnsupportedOperationException("Cannot remove from ExpirationQueueRedis");
     }
 
+    @Override
+    public Stream<ExpiringItem<String>> streamEntries() {
+        Set<Tuple> allTuples = pool.safelyReturn(p -> p.zrangeWithScores(queueKey, 0, -1));
+        return allTuples.stream()
+            .map(tuple -> new ExpiringItem<>(tuple.getElement(), (long) tuple.getScore()));
+    }
 
     /**
      * Triggers the expiration handling before the given delay is expired.

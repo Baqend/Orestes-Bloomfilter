@@ -14,6 +14,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Protocol;
+import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 
 import java.util.*;
@@ -57,7 +58,6 @@ public class ExpirationQueueTest {
             queue = new ExpirationQueueMemory<>(handler);
         } else {
             pool = RedisPool.builder().host("localhost").port(6379).redisConnections(10).database(Protocol.DEFAULT_DATABASE).build();
-            final String s = pool.safelyReturn(p -> p.set("erich", "ksm"));
             queue = new ExpirationQueueRedis(pool, "queue", this::expirationHandler);
         }
     }
@@ -175,7 +175,11 @@ public class ExpirationQueueTest {
      */
     private boolean expirationHandler(ExpirationQueueRedis queue) {
         return pool.safelyReturn(p -> {
-            final List<String> uniqueQueueKeys = queue.getExpiredItems(p);
+            Pipeline pipe = p.pipelined();
+            Response<Set<String>> uniqueQueueKeysResp = queue.getExpiredItems(pipe);
+            p.sync();
+            Set<String> uniqueQueueKeys = uniqueQueueKeysResp.get();
+
             final List<String> expiredElems = new ArrayList<>(uniqueQueueKeys);
             handlerCallsCount += uniqueQueueKeys.size();
 

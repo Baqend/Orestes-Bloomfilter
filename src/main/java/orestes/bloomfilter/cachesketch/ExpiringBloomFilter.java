@@ -2,10 +2,12 @@ package orestes.bloomfilter.cachesketch;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
+import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 /**
@@ -91,6 +93,20 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
     default List<Long> reportWrites(List<T> elements, TimeUnit unit) {
         return elements.stream().map(el -> reportWrite(el, unit)).collect(Collectors.toList());
     }
+
+    /**
+     * Returns a stream with all cached objects and their expire time.
+     *
+     * @return all expiring objects as a stream
+     */
+    Stream<ExpiringItem<T>> streamExpirations();
+
+    /**
+     * Returns a stream with all items that have been inserted into the Bloom filter and their expire time.
+     *
+     * @return all expiring objects contained in the bloom filter
+     */
+    Stream<ExpiringItem<T>> streamExpiringBFItems();
 
     BloomFilter<T> getClonedBloomFilter();
 }

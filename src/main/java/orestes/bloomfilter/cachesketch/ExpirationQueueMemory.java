@@ -7,6 +7,7 @@ import java.util.Queue;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     private final Thread workerThread;
@@ -59,5 +60,10 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     public boolean remove(T item) {
         final Optional<ExpiringItem<T>> found = delayedQueue.stream().filter(it -> it.getItem().equals(item)).findFirst();
         return found.filter(delayedQueue::remove).isPresent();
+    }
+
+    @Override
+    public Stream<ExpiringItem<T>> streamEntries() {
+        return delayedQueue.stream();
     }
 }

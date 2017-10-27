@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
  * Created on 04.10.17.
@@ -88,6 +89,13 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      * @return true, if item has been removed
      */
     boolean remove(T item);
+
+    /**
+     * Returns a stream containing all entries of this stream.
+     *
+     * @return all entries of a stream
+     */
+    Stream<ExpiringItem<T>> streamEntries();
 
     @Override
     default Iterator<T> iterator() {
