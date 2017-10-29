@@ -447,7 +447,7 @@ public class HashProvider {
         Murmur3(HashProvider::hashMurmur3),
         /**
          * Uses a the Murmur 3 hash in combination with a performance optimization described by Kirsch and Mitzenmacher,
-         * see: http://www.eecs.harvard.edu/~kirsch/pubs/bbbf/esa06.pdf - hash values are generated through the scheme
+         * see: https://www.eecs.harvard.edu/~michaelm/postscripts/tr-02-05.pdf - hash values are generated through the scheme
          * h_i = (h1 + i*h2) mod m <p> Though this method is asymptotically optimal our experiements revealed that
          * real-world performance is not as good as pure Murmur 3 hashes or cryptographic hash functions, in particular
          * for random words.</p>
