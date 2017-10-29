@@ -1,7 +1,7 @@
 Bloom filter library
 ================================
 
-[Changelog](CHANGELOG.md) | [Setup](#install) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter)
+[Changelog](CHANGELOG.md) | [Setup](#getting-started) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter)
 
 Version 1 is out with a complete rewrite of almost all functionalities and many new ones.
 
@@ -101,7 +101,7 @@ dependencies {
 For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project (not recommended).
 
 
-## Usage
+## `Usage`
 - [Regular Bloom Filter](#a1)
 - [The Filter Builder](#builder)
 - [Counting Bloom Filter](#a2)
