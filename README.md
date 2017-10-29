@@ -1,7 +1,7 @@
 Bloom filter library
 ================================
 
-[Changelog](CHANGELOG.md) | [Setup](#getting-started) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter)
+[Changelog](CHANGELOG.md) | [Setup](#install) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter)
 
 Version 1 is out with a complete rewrite of almost all functionalities and many new ones.
 
@@ -58,6 +58,7 @@ There are a many things we addressed as we sorely missed them in other implement
 * Minimal dependencies: the local Bloom filters have none, the Redis Bloom filters need the [jedis](https://github.com/xetorthio/jedis) client library (in  `lib` folder)
 * Concurrency: the shared Bloom filter can be accessed by many clients simultaneously without multi-user anomalies and performance degradation (which is quite difficult for bitwise counters and a pregnerated Bloom filter - but possible)
 
+<a name="install"/>
 ## Getting started
 *New*: The Bloom filter repository is now hosted on [JCenter](https://bintray.com/baqend/maven/Orestes-Bloomfilter/view).
 
@@ -69,7 +70,7 @@ too):
    <dependency>
        <groupId>com.baqend</groupId>
        <artifactId>bloom-filter</artifactId>
-       <version>1.2.3</version>
+       <version>1.0.7</version>
    </dependency>
 </dependencies>
 <repositories>
@@ -92,7 +93,7 @@ repositories {
 }
 dependencies {
     compile(
-            'com.baqend:bloom-filter:1.2.3'
+            'com.baqend:bloom-filter:1.0.7'
     )
 }
 ```
@@ -100,8 +101,8 @@ dependencies {
 
 For the normal Bloom filters it's even sufficient to only copy the source *.java files to your project (not recommended).
 
-
-## `Usage`
+<a name="usage"/>
+## Usage
 - [Regular Bloom Filter](#a1)
 - [The Filter Builder](#builder)
 - [Counting Bloom Filter](#a2)
@@ -113,7 +114,7 @@ For the normal Bloom filters it's even sufficient to only copy the source *.java
 - [Performance](#a7)
 - [Overview of Probabilistic Data Structures](#overview)
 
-
+<a name="a1"/>
 ### Regular Bloom Filter
 The regular Bloom filter is very easy to use. It is the base class of all other Bloom filters. Figure out how many elements you expect to have in the Bloom filter ( *n* ) and then which false positive rate is tolerable ( *p* ).
 
@@ -225,10 +226,12 @@ print(one.contains("this")); //true
 print(one.contains("boggles")); //false
 ```
 
+<a name="builder"/>
 ### The Filter Builder
 The `FilterBuilder` is used to configure Bloom filters before constructing them. It will try to infer and compute any missing parameters optimally and preconfigured with sensible defaults (documented in its JavaDoc). For instance if you only specified the number of expected elements and the false positive probability, it will compute the optimal bit size and number of hash functions.
 To construct a filter, you can either call `buildBloomFilter` or `buildCountingBloomFilter` or you can pass the builder to a specific Bloom filter implementation to construct it.
 
+<a name="a2"/>
 ## Counting Bloom Filter
 The Counting Bloom filter allows object removal. For this purpose it has binary counters instead of simple bits. The 
 amount of bits *c* per counter can be set. If you expect to insert elements only once, the 
@@ -304,6 +307,7 @@ Bloom Filter Parameters: size = 11, hashes = 3, Bits: {0, 2, 6, 8, 10}
 The Counting Bloom filter thus has a bit size of 11, uses 3 hash functions and 4 bits for counting. The first row is the materialized bit array of all counters > 0. Explicitly saving it makes `contains` calls fast and generation when transferring the Counting Bloom Filter flattened to a Bloom filter.
 
 
+<a name="a3"/>
 ## Redis Bloom Filters
 Bloom filters are really interesting as they allow very high throughput and minimal latency for adding and querying (and removing). Therefore you might want to use them across the boundaries of a single machine. For instance imagine you run a large scale web site or web service. You have a load balancer distributing the request load over several front-end web servers. You now want to store some information with a natural set structure, say, you want to know if a source IP address has accessed the requested URL in the past. You could achieve that by either explicitly storing that information (probably in a database) which will soon be a bottleneck if you serve billions of requests a day. Or you employ a shared Bloom filter and accept a small possibility of false positives.
 
@@ -351,6 +355,7 @@ The Redis-backed Bloom filters are concurrency/thread-safe at the backend as-wel
 
 The Redis-backed Bloom filters save their metadata (like number and kind of hash functions) in Redis, too. Thus other clients can easily to connect to a Redis instance that already holds a Bloom filter with a given name and specify whether to use or overwrite it.
 
+<a name="a4"/>
 ## Redis Counting Bloom Filters
 The Redis Counting Bloom filter saves the counters as separate counters in a compact [Redis hash](http://redis
 .io/commands#hash) and keeps the materialized flat Bloom filter as a bit array. It is compatatible with Redis 2.4 or 
@@ -395,6 +400,7 @@ filter.getEstimatedCount("abc"); //dito
 filter.getBitSet(); //and again
 ```
 
+<a mame="sentinel"/>
 ## Redis Sentinel Bloom Filters
 To configure a Bloom Filter to use Sentinel to find the master Redis node, when building the FilterBuilder explicitly define a Sentinel configuration and provide your own Pool.
 
@@ -413,6 +419,7 @@ In the following example the Sentinel Nodes are a simple Set of form "host:port"
                 .redisConnections(connections).complete());
 ```
 
+<a name="a5"/>
 ## JSON Representation
 To easily transfer a Bloom filter to a client (for instance via an HTTP GET) there is a JSON Converter for the Bloom filters. All Bloom filters are implemented so that this generation option is very cheap (i.e. just sequentially reading it from memory). It works for all Bloom filters including the ones backed by Redis.
 ```java
@@ -427,6 +434,7 @@ JSON is not an ideal format for binary content (Base64 only uses 64 out of 94 po
 
 Moreover, the Memory Counting Bloom filter can also be serialized and deserialized in the normal Java way.
 
+<a name="a6"/>
 ## Hash Functions
 There is a detailed description of the available hash functions in the Javadocs of the HashMethod enum. Hash uniformity (i.e. all bits of the Bloom filter being equally likely) is of great importance for the false positive rate. But there is also an inherent trade-off between hash uniformity and speed of computation. For instance cryptographic hash functions have very good distribution properties but are very CPU intensive. Pseudorandom number generators like the [linear congruential generator](http://en.wikipedia.org/wiki/Linear_congruential_generator) are easy to compute but do not have perfectly random outputs but rather certain distribution patterns which for some inputs are notable and for others are negligible. The implementations of all hash functions are part of the BloomFilter class and use tricks like [rejection sampling](https://en.wikipedia.org/wiki/Rejection_sampling) to get the best possible distribution for the respective hash function type.
 
@@ -478,6 +486,7 @@ BloomFilter<String> bf = new FilterBuilder(1000, 0.01)
 ```
 
 
+<a name="a7"/>
 ## Performance
 To get meaningful results, the Bloom filters should be tested on machines where they are to be run. The test package contains a benchmark procedure (the test packages relies on the Apache Commons Math library):
 
@@ -500,7 +509,7 @@ Hash Quality (Chi-Squared-Test): p-value = 0.8041807628127277 , Chi-Squared-Stat
 
 The Redis-backed and Counting Bloom filters can be tested similarly.
 
-
+<a name="overview">
 ## Overview of Probabilistic Data Structures
 
 <table style="font-size: 80%;">
