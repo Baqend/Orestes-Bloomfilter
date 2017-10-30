@@ -1,4 +1,4 @@
-package orestes.bloomfilter.test;
+package orestes.bloomfilter.test.redis;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
