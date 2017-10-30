@@ -73,6 +73,28 @@ public class RedisBitSetTest {
     }
 
     @Test
+    public void testIsEmpty() throws Exception {
+        int max = 1_000_000;
+        final RedisBitSet bitSet = new RedisBitSet(Helper.getPool(), "isEmpty", max);
+        bitSet.clear();
+        assertTrue(bitSet.isEmpty());
+
+        bitSet.set(0, true);
+        assertFalse(bitSet.isEmpty());
+        bitSet.set(0, false);
+        assertTrue(bitSet.isEmpty());
+
+        bitSet.set(0, true);
+        bitSet.set(1, true);
+        assertFalse(bitSet.isEmpty());
+        bitSet.set(0, false);
+        assertFalse(bitSet.isEmpty());
+
+        bitSet.clear();
+        assertTrue(bitSet.isEmpty());
+    }
+
+    @Test
     public void testFromByteArrayReverse() throws Exception {
         byte[] bytes = {-128, 0, 0, 1};
         final BitSet bitSet = RedisBitSet.fromByteArrayReverse(bytes);

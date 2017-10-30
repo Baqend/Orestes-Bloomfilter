@@ -114,6 +114,11 @@ public class RedisBitSet extends BitSet {
         });
     }
 
+    @Override
+    public boolean isEmpty() {
+        return pool.safelyReturn(jedis -> jedis.bitcount(name) == 0);
+    }
+
     /**
      * Returns the RedisBitSet as a regular BitSet.
      *
