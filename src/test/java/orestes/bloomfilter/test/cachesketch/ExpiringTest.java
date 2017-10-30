@@ -23,21 +23,22 @@ import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class ExpiringTest {
-    private final boolean inMemory;
     private final Class<?> type;
     private ExpiringBloomFilter<String> filter;
 
     @Parameterized.Parameters(name = "Expiring Bloom Filter test {0}")
     public static Collection<Object[]> data() throws Exception {
-        Object[][] data = {{"in-memory", ExpiringBloomFilterMemory.class}, {"with redis", ExpiringBloomFilterRedis.class},
-            {"pure redis", ExpiringBloomFilterPureRedis.class}};
+        Object[][] data = {
+//            {"in-memory", ExpiringBloomFilterMemory.class},
+            {"with Redis counts and in-memory queue", ExpiringBloomFilterRedis.class},
+//            {"with Redis counts and Redis queue", ExpiringBloomFilterPureRedis.class},
+        };
 
         return Arrays.asList(data);
     }
 
     public ExpiringTest(String name, Class<?> type) {
         this.type = type;
-        this.inMemory = type == ExpiringBloomFilterMemory.class;
     }
 
     public <T> void createFilter(FilterBuilder b) {
@@ -201,9 +202,16 @@ public class ExpiringTest {
         filter.reportRead("1", 50, TimeUnit.MILLISECONDS);
         filter.reportRead("2", 50, TimeUnit.MILLISECONDS);
         filter.reportWrite("1");
+        assertTrue(filter.isCached("1"));
+        assertTrue(filter.isCached("2"));
+        assertTrue(filter.contains("1"));
+        assertFalse(filter.contains("2"));
+        assertFalse(filter.isEmpty());
+
         filter.clear();
         assertFalse(filter.contains("1"));
         assertFalse(filter.contains("2"));
+        assertTrue(filter.isEmpty());
         assertNull(filter.getRemainingTTL("1", TimeUnit.MILLISECONDS));
         assertNull(filter.getRemainingTTL("2", TimeUnit.MILLISECONDS));
     }
