@@ -9,7 +9,7 @@ import orestes.bloomfilter.json.BloomFilterConverter;
 import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.redis.helper.RedisPool;
 import orestes.bloomfilter.test.MemoryBFTest;
-import orestes.bloomfilter.test.RedisBFTest;
+import orestes.bloomfilter.test.redis.RedisBFTest;
 import org.apache.commons.lang3.RandomStringUtils;
 import performance.BFHashUniformity;
 

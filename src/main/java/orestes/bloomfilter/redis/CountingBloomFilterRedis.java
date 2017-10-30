@@ -7,17 +7,17 @@ import orestes.bloomfilter.MigratableBloomFilter;
 import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.redis.helper.RedisKeys;
 import orestes.bloomfilter.redis.helper.RedisPool;
-import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
 import redis.clients.util.SafeEncoder;
 
-import java.awt.print.PrinterIOException;
 import java.util.*;
-import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * Uses regular key-value pairs for counting instead of a bitarray. This introduces a space overhead but allows
@@ -78,6 +78,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
 
     /**
      * Adds all elements to the Bloom filter and returns the estimated count of the inserted elements.
+     *
      * @param elements The elements to add.
      * @return An estimation of how often the respective elements are in the Bloom filter.
      */
@@ -121,54 +122,41 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     }
 
     @Override
-    public long removeAndEstimateCountRaw(byte[] value) {
+    public synchronized long removeAndEstimateCountRaw(byte[] value) {
         return pool.safelyReturn(jedis -> {
-            int[] hashes = hash(value);
-            String[] hashesString = encode(hashes);
+            // Forbid writing to CBF and FBF in the meantime
+            jedis.watch(keys.COUNTS_KEY, keys.BITS_KEY);
 
-            // Decrement counters in CBF and return their new value
-            final Pipeline p1 = jedis.pipelined();
-            p1.watch(keys.COUNTS_KEY, keys.BITS_KEY); // Forbid writing to CBF and FBF in the meantime
-            List<Response<Long>> responses = new ArrayList<>(config().hashes());
-            for (String position : hashesString) {
-                responses.add(p1.hincrBy(keys.COUNTS_KEY, position, -1));
+            // Get all Bloom filter positions to decrement when removing the elements
+            final List<Integer> positions = Arrays.stream(hash(value)).boxed().collect(toList());
+
+            // Get the corresponding keys for the positions in Redis
+            final String[] keysToDec = positions.stream().map(String::valueOf).toArray(String[]::new);
+
+            // Get the resulting counts in the CBF after the elements have been removed
+            final AtomicInteger counter = new AtomicInteger(0);
+            final Map<Integer, Long> positionsToDecr = jedis.hmget(keys.COUNTS_KEY, keysToDec)
+                .stream()
+                .map(s -> s == null ? "0" : s)
+                .map(Long::valueOf)
+                .map(l -> l - 1)
+                .collect(toMap(l -> positions.get(counter.getAndIncrement()), l -> l));
+
+            // Get the positions to reset in the flat Bloom filter (FBF)
+            List<Integer> positionsToReset = positions.stream()
+                .filter(position -> positionsToDecr.get(position) <= 0)
+                .collect(toList());
+
+            // Execute the transaction
+            final Transaction tx = jedis.multi();
+            positionsToDecr.forEach((position, v) -> tx.hset(keys.COUNTS_KEY, position.toString(), v.toString()));
+            positionsToReset.forEach(position -> tx.setbit(keys.BITS_KEY, position.longValue(), false));
+            if (tx.exec().isEmpty()) {
+                // Try again if transaction failed
+                return removeAndEstimateCountRaw(value);
             }
-            p1.sync();
-            List<Long> counts = responses.stream().map(Response::get).collect(Collectors.toList());
 
-            // Fast lane: don't set BF bits
-            long min = Collections.min(counts);
-            if (min > 0) {
-                return min;
-            }
-
-            while (true) {
-                // Transactionally set FBF bits to 0
-                final Pipeline p2 = jedis.pipelined();
-                p2.multi();
-                for (int i = 0; i < config().hashes(); i++) {
-                    if (counts.get(i) <= 0) {
-                        bloom.set(p2, hashes[i], false);
-                    }
-                }
-                Response<List<Object>> exec = p2.exec();
-                p2.sync();
-
-                // Did the transaction fail?
-                if (exec.get() == null) {
-                    // Update counts from Redis
-                    final Pipeline p3 = jedis.pipelined();
-                    p3.watch(keys.COUNTS_KEY, keys.BITS_KEY); // Forbid writing to CBF and FBF in the meantime
-                    Response<List<String>> hmget = p3.hmget(keys.COUNTS_KEY, hashesString);
-                    p3.sync();
-                    counts = hmget.get()
-                        .stream()
-                        .map(o -> o != null ? Long.parseLong(o) : 0L)
-                        .collect(Collectors.toList());
-                } else {
-                    return Collections.min(counts);
-                }
-            }
+            return positionsToDecr.values().stream().mapToLong(Long::valueOf).min().getAsLong();
         });
     }
 
@@ -308,8 +296,8 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
      * Sets the value at the given position.
      *
      * @param position The position in the Bloom filter
-     * @param value The value to set
-     * @param p The jedis pipeline to use
+     * @param value    The value to set
+     * @param p        The jedis pipeline to use
      */
     private void set(int position, long value, Pipeline p) {
         bloom.set(p, position, value > 0);

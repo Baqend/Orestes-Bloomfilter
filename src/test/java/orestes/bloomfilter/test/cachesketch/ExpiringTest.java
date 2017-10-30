@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
@@ -66,48 +67,84 @@ public class ExpiringTest {
 
     @Test
     public void addAndLetExpire() throws Exception {
-        int rounds = 100;
-        FilterBuilder b = new FilterBuilder(100000, 0.001);
-        b.redisConnections(rounds);
-        createFilter(b);
-        ExecutorService threads = Executors.newFixedThreadPool(10);
-        List<CompletableFuture> futures = new LinkedList<>();
-        Random r = new Random(rounds);
+        final int NUMBER_OF_ELEMENTS = 100;
 
-        //Assert no collision
-        for (int i = 0; i < rounds; i++) {
+        // Create Bloom filter
+        FilterBuilder b = new FilterBuilder(100000, 0.001);
+        b.redisConnections(NUMBER_OF_ELEMENTS);
+        createFilter(b);
+
+        // Assert we get no false positives
+        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
             final String item = String.valueOf(i);
             assertFalse(filter.contains(item));
             filter.add(item);
         }
         filter.clear();
+        assertTrue("Bloom filter should be empty before", filter.isEmpty());
+        assertEquals(0, filter.getBitSet().length());
 
-        for (int i = 0; i < rounds; i++) {
-            final int rand = r.nextInt(rounds);
+        AtomicInteger count = new AtomicInteger(0);
+
+        Random r = new Random(NUMBER_OF_ELEMENTS);
+        ExecutorService threads = Executors.newFixedThreadPool(10);
+        List<CompletableFuture> futures = new LinkedList<>();
+        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
+            final int delay = r.nextInt(NUMBER_OF_ELEMENTS) * 10 + 1000;
             final String item = String.valueOf(i);
             futures.add(CompletableFuture.runAsync(() -> {
-                int delay = (rounds - rand) * 10 + 1000;
-                filter.reportRead(item, delay, TimeUnit.MILLISECONDS);
-                assertTrue(filter.isCached(item));
-                assertTrue(filter.getRemainingTTL(item, TimeUnit.MILLISECONDS) >= 0);
+                // Check Bloom filter state before read
+                assertFalse(filter.isCached(item));
                 assertFalse(filter.contains(item));
+                assertNull(filter.getRemainingTTL(item, TimeUnit.MILLISECONDS));
+
+                filter.reportRead(item, delay, TimeUnit.MILLISECONDS);
+
+                // Check Bloom filter state after read
+                assertTrue(filter.isCached(item));
+                assertFalse(filter.contains(item));
+                assertTrue(filter.getRemainingTTL(item, TimeUnit.MILLISECONDS) >= 0);
+                assertTrue(filter.getRemainingTTL(item, TimeUnit.MILLISECONDS) <= delay);
+
                 boolean invalidation = filter.reportWrite(item);
                 assertTrue(invalidation);
+
+                // Check Bloom filter state after write
+                assertTrue(filter.isCached(item));
                 assertTrue(filter.contains(item));
+                assertFalse(filter.isEmpty());
+
+                // Wait for the delay to pass
                 try {
                     Thread.sleep(delay + 2000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+
+                // Check Bloom filter state after expire
                 Long remaining = filter.getRemainingTTL(item, TimeUnit.MILLISECONDS);
                 if (filter.contains(item)) {
                     fail("Element still in BF. remaining TTL: " + remaining);
                 }
-                assertEquals(null, filter.getRemainingTTL(item, TimeUnit.MILLISECONDS));
+                assertFalse(filter.isCached(item));
+                assertFalse(filter.contains(item));
+                assertEquals(null, remaining);
+                count.incrementAndGet();
             }, threads));
         }
 
+        // Wait for tasks to complete
         futures.forEach(CompletableFuture::join);
+
+        // Ensure Bloom filter is empty
+        assertEquals(NUMBER_OF_ELEMENTS, count.get());
+        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
+            final String item = String.valueOf(i);
+            assertFalse(filter.contains(item));
+        }
+
+        assertEquals(0, filter.getBitSet().length());
+        assertTrue("Bloom filter should be empty after", filter.isEmpty());
     }
 
     @Test
