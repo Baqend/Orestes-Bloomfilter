@@ -53,7 +53,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
         this.expirationHandler = expirationHandler;
         this.scheduler = Executors.newScheduledThreadPool(1);
         clear();
-        job = scheduler.schedule(this::expirationJob, MAX_JOB_DELAY, TimeUnit.SECONDS);
+        scheduleJob(true, MAX_JOB_DELAY, TimeUnit.NANOSECONDS);
     }
 
     /**
@@ -153,15 +153,27 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
      * @param delay The delay when to trigger expiration
      * @param unit The time unit of the delay
      */
-    public void triggerExpirationHandling(long delay, TimeUnit unit) {
-        long currentDelay = job.getDelay(unit);
-        if (currentDelay > delay) {
-            if (job != null) {
-                job.cancel(false);
-            }
-
-            job = scheduler.schedule(this::expirationJob, delay, unit);
+    synchronized public void triggerExpirationHandling(long delay, TimeUnit unit) {
+        long delayInSec = TimeUnit.SECONDS.convert(delay, unit);
+        long currentDelay = job.getDelay(TimeUnit.SECONDS);
+        long epsilon = 1;
+        if (currentDelay > delayInSec + epsilon) {
+            scheduleJob(false, delay, unit);
         }
+    }
+
+    /**
+     * Schedules a new job to work the queue.
+     * @param aboutToEnd Whether the last job is about to end or needs to be canceled
+     * @param delay When to schedule the new job
+     * @param unit The time unit for the delay
+     */
+    synchronized private void scheduleJob(boolean aboutToEnd, long delay, TimeUnit unit) {
+        ScheduledFuture<?> currentJob = this.job;
+        if (!aboutToEnd && currentJob != null) {
+            currentJob.cancel(false);
+        }
+        job = scheduler.schedule(this::expirationJob, delay, unit);
     }
 
     /**
@@ -175,7 +187,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
         } catch (Exception e) {
             LOG.error("Error executing expiration job.", e);
         } finally {
-            job = scheduler.schedule(this::expirationJob, nextDelay, TimeUnit.NANOSECONDS);
+            scheduleJob(true, nextDelay, TimeUnit.NANOSECONDS);
         }
     }
 

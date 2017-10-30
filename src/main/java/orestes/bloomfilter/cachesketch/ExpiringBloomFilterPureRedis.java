@@ -67,7 +67,7 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
      *
      * @return true if successful, false otherwise.
      */
-    private boolean expirationHandler(ExpirationQueueRedis queue) {
+    synchronized private boolean expirationHandler(ExpirationQueueRedis queue) {
         return pool.safelyReturn((Jedis p) -> {
             Pipeline pipe = p.pipelined();
 
