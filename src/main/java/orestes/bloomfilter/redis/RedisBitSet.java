@@ -180,7 +180,7 @@ public class RedisBitSet extends BitSet {
 
     //Copied from: https://github.com/xetorthio/jedis/issues/301
     public static byte[] toByteArrayReverse(final BitSet bits) {
-        final byte[] bytes = new byte[bits.length() / 8 + 1];
+        final byte[] bytes = new byte[(bits.length() + 7) / 8];
         for (int i = 0; i < bits.length(); i++) {
             if (bits.get(i)) {
                 final int value = bytes[i / 8] | (1 << (7 - (i % 8)));

@@ -9,10 +9,9 @@ import java.util.BitSet;
 import java.util.Random;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertEquals;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 public class RedisBitSetTest {
 
@@ -73,5 +72,36 @@ public class RedisBitSetTest {
         assertEquals(b1.cardinality(), b2.cardinality());
     }
 
+    @Test
+    public void testFromByteArrayReverse() throws Exception {
+        byte[] bytes = {-128, 0, 0, 1};
+        final BitSet bitSet = RedisBitSet.fromByteArrayReverse(bytes);
+        assertEquals(32, bitSet.length());
+        assertTrue(bitSet.get(0));
+        for (int i = 1; i < 31; i += 1) {
+            assertFalse(bitSet.get(i));
+        }
+        assertTrue(bitSet.get(31));
 
+        // Check reverse operation
+        final byte[] reverse = RedisBitSet.toByteArrayReverse(bitSet);
+        assertEquals(bytes, reverse);
+    }
+
+    @Test
+    public void testToByteArrayReverse() throws Exception {
+        final BitSet bitSet = new BitSet();
+        bitSet.set(0, true);
+        bitSet.set(15, true);
+        bitSet.set(24, true);
+        assertEquals(25, bitSet.length());
+
+        final byte[] bytes = RedisBitSet.toByteArrayReverse(bitSet);
+        final byte[] expected = {-128, 1, 0, -128};
+        assertArrayEquals(expected, bytes);
+
+        // Check reverse operation
+        final BitSet reverse = RedisBitSet.fromByteArrayReverse(bytes);
+        assertEquals(bitSet, reverse);
+    }
 }
