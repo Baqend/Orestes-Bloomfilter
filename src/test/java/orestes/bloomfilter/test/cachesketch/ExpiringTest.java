@@ -29,9 +29,9 @@ public class ExpiringTest {
     @Parameterized.Parameters(name = "Expiring Bloom Filter test {0}")
     public static Collection<Object[]> data() throws Exception {
         Object[][] data = {
-//            {"in-memory", ExpiringBloomFilterMemory.class},
+            {"in-memory", ExpiringBloomFilterMemory.class},
             {"with Redis counts and in-memory queue", ExpiringBloomFilterRedis.class},
-//            {"with Redis counts and Redis queue", ExpiringBloomFilterPureRedis.class},
+            {"with Redis counts and Redis queue", ExpiringBloomFilterPureRedis.class},
         };
 
         return Arrays.asList(data);
