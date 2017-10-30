@@ -119,6 +119,24 @@ public class RedisBitSet extends BitSet {
         return pool.safelyReturn(jedis -> jedis.bitcount(name) == 0);
     }
 
+    @Override
+    public int length() {
+        return pool.safelyReturn(jedis -> {
+            final int byteCount = jedis.strlen(name).intValue();
+            if (byteCount == 0) {
+                return 0;
+            }
+
+            byte lastByte = jedis.getrange(name.getBytes(), byteCount - 1, byteCount)[0];
+            int i = 8;
+            while ((lastByte & 1) == 0) {
+                i -= 1;
+                lastByte >>>= 1;
+            }
+            return (8 * byteCount) - 8 + i;
+        });
+    }
+
     /**
      * Returns the RedisBitSet as a regular BitSet.
      *

@@ -95,6 +95,39 @@ public class RedisBitSetTest {
     }
 
     @Test
+    public void testLength() throws Exception {
+        int max = 1_000_000;
+        final RedisBitSet bitSet = new RedisBitSet(Helper.getPool(), "length", max);
+
+        bitSet.clear();
+        assertEquals(0, bitSet.length());
+
+        bitSet.set(0, true);
+        assertEquals(1, bitSet.length());
+
+        bitSet.set(1, true);
+        assertEquals(2, bitSet.length());
+
+        bitSet.set(7, true);
+        assertEquals(8, bitSet.length());
+        bitSet.set(8, true);
+        assertEquals(9, bitSet.length());
+
+        bitSet.set(31, true);
+        assertEquals(32, bitSet.length());
+        bitSet.set(32, true);
+        assertEquals(33, bitSet.length());
+
+        bitSet.set(63, true);
+        assertEquals(64, bitSet.length());
+        bitSet.set(64, true);
+        assertEquals(65, bitSet.length());
+
+        bitSet.clear();
+        assertEquals(0, bitSet.length());
+    }
+
+    @Test
     public void testFromByteArrayReverse() throws Exception {
         byte[] bytes = {-128, 0, 0, 1};
         final BitSet bitSet = RedisBitSet.fromByteArrayReverse(bytes);
