@@ -83,6 +83,10 @@ public class RedisBitSet extends BitSet {
         set(bitIndex, false);
     }
 
+    public void clear(PipelineBase p, int bitIndex) {
+        set(p, bitIndex, false);
+    }
+
     @Override
     public void clear() {
         pool.safelyDo(jedis -> {

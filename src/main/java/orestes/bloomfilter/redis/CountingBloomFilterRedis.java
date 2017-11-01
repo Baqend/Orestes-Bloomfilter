@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -46,15 +45,11 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
 
     @Override
     public Map<Integer, Long> getCountMap() {
-        return pool.allowingSlaves().safelyReturn(r -> r.hgetAll(keys.COUNTS_KEY)
-            .entrySet()
-            .stream()
-            .collect(
-                Collectors.toMap(
-                    e -> Integer.valueOf(e.getKey()),
-                    e -> Long.valueOf(e.getValue())
-                )
-            ));
+        return pool.allowingSlaves()
+            .safelyReturn(r -> r.hgetAll(keys.COUNTS_KEY)
+                .entrySet()
+                .stream()
+                .collect(Collectors.toMap(e -> Integer.valueOf(e.getKey()), e -> Long.valueOf(e.getValue()))));
     }
 
     @Override
@@ -123,34 +118,33 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
 
     @Override
     public synchronized long removeAndEstimateCountRaw(byte[] value) {
-        return pool.safelyReturn(jedis -> {
+        return pool.safelyReturn((jedis) -> {
             // Forbid writing to CBF and FBF in the meantime
             jedis.watch(keys.COUNTS_KEY, keys.BITS_KEY);
 
             // Get all Bloom filter positions to decrement when removing the elements
-            final List<Integer> positions = Arrays.stream(hash(value)).boxed().collect(toList());
+            final int[] positions = hash(value);
 
             // Get the corresponding keys for the positions in Redis
-            final String[] keysToDec = positions.stream().map(String::valueOf).toArray(String[]::new);
+            final String[] keysToDec = Arrays.stream(positions).mapToObj(String::valueOf).toArray(String[]::new);
 
             // Get the resulting counts in the CBF after the elements have been removed
             final AtomicInteger counter = new AtomicInteger(0);
-            final Map<Integer, Long> positionsToDecr = jedis.hmget(keys.COUNTS_KEY, keysToDec)
+            final Map<String, String> positionsToDecr = jedis.hmget(keys.COUNTS_KEY, keysToDec)
                 .stream()
                 .map(s -> s == null ? "0" : s)
                 .map(Long::valueOf)
                 .map(l -> l - 1)
-                .collect(toMap(l -> positions.get(counter.getAndIncrement()), l -> l));
+                .collect(toMap(l -> String.valueOf(positions[counter.getAndIncrement()]), String::valueOf));
 
             // Get the positions to reset in the flat Bloom filter (FBF)
-            List<Integer> positionsToReset = positions.stream()
-                .filter(position -> positionsToDecr.get(position) <= 0)
-                .collect(toList());
+            final IntStream positionsToReset = Arrays.stream(positions)
+                .filter(position -> Integer.valueOf(positionsToDecr.get(String.valueOf(position))) <= 0);
 
             // Execute the transaction
             final Transaction tx = jedis.multi();
-            positionsToDecr.forEach((position, v) -> tx.hset(keys.COUNTS_KEY, position.toString(), v.toString()));
-            positionsToReset.forEach(position -> tx.setbit(keys.BITS_KEY, position.longValue(), false));
+            tx.hmset(keys.COUNTS_KEY, positionsToDecr);
+            positionsToReset.forEach(position -> bloom.clear(tx, position));
             if (tx.exec().isEmpty()) {
                 // Try again if transaction failed
                 return removeAndEstimateCountRaw(value);
