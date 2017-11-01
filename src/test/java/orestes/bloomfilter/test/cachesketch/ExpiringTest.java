@@ -124,7 +124,7 @@ public class ExpiringTest {
                 // Check Bloom filter state after expire
                 Long remaining = filter.getRemainingTTL(item, TimeUnit.MILLISECONDS);
                 if (filter.contains(item)) {
-                    fail("Element still in BF. remaining TTL: " + remaining);
+                    fail("Element (" + item + ") still in Bloom filter. remaining TTL: " + remaining);
                 }
                 assertFalse(filter.isCached(item));
                 assertFalse(filter.contains(item));
@@ -145,6 +145,7 @@ public class ExpiringTest {
 
         assertEquals(0, filter.getBitSet().length());
         assertTrue("Bloom filter should be empty after", filter.isEmpty());
+        assertEquals(0, filter.getBitSet().cardinality());
     }
 
     @Test
