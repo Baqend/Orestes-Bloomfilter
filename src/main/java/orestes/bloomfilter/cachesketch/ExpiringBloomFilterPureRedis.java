@@ -60,6 +60,16 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
         return ttls;
     }
 
+    @Override
+    public void clear() {
+        pool.safelyDo((jedis) -> {
+            // Delete all used fields from Redis
+            jedis.del(keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY);
+
+            clearTTLs(jedis);
+        });
+    }
+
     /**
      * Handles expiring items from the expiration queue.
      *

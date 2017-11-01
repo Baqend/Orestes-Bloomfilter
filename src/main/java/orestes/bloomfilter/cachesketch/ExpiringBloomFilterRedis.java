@@ -4,6 +4,7 @@ import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.ScanParams;
 import redis.clients.jedis.ScanResult;
 
@@ -149,28 +150,16 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
 
     @Override
     public void clear() {
-        //Clear CBF
+        // Clear CBF
         super.clear();
-        //During init ONLY clear CBF
+        // During init, ONLY clear CBF
         if (queue == null) {
             return;
         }
-        //Clear Queue
+        // Clear Queue
         queue.clear();
-        //Clear TTLs
-        pool.safelyDo(jedis -> {
-            ScanParams params = new ScanParams().match(keys.TTL_KEY + "*").count(500);
-            String cursor = ScanParams.SCAN_POINTER_START;
-            do {
-                ScanResult<String> scanResult = jedis.scan(cursor, params);
-                cursor = scanResult.getStringCursor();
-
-                List<String> result = scanResult.getResult();
-                if (!result.isEmpty()) {
-                    jedis.del(result.toArray(new String[result.size()]));
-                }
-            } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
-        });
+        // Clear TTLs
+        pool.safelyDo(this::clearTTLs);
     }
 
     public String key(T element) {
@@ -210,5 +199,24 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         ((ExpiringBloomFilter<T>) source).streamExpiringBFItems().forEach(queue::add);
 
         return this;
+    }
+
+    /**
+     * Clears TTLs from Redis.
+     *
+     * @param jedis The Jedis instance to use.
+     */
+    protected void clearTTLs(Jedis jedis) {
+        final ScanParams params = new ScanParams().match(keys.TTL_KEY + "*").count(500);
+        String cursor = ScanParams.SCAN_POINTER_START;
+        do {
+            ScanResult<String> scanResult = jedis.scan(cursor, params);
+            cursor = scanResult.getStringCursor();
+
+            List<String> result = scanResult.getResult();
+            if (!result.isEmpty()) {
+                jedis.del(result.toArray(new String[result.size()]));
+            }
+        } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
     }
 }
