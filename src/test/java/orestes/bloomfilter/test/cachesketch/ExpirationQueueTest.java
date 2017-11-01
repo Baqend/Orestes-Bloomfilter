@@ -177,7 +177,7 @@ public class ExpirationQueueTest {
         return pool.safelyReturn(p -> {
             Pipeline pipe = p.pipelined();
             Response<Set<String>> uniqueQueueKeysResp = queue.getExpiredItems(pipe);
-            p.sync();
+            pipe.sync();
             Set<String> uniqueQueueKeys = uniqueQueueKeysResp.get();
 
             final List<String> expiredElems = new ArrayList<>(uniqueQueueKeys);
