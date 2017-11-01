@@ -7,15 +7,15 @@ import orestes.bloomfilter.MigratableBloomFilter;
 import orestes.bloomfilter.memory.CountingBloomFilterMemory;
 import orestes.bloomfilter.redis.helper.RedisKeys;
 import orestes.bloomfilter.redis.helper.RedisPool;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.PipelineBase;
 import redis.clients.jedis.Transaction;
-import redis.clients.util.SafeEncoder;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -46,10 +46,10 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     @Override
     public Map<Integer, Long> getCountMap() {
         return pool.allowingSlaves()
-            .safelyReturn(r -> r.hgetAll(keys.COUNTS_KEY)
-                .entrySet()
-                .stream()
-                .collect(Collectors.toMap(e -> Integer.valueOf(e.getKey()), e -> Long.valueOf(e.getValue()))));
+                .safelyReturn(r -> r.hgetAll(keys.COUNTS_KEY)
+                        .entrySet()
+                        .stream()
+                        .collect(toMap(e -> Integer.valueOf(e.getKey()), e -> Long.valueOf(e.getValue()))));
     }
 
     @Override
@@ -68,7 +68,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
 
     @Override
     public List<Boolean> addAll(Collection<T> elements) {
-        return addAndEstimateCountRaw(elements).stream().map(el -> el == 1).collect(Collectors.toList());
+        return addAndEstimateCountRaw(elements).stream().map(el -> el == 1).collect(toList());
     }
 
     /**
@@ -78,7 +78,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
      * @return An estimation of how often the respective elements are in the Bloom filter.
      */
     private List<Long> addAndEstimateCountRaw(Collection<T> elements) {
-        List<int[]> allHashes = elements.stream().map(el -> hash(toBytes(el))).collect(Collectors.toList());
+        List<int[]> allHashes = elements.stream().map(el -> hash(toBytes(el))).collect(toList());
         List<Object> results = pool.transactionallyRetry(p -> {
             // Add to flattened Bloom filter
             for (int[] hashes : allHashes) {
@@ -99,10 +99,10 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         List<Long> mins = new LinkedList<>();
         for (int i = results.size() / 2; i < results.size(); i += config().hashes()) {
             long min = results.subList(i, i + config().hashes())
-                .stream()
-                .map(val -> (Long) val)
-                .min(Comparator.<Long>naturalOrder())
-                .get();
+                    .stream()
+                    .map(val -> (Long) val)
+                    .min(Comparator.<Long>naturalOrder())
+                    .get();
             mins.add(min);
         }
         return mins;
@@ -122,35 +122,36 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
             // Forbid writing to CBF and FBF in the meantime
             jedis.watch(keys.COUNTS_KEY, keys.BITS_KEY);
 
-            // Get all Bloom filter positions to decrement when removing the elements
+            // Get all Bloom filter positions to decrement when removing the element
             final int[] positions = hash(value);
 
-            // Get the corresponding keys for the positions in Redis
-            final String[] keysToDec = Arrays.stream(positions).mapToObj(String::valueOf).toArray(String[]::new);
-
             // Get the resulting counts in the CBF after the elements have been removed
-            final AtomicInteger counter = new AtomicInteger(0);
-            final Map<String, String> positionsToDecr = jedis.hmget(keys.COUNTS_KEY, keysToDec)
-                .stream()
-                .map(s -> s == null ? "0" : s)
-                .map(Long::valueOf)
-                .map(l -> l - 1)
-                .collect(toMap(l -> String.valueOf(positions[counter.getAndIncrement()]), String::valueOf));
+            final Map<Integer, Long> posToCountMap = getCounts(jedis, positions);
 
-            // Get the positions to reset in the flat Bloom filter (FBF)
-            final IntStream positionsToReset = Arrays.stream(positions)
-                .filter(position -> Integer.valueOf(positionsToDecr.get(String.valueOf(position))) <= 0);
+            // Decrement counts
+            final HashMap<Integer, Integer> countMap = new HashMap<>(positions.length);
+            for (int position : positions) {
+                countMap.compute(position, (k, v) -> v == null ? 1 : v + 1);
+            }
+            posToCountMap.replaceAll((position, count) -> count - countMap.get(position));
 
-            // Execute the transaction
+            // Start updating the CBF and FBF transactionally
             final Transaction tx = jedis.multi();
-            tx.hmset(keys.COUNTS_KEY, positionsToDecr);
-            positionsToReset.forEach(position -> bloom.clear(tx, position));
-            if (tx.exec().isEmpty()) {
+
+            // Decrement counts in CBF
+            setCounts(tx, posToCountMap);
+
+            // Reset bits in BBF
+            updateBinaryBloomFilter(tx, posToCountMap);
+
+            // Commit transaction and return whether successful
+            boolean isAborted = tx.exec().isEmpty();
+            if (isAborted) {
                 // Try again if transaction failed
                 return removeAndEstimateCountRaw(value);
             }
 
-            return positionsToDecr.values().stream().mapToLong(Long::valueOf).min().getAsLong();
+            return posToCountMap.values().stream().mapToLong(Long::valueOf).min().getAsLong();
         });
     }
 
@@ -184,7 +185,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     }
 
 
-    protected RedisBitSet getRedisBitSet() {
+    public RedisBitSet getRedisBitSet() {
         return bloom;
     }
 
@@ -193,7 +194,9 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         return bloom.asBitSet();
     }
 
-    public byte[] getBytes() { return bloom.toByteArray(); }
+    public byte[] getBytes() {
+        return bloom.toByteArray();
+    }
 
     @Override
     public FilterBuilder config() {
@@ -237,9 +240,9 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         return pool;
     }
 
-    private static String encode(int value) {
-        return SafeEncoder.encode(
-            new byte[]{(byte) (value >>> 24), (byte) (value >>> 16), (byte) (value >>> 8), (byte) value});
+    public static String encode(int value) {
+        return Base64.getEncoder().encodeToString(
+                new byte[]{(byte) (value >>> 24), (byte) (value >>> 16), (byte) (value >>> 8), (byte) value});
     }
 
 
@@ -284,6 +287,51 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         }, keys.BITS_KEY, keys.COUNTS_KEY);
 
         return this;
+    }
+
+    /**
+     * Get the counts in the CBF.
+     *
+     * @param jedis     A Jedis instance to use.
+     * @param positions The positions to retrieve.
+     * @return A map returning the count for each position.
+     */
+    protected Map<Integer, Long> getCounts(Jedis jedis, int... positions) {
+        // Get the corresponding keys for the positions in Redis
+        final String[] keysToDec = Arrays.stream(positions)
+                .mapToObj(CountingBloomFilterRedis::encode)
+                .toArray(String[]::new);
+
+        // Get the resulting counts in the CBF after the elements have been removed
+        final List<String> values = jedis.hmget(keys.COUNTS_KEY, keysToDec);
+        return IntStream.range(0, positions.length)
+                .collect(
+                        HashMap::new,
+                        (m, i) -> m.put(positions[i], values.get(i) == null ? 0L : Long.valueOf(values.get(i))),
+                        Map::putAll
+                );
+    }
+
+    /**
+     * Sets the counts in the CBF at the given positions by a map.
+     *
+     * @param p      The Jedis pipeline to use.
+     * @param counts The new counts to set.
+     */
+    protected void setCounts(PipelineBase p, Map<Integer, Long> counts) {
+        final Map<String, String> hash = counts.entrySet().stream()
+                .collect(toMap(e -> encode(e.getKey()), e -> e.getValue().toString()));
+        p.hmset(keys.COUNTS_KEY, hash);
+    }
+
+    /**
+     * Updates the binary Bloom filter by new counts.
+     *
+     * @param p      The Jedis pipeline to use.
+     * @param counts The new counts to update the filter from.
+     */
+    protected void updateBinaryBloomFilter(PipelineBase p, Map<Integer, Long> counts) {
+        counts.forEach((position, count) -> bloom.set(p, position, count > 0));
     }
 
     /**

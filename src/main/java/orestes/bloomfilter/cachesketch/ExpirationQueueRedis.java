@@ -69,12 +69,12 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
     /**
      * Returns all expired elements from this queue with their unique identifier. To get the actual element keys use the normalize.
      *
-     * @param p The redis pipeline
+     * @param jedis The Jedis runtime to use.
      * @return All expired elements from this queue with their unique identifier. To get the actual element keys use the normalize
      */
-    public Response<Set<String>> getExpiredItems(PipelineBase p) {
+    public Set<String> getExpiredItems(Jedis jedis) {
         final long now = System.nanoTime();
-        return p.zrangeByScore(queueKey, 0, now);
+        return jedis.zrangeByScore(queueKey, 0, now);
     }
 
     /**

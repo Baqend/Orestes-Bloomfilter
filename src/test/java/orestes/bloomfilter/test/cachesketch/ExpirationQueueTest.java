@@ -171,30 +171,28 @@ public class ExpirationQueueTest {
      *
      * @param queue The queue that may have expired items.
      *
-     * @return true if successful, false otherwise.
+     * @return True if successful, false otherwise.
      */
     private boolean expirationHandler(ExpirationQueueRedis queue) {
-        return pool.safelyReturn(p -> {
-            Pipeline pipe = p.pipelined();
-            Response<Set<String>> uniqueQueueKeysResp = queue.getExpiredItems(pipe);
-            pipe.sync();
-            Set<String> uniqueQueueKeys = uniqueQueueKeysResp.get();
+        return pool.safelyReturn((jedis) -> {
+            Set<String> uniqueQueueKeys = queue.getExpiredItems(jedis);
 
-            final List<String> expiredElems = new ArrayList<>(uniqueQueueKeys);
+            final List<String> expiredElements = new ArrayList<>(uniqueQueueKeys);
             handlerCallsCount += uniqueQueueKeys.size();
 
             // If no element is expired, we have nothing to do
-            if (expiredElems.isEmpty()) {
+            if (expiredElements.isEmpty()) {
                 return true;
             }
 
             // Remove expired elements from queue
-            Transaction t = p.multi();
-            queue.removeElements(expiredElems, t);
+            Transaction t = jedis.multi();
+            queue.removeElements(expiredElements, t);
 
-            boolean success = t.exec() != null;
+            // Examine if transaction was aborted
+            final boolean isAborted = t.exec().isEmpty();
 
-            return success;
+            return !isAborted;
         });
     }
 }

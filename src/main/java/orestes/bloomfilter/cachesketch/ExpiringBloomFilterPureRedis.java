@@ -3,17 +3,10 @@ package orestes.bloomfilter.cachesketch;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
-import orestes.bloomfilter.redis.helper.RedisPool;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.Response;
-import redis.clients.jedis.Transaction;
+import redis.clients.jedis.*;
 
-import java.util.List;
-import java.util.OptionalLong;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
@@ -48,10 +41,10 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
 
         long now = System.nanoTime();
         OptionalLong minTTL = ttls.stream()
-            .filter(it -> it != null)
-            .map(it -> TimeUnit.NANOSECONDS.convert(it, unit))
-            .mapToLong(it -> it - now)
-            .min();
+                .filter(Objects::nonNull)
+                .map(it -> TimeUnit.NANOSECONDS.convert(it, unit))
+                .mapToLong(it -> it - now)
+                .min();
 
         if (minTTL.isPresent()) {
             redisQueue.triggerExpirationHandling(minTTL.getAsLong(), TimeUnit.NANOSECONDS);
@@ -74,63 +67,54 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
      * Handles expiring items from the expiration queue.
      *
      * @param queue The queue that may have expired items.
-     *
      * @return true if successful, false otherwise.
      */
     synchronized private boolean expirationHandler(ExpirationQueueRedis queue) {
-        return pool.safelyReturn((Jedis p) -> {
-            Pipeline pipe = p.pipelined();
+        return pool.safelyReturn((jedis) -> {
+            // Forbid writing to expiration queue, CBF and FBF in the meantime
+            jedis.watch(keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY);
 
-            pipe.watch(keys.COUNTS_KEY, keys.EXPIRATION_QUEUE_KEY);
-
-            Response<Set<String>> uniqueQueueKeys = queue.getExpiredItems(pipe);
-            pipe.sync();
-
-            final List<String> expiredElems = uniqueQueueKeys.get().stream().map(queue::normalize).collect(toList());
+            // Get expired elements
+            final Set<String> uniqueQueueKeys = queue.getExpiredItems(jedis);
+            final List<String> expiredElements = uniqueQueueKeys.stream().map(queue::normalize).collect(toList());
 
             // If no element is expired, we have nothing to do
-            if (expiredElems.isEmpty()) {
+            if (expiredElements.isEmpty()) {
                 return true;
             }
 
             // Get all Bloom filter positions to decrement when removing the elements
-            final List<Integer> positionsToDec = expiredElems.stream()
-                .map(this::hash)
-                .flatMapToInt(IntStream::of)
-                .boxed()
-                .collect(toList());
-
-            // Get the corresponding keys for the positions in Redis
-            final List<String> keysToDec = positionsToDec.stream().map(String::valueOf).collect(toList());
-
+            final int[] positions = expiredElements.stream()
+                    .map(this::hash)
+                    .flatMapToInt(IntStream::of)
+                    .toArray();
 
             // Get the resulting counts in the CBF after the elements have been removed
-            List<Long> keyCountAfterDec = p.hmget(keys.COUNTS_KEY, keysToDec.toArray(new String[keysToDec.size()]))
-                .stream()
-                .map(s -> s == null? "0" : s)
-                .map(Long::valueOf)
-                .map(l -> l - 1)
-                .collect(toList());
+            final Map<Integer, Long> posToCountMap = getCounts(jedis, positions);
 
-            // Get the positions to reset in the flat Bloom filter (FBF)
-            List<Integer> positionsToReset = positionsToDec.stream()
-                .filter(position -> keyCountAfterDec.remove(0) <= 0)
-                .collect(toList());
+            // Decrement counts
+            final HashMap<Integer, Integer> countMap = new HashMap<>(positions.length);
+            for (int position : positions) {
+                countMap.compute(position, (k, v) -> v == null ? 1 : v + 1);
+            }
+            posToCountMap.replaceAll((position, count) -> count - countMap.get(position));
 
             // Start updating the queue, CBF and FBF transactionally
-            Transaction t = p.multi();
+            final Transaction tx = jedis.multi();
 
             // Remove expired elements from queue
-            queue.removeElements(uniqueQueueKeys.get(), t);
+            queue.removeElements(uniqueQueueKeys, tx);
 
             // Decrement counts in CBF
-            keysToDec.forEach(pos -> t.hincrBy(keys.COUNTS_KEY, pos, -1));
-            // Reset bits in FBF
-            positionsToReset.forEach(pos -> bloom.set(t, pos, false));
+            setCounts(tx, posToCountMap);
+
+            // Reset bits in BBF
+            updateBinaryBloomFilter(tx, posToCountMap);
 
             // Commit transaction and return whether successful
-            List<Object> commit = t.exec();
-            return commit != null;
+            boolean isAborted = tx.exec().isEmpty();
+
+            return !isAborted;
         });
     }
 
