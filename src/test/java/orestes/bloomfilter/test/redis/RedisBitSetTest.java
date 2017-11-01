@@ -140,7 +140,7 @@ public class RedisBitSetTest {
 
         // Check reverse operation
         final byte[] reverse = RedisBitSet.toByteArrayReverse(bitSet);
-        assertEquals(bytes, reverse);
+        assertArrayEquals(bytes, reverse);
     }
 
     @Test
