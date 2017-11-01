@@ -173,16 +173,21 @@ public class ExpiringTest {
         createFilter(b);
         filter.reportRead("1", 50, TimeUnit.MILLISECONDS);
         filter.reportRead("1", 100, TimeUnit.MILLISECONDS);
-        Long ttl = filter.reportWrite("1", TimeUnit.MILLISECONDS);
-        assertTrue(ttl <= 100);
-        assertTrue(ttl >= 80);
+
+        final long ttl1 = filter.reportWrite("1", TimeUnit.MILLISECONDS);
+        assertRemainingTTL(ttl1, 80, 100);
         assertTrue(filter.contains("1"));
         assertEquals(1, Math.round(filter.getEstimatedPopulation()));
+
         Thread.sleep(30);
-        assertTrue(filter.getRemainingTTL("1", TimeUnit.MILLISECONDS) <= 70);
-        assertTrue(filter.getRemainingTTL("1", TimeUnit.MILLISECONDS) >= 40);
+
+        final long ttl2 = filter.getRemainingTTL("1", TimeUnit.MILLISECONDS);
+        assertRemainingTTL(ttl2, 35, 70);
+
         Thread.sleep(100);
-        assertEquals(null, filter.getRemainingTTL("1", TimeUnit.MILLISECONDS));
+
+        final Long ttl3 = filter.getRemainingTTL("1", TimeUnit.MILLISECONDS);
+        assertEquals(null, ttl3);
         assertFalse(filter.contains("1"));
     }
 
@@ -270,5 +275,10 @@ public class ExpiringTest {
         for (Long ttl : ttls) {
             assertTrue(ttl >= 49);
         }
+    }
+
+    private void assertRemainingTTL(long ttl, long min, long max) {
+        assertTrue("Assert remaining TTL is lower than " + max + " ms, but was " + ttl + " ms", ttl <= max);
+        assertTrue("Assert remaining TTL is higher than " + min + " ms, but was " + ttl + " ms", ttl >= min);
     }
 }
