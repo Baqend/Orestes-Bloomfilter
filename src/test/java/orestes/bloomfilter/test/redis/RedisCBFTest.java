@@ -2,6 +2,7 @@ package orestes.bloomfilter.test.redis;
 
 import orestes.bloomfilter.CountingBloomFilter;
 import orestes.bloomfilter.FilterBuilder;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ public class RedisCBFTest {
     private static String name = "RedisCBFTest";
 
 
-    //@Ignore
+    @Ignore
     @Test
     public void concurrencyTests() throws InterruptedException {
         final int objects = 500;
