@@ -119,8 +119,8 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     @Override
     public synchronized long removeAndEstimateCountRaw(byte[] value) {
         return pool.safelyReturn((jedis) -> {
-            // Forbid writing to CBF and FBF in the meantime
-            jedis.watch(keys.COUNTS_KEY, keys.BITS_KEY);
+            // Forbid writing to counting Bloom filter in the meantime
+            jedis.watch(keys.COUNTS_KEY);
 
             // Get all Bloom filter positions to decrement when removing the element
             final int[] positions = hash(value);

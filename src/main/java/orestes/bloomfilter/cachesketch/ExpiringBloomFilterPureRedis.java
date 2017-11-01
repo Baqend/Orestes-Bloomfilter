@@ -71,8 +71,8 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
      */
     synchronized private boolean expirationHandler(ExpirationQueueRedis queue) {
         return pool.safelyReturn((jedis) -> {
-            // Forbid writing to expiration queue, CBF and FBF in the meantime
-            jedis.watch(keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY);
+            // Forbid writing to expiration queue and counting Bloom filter in the meantime
+            jedis.watch(keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY);
 
             // Get expired elements
             final Set<String> uniqueQueueKeys = queue.getExpiredItems(jedis);

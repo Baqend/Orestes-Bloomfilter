@@ -116,7 +116,7 @@ public class ExpiringTest {
 
                 // Wait for the delay to pass
                 try {
-                    Thread.sleep(delay + 2000);
+                    Thread.sleep(delay + 5000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
