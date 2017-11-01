@@ -1,12 +1,13 @@
-/build
-/.gradle
+/.gradle/
+/.idea/
+/bin/
+/build/
+/out/
 /dist/*SNAPSHOT*
 /doc
 .DS_Store
 /src/main/java/META-INF
-/.idea
 *.iml
 .classpath
 .project
 .settings/
-/bin/
