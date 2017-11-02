@@ -61,6 +61,9 @@ public class ExpiringTest {
         }
 
         filter.clear();
+        assertTrue("Bloom filter should be empty before", filter.isEmpty());
+        assertEquals("Bloom filter's bits should have zero length", 0, filter.getBitSet().length());
+        assertEquals("Bloom filter's bit cardinality should be zero", 0, filter.getBitSet().cardinality());
     }
 
     @Before
@@ -85,9 +88,6 @@ public class ExpiringTest {
             assertFalse(filter.contains(item));
             filter.add(item);
         }
-        filter.clear();
-        assertTrue("Bloom filter should be empty before", filter.isEmpty());
-        assertEquals(0, filter.getBitSet().length());
 
         AtomicInteger count = new AtomicInteger(0);
 
