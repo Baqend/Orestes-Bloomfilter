@@ -88,6 +88,7 @@ public class ExpiringTest {
             assertFalse(filter.contains(item));
             filter.add(item);
         }
+        filter.clear();
 
         AtomicInteger count = new AtomicInteger(0);
 
