@@ -24,35 +24,40 @@ import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class ExpiringTest {
-    private final Class<?> type;
+    public static final String TYPE_MEMORY_ONLY = "in-memory";
+    public static final String TYPE_REDIS_MEMORY = "with Redis counts and in-memory queue";
+    public static final String TYPE_REDIS_ONLY = "with Redis counts and Redis queue";
+    private final String type;
     private ExpiringBloomFilter<String> filter;
 
     @Parameterized.Parameters(name = "Expiring Bloom Filter test {0}")
     public static Collection<Object[]> data() throws Exception {
         Object[][] data = {
-            {"in-memory", ExpiringBloomFilterMemory.class},
-            {"with Redis counts and in-memory queue", ExpiringBloomFilterRedis.class},
-            {"with Redis counts and Redis queue", ExpiringBloomFilterPureRedis.class},
+            {TYPE_MEMORY_ONLY},
+            {TYPE_REDIS_MEMORY},
+            {TYPE_REDIS_ONLY},
         };
 
         return Arrays.asList(data);
     }
 
-    public ExpiringTest(String name, Class<?> type) {
+    public ExpiringTest(String type) {
         this.type = type;
     }
 
-    public <T> void createFilter(FilterBuilder b) {
+    public void createFilter(FilterBuilder b) {
         b.overwriteIfExists(true);
 
-        if (type == ExpiringBloomFilterMemory.class) {
-            filter = new ExpiringBloomFilterMemory<>(b);
-        }
-        if (type == ExpiringBloomFilterRedis.class) {
-            filter = new ExpiringBloomFilterRedis<>(b);
-        }
-        if (type == ExpiringBloomFilterPureRedis.class) {
-            filter = new ExpiringBloomFilterPureRedis(b);
+        switch (type) {
+            case TYPE_MEMORY_ONLY:
+                filter = new ExpiringBloomFilterMemory<>(b);
+                break;
+            case TYPE_REDIS_MEMORY:
+                filter = new ExpiringBloomFilterRedis<>(b);
+                break;
+            case TYPE_REDIS_ONLY:
+                filter = new ExpiringBloomFilterPureRedis(b);
+                break;
         }
 
         filter.clear();
