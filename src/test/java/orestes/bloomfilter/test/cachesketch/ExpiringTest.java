@@ -6,11 +6,13 @@ import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterMemory;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -33,12 +35,26 @@ public class ExpiringTest {
     @Parameterized.Parameters(name = "Expiring Bloom Filter test {0}")
     public static Collection<Object[]> data() throws Exception {
         Object[][] data = {
-            {TYPE_MEMORY_ONLY},
+//            {TYPE_MEMORY_ONLY},
             {TYPE_REDIS_MEMORY},
             {TYPE_REDIS_ONLY},
         };
 
         return Arrays.asList(data);
+    }
+
+    @After
+    public void afterTest() {
+        if (filter != null) {
+            filter.clear();
+            if (filter instanceof ExpiringBloomFilterPureRedis) {
+                try {
+                    ((ExpiringBloomFilterPureRedis) filter).close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
     }
 
     public ExpiringTest(String type) {
@@ -93,7 +109,7 @@ public class ExpiringTest {
         AtomicInteger count = new AtomicInteger(0);
 
         Random r = new Random(NUMBER_OF_ELEMENTS);
-        ExecutorService threads = Executors.newFixedThreadPool(10);
+        ExecutorService threads = Executors.newFixedThreadPool(100);
         List<CompletableFuture> futures = new LinkedList<>();
         for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
             final int delay = r.nextInt(NUMBER_OF_ELEMENTS) * 10 + 1000;
@@ -111,7 +127,6 @@ public class ExpiringTest {
                 assertFalse(filter.contains(item));
                 assertTrue(filter.getRemainingTTL(item, TimeUnit.MILLISECONDS) >= 0);
                 assertTrue(filter.getRemainingTTL(item, TimeUnit.MILLISECONDS) <= delay);
-
                 boolean invalidation = filter.reportWrite(item);
                 assertTrue(invalidation);
 

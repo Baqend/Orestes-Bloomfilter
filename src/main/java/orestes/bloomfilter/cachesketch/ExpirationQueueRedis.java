@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.*;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,7 +22,7 @@ import static java.util.stream.Collectors.toList;
  *
  * @author Konstantin Simon Maria Möllers
  */
-public class ExpirationQueueRedis implements ExpirationQueue<String> {
+public class ExpirationQueueRedis implements ExpirationQueue<String>, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(ExpirationQueueRedis.class);
     private static final int HASH_LENGTH = 8;
     private static final String PATTERN_SUFFIX = String.join("", Collections.nCopies(HASH_LENGTH, "?"));
@@ -145,6 +147,11 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
         Set<Tuple> allTuples = pool.safelyReturn(p -> p.zrangeWithScores(queueKey, 0, -1));
         return allTuples.stream()
             .map(tuple -> new ExpiringItem<>(tuple.getElement(), (long) tuple.getScore()));
+    }
+
+    @Override
+    public void close() throws IOException {
+        job.cancel(true);
     }
 
     /**

@@ -5,6 +5,8 @@ import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import redis.clients.jedis.*;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -14,12 +16,12 @@ import static java.util.stream.Collectors.toList;
 /**
  * Created by erik on 09.10.17.
  */
-public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<String> {
+public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<String> implements Closeable {
     private final ExpirationQueueRedis redisQueue;
+    private final int id =  new Random().nextInt();
 
     public ExpiringBloomFilterPureRedis(FilterBuilder builder) {
         super(builder, false);
-
         redisQueue = new ExpirationQueueRedis(pool, keys.EXPIRATION_QUEUE_KEY, this::expirationHandler);
         setQueue(redisQueue);
     }
@@ -61,6 +63,11 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
 
             clearTTLs(jedis);
         });
+    }
+
+    @Override
+    public void close() throws IOException {
+        redisQueue.close();
     }
 
     /**
