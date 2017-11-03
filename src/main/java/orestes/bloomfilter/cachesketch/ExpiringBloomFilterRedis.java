@@ -4,13 +4,9 @@ import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.ScanParams;
-import redis.clients.jedis.ScanResult;
+import redis.clients.jedis.Pipeline;
 
 import java.time.Clock;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -18,17 +14,17 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
-    private static final String REPORT_READ_LUA_SCRIPT = "local current = redis.call('get', KEYS[1]); " + "if current == false or tonumber(ARGV[1]) > tonumber(current) then " + "  redis.call('psetex', KEYS[1], ARGV[2], ARGV[1]) " + "end";
-
     private final Clock clock;
     private ExpirationQueue<T> queue;
-    private final String reportReadLuaScriptHandle;
+
+    // Load the "report read" Lua script
+    private final String reportReadScript = loadLuaScript("reportRead.lua");
 
     public ExpiringBloomFilterRedis(FilterBuilder builder) {
         this(builder, true);
     }
 
-    public ExpiringBloomFilterRedis(FilterBuilder builder, boolean initQueue) {
+    ExpiringBloomFilterRedis(FilterBuilder builder, boolean initQueue) {
         super(builder);
 
         this.clock = pool.getClock();
@@ -38,8 +34,6 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
             this.queue = new ExpirationQueueMemory<>(this::onExpire);
         }
 
-        // Load the "report read" Lua script
-        this.reportReadLuaScriptHandle = pool.safelyReturn(jedis -> jedis.scriptLoad(REPORT_READ_LUA_SCRIPT));
     }
 
     /**
@@ -64,18 +58,11 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     }
 
     /**
-     * @return current timestamp in milliseconds
-     */
-    private Long now() {
-        return clock.instant().toEpochMilli();
-    }
-
-    /**
      * @param TTL  the TTL to convert
      * @param unit the unit of the TTL
      * @return timestamp from TTL in milliseconds
      */
-    private Long ttlToTimestamp(long TTL, TimeUnit unit) {
+    private long ttlToTimestamp(long TTL, TimeUnit unit) {
         return clock.instant().plusMillis(TimeUnit.MILLISECONDS.convert(TTL, unit)).toEpochMilli();
     }
 
@@ -88,33 +75,34 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     @Override
     public Long getRemainingTTL(T element, TimeUnit unit) {
         return pool.safelyReturn(jedis -> {
-            String tsString = jedis.get(key(element));
-            return tsString != null ? unit.convert(Long.valueOf(tsString) - now(), TimeUnit.MILLISECONDS) : null;
+            final Double score = jedis.zscore(keys.TTL_KEY, element.toString());
+            return scoreToRemainingTTL(score, unit);
         });
     }
 
     @Override
     public List<Long> getRemainingTTLs(List<T> elements, TimeUnit unit) {
-        //Mget limitation: will be stored in Redis memory before being send, i.e. only scales to hundreds of thousands elements
-        return pool.safelyReturn(jedis -> {
-            String[] keys = elements.stream().map(this::key).toArray(String[]::new);
-            List<String> vals = jedis.mget(keys);
-            return vals.stream()
-                .map(
-                    tsString -> tsString != null ? unit.convert(Long.valueOf(tsString) - now(), TimeUnit.MILLISECONDS) :
-                        null)
-                .collect(Collectors.toList());
+        return pool.safelyReturn((jedis) -> {
+            // Retrieve scores from Redis
+            final Pipeline pipe = jedis.pipelined();
+            elements.forEach(it -> pipe.zscore(keys.TTL_KEY, it.toString()));
+            final List<Object> scores = pipe.syncAndReturnAll();
+
+            // Convert to desired time
+            return scores
+                    .stream()
+                    .map(score -> (Double) score)
+                    .map(score -> scoreToRemainingTTL(score, unit))
+                    .collect(Collectors.toList());
         });
     }
 
     @Override
     public void reportRead(T element, long TTL, TimeUnit unit) {
         // Create timestamp from TTL
-        String ts = ttlToTimestamp(TTL, unit).toString();
-        // Convert to TTL string Redis format
-        String ttl_str = String.valueOf(TimeUnit.MILLISECONDS.convert(TTL, unit));
-        pool.safelyDo(jedis -> jedis.evalsha(reportReadLuaScriptHandle, Collections.singletonList(key(element)),
-            Arrays.asList(ts, ttl_str)));
+        final long timestamp = ttlToTimestamp(TTL, unit);
+
+        pool.safelyDo(jedis -> jedis.evalsha(reportReadScript, 1, keys.TTL_KEY, String.valueOf(timestamp), element.toString()));
     }
 
     @Override
@@ -150,22 +138,17 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
 
     @Override
     public void clear() {
-        // Clear CBF
-        super.clear();
-        // During init, ONLY clear CBF
-        if (queue == null) {
-            return;
-        }
-        // Clear Queue
-        queue.clear();
-        // Clear TTLs
-        pool.safelyDo(this::clearTTLs);
+        pool.safelyDo((jedis) -> {
+            // Clear CBF, Bits, and TTLs
+            jedis.del(keys.COUNTS_KEY, keys.BITS_KEY, keys.TTL_KEY);
+            // During init, ONLY clear CBF
+            if (queue == null) {
+                return;
+            }
+            // Clear Queue
+            queue.clear();
+        });
     }
-
-    public String key(T element) {
-        return keys.TTL_KEY + element.toString();
-    }
-
 
     @Override
     public BloomFilter<T> getClonedBloomFilter() {
@@ -202,21 +185,25 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     }
 
     /**
-     * Clears TTLs from Redis.
+     * Converts the score stored in Redis to a desired unit.
      *
-     * @param jedis The Jedis instance to use.
+     * @param score The score stored in Redis.
+     * @param unit  The desired time unit.
+     * @return The remaining TTL.
      */
-    protected void clearTTLs(Jedis jedis) {
-        final ScanParams params = new ScanParams().match(keys.TTL_KEY + "*").count(500);
-        String cursor = ScanParams.SCAN_POINTER_START;
-        do {
-            ScanResult<String> scanResult = jedis.scan(cursor, params);
-            cursor = scanResult.getStringCursor();
+    private Long scoreToRemainingTTL(Double score, TimeUnit unit) {
+        if (score == null) {
+            return null;
+        }
 
-            List<String> result = scanResult.getResult();
-            if (!result.isEmpty()) {
-                jedis.del(result.toArray(new String[result.size()]));
-            }
-        } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
+        final long convert = unit.convert(score.longValue() - now(), TimeUnit.MILLISECONDS);
+        return convert <= 0 ? null : convert;
+    }
+
+    /**
+     * @return current timestamp in milliseconds
+     */
+    private long now() {
+        return clock.instant().toEpochMilli();
     }
 }

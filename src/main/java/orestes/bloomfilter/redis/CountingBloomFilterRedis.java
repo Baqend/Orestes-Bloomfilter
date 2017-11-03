@@ -12,6 +12,11 @@ import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.PipelineBase;
 import redis.clients.jedis.Transaction;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -69,6 +74,22 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     @Override
     public List<Boolean> addAll(Collection<T> elements) {
         return addAndEstimateCountRaw(elements).stream().map(el -> el == 1).collect(toList());
+    }
+
+    /**
+     * Load a Lua script into Redis.
+     *
+     * @param filename The filename of the script.
+     * @return A handle to the loaded script.
+     */
+    protected String loadLuaScript(String filename) {
+        try {
+            final URL resource = getClass().getResource(filename);
+            final String script = new String(Files.readAllBytes(Paths.get(resource.toURI())));
+            return pool.safelyReturn(jedis -> jedis.scriptLoad(script));
+        } catch (URISyntaxException | IOException exception) {
+            throw new RuntimeException("Could not load Lua script " + filename, exception);
+        }
     }
 
     /**

@@ -3,10 +3,8 @@ package orestes.bloomfilter.cachesketch;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
-import redis.clients.jedis.*;
+import redis.clients.jedis.Transaction;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -59,9 +57,7 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
     public void clear() {
         pool.safelyDo((jedis) -> {
             // Delete all used fields from Redis
-            jedis.del(keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY);
-
-            clearTTLs(jedis);
+            jedis.del(keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY, keys.TTL_KEY);
         });
     }
 
