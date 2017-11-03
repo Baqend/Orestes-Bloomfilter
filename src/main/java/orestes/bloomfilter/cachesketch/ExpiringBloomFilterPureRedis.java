@@ -16,7 +16,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * Created by erik on 09.10.17.
  */
-public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<String> implements Closeable {
+public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<String> {
     private final ExpirationQueueRedis redisQueue;
     private final int id =  new Random().nextInt();
 
@@ -66,8 +66,9 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
     }
 
     @Override
-    public void close() throws IOException {
-        redisQueue.close();
+    public void remove() {
+        super.remove();
+        redisQueue.remove();
     }
 
     /**

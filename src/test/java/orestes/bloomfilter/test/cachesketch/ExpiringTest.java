@@ -12,7 +12,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -35,7 +34,7 @@ public class ExpiringTest {
     @Parameterized.Parameters(name = "Expiring Bloom Filter test {0}")
     public static Collection<Object[]> data() throws Exception {
         Object[][] data = {
-//            {TYPE_MEMORY_ONLY},
+            {TYPE_MEMORY_ONLY},
             {TYPE_REDIS_MEMORY},
             {TYPE_REDIS_ONLY},
         };
@@ -46,14 +45,7 @@ public class ExpiringTest {
     @After
     public void afterTest() {
         if (filter != null) {
-            filter.clear();
-            if (filter instanceof ExpiringBloomFilterPureRedis) {
-                try {
-                    ((ExpiringBloomFilterPureRedis) filter).close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
+            filter.remove();
         }
     }
 
@@ -137,7 +129,7 @@ public class ExpiringTest {
 
                 // Wait for the delay to pass
                 try {
-                    Thread.sleep(delay + 5000);
+                    Thread.sleep(delay + 2000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -196,20 +188,20 @@ public class ExpiringTest {
         filter.reportRead("1", 100, TimeUnit.MILLISECONDS);
 
         final long ttl1 = filter.reportWrite("1", TimeUnit.MILLISECONDS);
-        assertRemainingTTL(ttl1, 80, 100);
+        assertRemainingTTL(ttl1, 70, 100);
         assertTrue(filter.contains("1"));
         assertEquals(1, Math.round(filter.getEstimatedPopulation()));
 
         Thread.sleep(30);
 
         final long ttl2 = filter.getRemainingTTL("1", TimeUnit.MILLISECONDS);
-        assertRemainingTTL(ttl2, 35, 70);
+        assertRemainingTTL(ttl2, 15, 70);
 
-        Thread.sleep(100);
+        Thread.sleep(150);
 
         final Long ttl3 = filter.getRemainingTTL("1", TimeUnit.MILLISECONDS);
         assertEquals(null, ttl3);
-        assertFalse(filter.contains("1"));
+        assertFalse("Element (1) should not be contained in Bloom filter", filter.contains("1"));
     }
 
     @Test

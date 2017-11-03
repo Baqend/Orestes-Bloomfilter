@@ -22,7 +22,7 @@ import static java.util.stream.Collectors.toList;
  *
  * @author Konstantin Simon Maria Möllers
  */
-public class ExpirationQueueRedis implements ExpirationQueue<String>, Closeable {
+public class ExpirationQueueRedis implements ExpirationQueue<String> {
     private static final Logger LOG = LoggerFactory.getLogger(ExpirationQueueRedis.class);
     private static final int HASH_LENGTH = 8;
     private static final String PATTERN_SUFFIX = String.join("", Collections.nCopies(HASH_LENGTH, "?"));
@@ -149,8 +149,10 @@ public class ExpirationQueueRedis implements ExpirationQueue<String>, Closeable 
             .map(tuple -> new ExpiringItem<>(tuple.getElement(), (long) tuple.getScore()));
     }
 
-    @Override
-    public void close() throws IOException {
+    /**
+     * Destroys the expiration queue by deleting its contents and metadata.
+     */
+    public void remove() {
         job.cancel(true);
     }
 
