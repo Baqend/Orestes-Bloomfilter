@@ -3,13 +3,9 @@ package orestes.bloomfilter.cachesketch;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
-import redis.clients.jedis.Transaction;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
-
-import static java.util.stream.Collectors.toList;
 
 /**
  * Created by erik on 09.10.17.
@@ -17,10 +13,11 @@ import static java.util.stream.Collectors.toList;
 public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<String> {
     private final ExpirationQueueRedis redisQueue;
     private final int id =  new Random().nextInt();
+    private final String exportQueueScript = loadLuaScript("exportQueue.lua");
 
     public ExpiringBloomFilterPureRedis(FilterBuilder builder) {
         super(builder, false);
-        redisQueue = new ExpirationQueueRedis(pool, keys.EXPIRATION_QUEUE_KEY, this::expirationHandler);
+        redisQueue = new ExpirationQueueRedis(builder, keys.EXPIRATION_QUEUE_KEY, this::expirationHandler);
         setQueue(redisQueue);
     }
 
@@ -75,50 +72,10 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
      */
     synchronized private boolean expirationHandler(ExpirationQueueRedis queue) {
         return pool.safelyReturn((jedis) -> {
-            // Forbid writing to expiration queue and counting Bloom filter in the meantime
-            jedis.watch(keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY);
+            final String now = String.valueOf(System.nanoTime());
+            jedis.evalsha(exportQueueScript, 3, keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY, now);
 
-            // Get expired elements
-            final Set<String> uniqueQueueKeys = queue.getExpiredItems(jedis);
-            final List<String> expiredElements = uniqueQueueKeys.stream().map(queue::normalize).collect(toList());
-
-            // If no element is expired, we have nothing to do
-            if (expiredElements.isEmpty()) {
-                return true;
-            }
-
-            // Get all Bloom filter positions to decrement when removing the elements
-            final int[] positions = expiredElements.stream()
-                    .map(this::hash)
-                    .flatMapToInt(IntStream::of)
-                    .toArray();
-
-            // Get the resulting counts in the CBF after the elements have been removed
-            final Map<Integer, Long> posToCountMap = getCounts(jedis, positions);
-
-            // Decrement counts
-            final HashMap<Integer, Integer> countMap = new HashMap<>(positions.length);
-            for (int position : positions) {
-                countMap.compute(position, (k, v) -> v == null ? 1 : v + 1);
-            }
-            posToCountMap.replaceAll((position, count) -> count - countMap.get(position));
-
-            // Start updating the queue, CBF and FBF transactionally
-            final Transaction tx = jedis.multi();
-
-            // Remove expired elements from queue
-            queue.removeElements(uniqueQueueKeys, tx);
-
-            // Decrement counts in CBF
-            setCounts(tx, posToCountMap);
-
-            // Reset bits in BBF
-            updateBinaryBloomFilter(tx, posToCountMap);
-
-            // Commit transaction and return whether successful
-            boolean isAborted = tx.exec().isEmpty();
-
-            return !isAborted;
+            return true;
         });
     }
 

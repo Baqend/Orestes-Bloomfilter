@@ -1,11 +1,14 @@
 package orestes.bloomfilter.cachesketch;
 
+import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.redis.helper.RedisPool;
+import org.msgpack.MessagePack;
+import org.msgpack.type.MapValue;
+import org.msgpack.type.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.*;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -25,7 +28,6 @@ import static java.util.stream.Collectors.toList;
 public class ExpirationQueueRedis implements ExpirationQueue<String> {
     private static final Logger LOG = LoggerFactory.getLogger(ExpirationQueueRedis.class);
     private static final int HASH_LENGTH = 8;
-    private static final String PATTERN_SUFFIX = String.join("", Collections.nCopies(HASH_LENGTH, "?"));
     /**
      * Maximum delay between jobs in seconds
      */
@@ -38,19 +40,22 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
     private final RedisPool pool;
     private final String queueKey;
     private final Function<ExpirationQueueRedis, Boolean> expirationHandler;
+    private final FilterBuilder builder;
     private final ScheduledExecutorService scheduler;
     private final Random random = new Random();
+    private final MessagePack msgPack;
     private ScheduledFuture<?> job;
 
     /**
      *  Creates an ExpirationQueueRedis.
-     *
-     * @param pool A Redis pool instance to use
+     * @param builder
      * @param queueKey The queueKey used for the queue within Redis
      * @param expirationHandler A function that handles expiring items. Returns true if successful, false otherwise.
      */
-    public ExpirationQueueRedis(RedisPool pool, String queueKey, Function<ExpirationQueueRedis, Boolean> expirationHandler) {
-        this.pool = pool;
+    public ExpirationQueueRedis(FilterBuilder builder, String queueKey, Function<ExpirationQueueRedis, Boolean> expirationHandler) {
+        this.msgPack = new MessagePack();
+        this.builder = builder;
+        this.pool = builder.pool();
         this.queueKey = queueKey;
         this.expirationHandler = expirationHandler;
         this.scheduler = Executors.newScheduledThreadPool(1);
@@ -59,34 +64,24 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
     }
 
     /**
-     * Removes the given elements from the queue.
+     * Removes the given entries from Redis.
      *
-     * @param elements The elements to remove.
-     * @param p The redis pipeline to use.
+     * @param elements The binary encoded elements to remove.
+     * @param p The Redis pipeline to use.
      */
-    public void removeElements(Collection<String> elements, PipelineBase p) {
-        p.zrem(queueKey, elements.toArray(new String[elements.size()]));
+    public void removeElements(Collection<byte[]> elements, PipelineBase p) {
+        p.zrem(queueKey.getBytes(), elements.toArray(new byte[elements.size()][]));
     }
 
     /**
-     * Returns all expired elements from this queue with their unique identifier. To get the actual element keys use the normalize.
+     * Returns all expired elements from this queue with their unique identifier.
      *
      * @param jedis The Jedis runtime to use.
-     * @return All expired elements from this queue with their unique identifier. To get the actual element keys use the normalize
+     * @return All expired elements from this queue with their unique identifier.
      */
-    public Set<String> getExpiredItems(Jedis jedis) {
+    public Set<byte[]> getExpiredItems(Jedis jedis) {
         final long now = System.nanoTime();
-        return jedis.zrangeByScore(queueKey, 0, now);
-    }
-
-    /**
-     * Normalizes the queue element keys from their unique form to their actual key name.
-     *
-     * @param uniqueKeyElements The key to normalize
-     * @return The normalized key
-     */
-    public String normalize(String uniqueKeyElements) {
-        return uniqueKeyElements.substring(0, uniqueKeyElements.length() - HASH_LENGTH);
+        return jedis.zrangeByScore(queueKey.getBytes(), 0, now);
     }
 
     @Override
@@ -97,12 +92,35 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
     @Override
     public boolean add(ExpiringItem<String> item) {
         pool.safelyDo(p -> {
-            String hash;
+            boolean done;
             do {
-                hash = createRandomHash();
-            } while (p.zadd(queueKey, item.getExpiration(), item.getItem() + hash) == 0);
+                final String hash = createRandomHash();
+                done = p.zadd(queueKey.getBytes(), item.getExpiration(), encodeItem(item, hash)) == 1;
+            } while (!done);
         });
         return true;
+    }
+
+    /**
+     * Encodes the given item into a message pack.
+     *
+     * @param item The item to encode.
+     * @param hash A hash to make the pack unique.
+     * @return A packed item.
+     */
+    public byte[] encodeItem(ExpiringItem<String> item, String hash) {
+        final HashMap<String, Object> map = new HashMap<>();
+        map.put("name", item.getItem());
+        map.put("hash", hash);
+
+        final int[] positions = this.builder.hashFunction().hash(item.getItem().getBytes(), this.builder.size(), this.builder.hashes());
+        map.put("positions", positions);
+
+        try {
+            return msgPack.write(map);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -111,7 +129,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
         pool.safelyDo(p -> {
             String cursor = "0";
             do {
-                final ScanResult<Tuple> scanResult = p.zscan(queueKey, cursor);
+                final ScanResult<Tuple> scanResult = p.zscan(queueKey.getBytes(), cursor.getBytes());
                 result.addAll(scanResult.getResult());
                 cursor = scanResult.getStringCursor();
             } while (!cursor.equals("0"));
@@ -119,9 +137,19 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
 
         return result.stream()
             .map(tuple -> {
-                String elemString = tuple.getElement();
-                String item = elemString
-                    .substring(0, elemString.length() - ExpirationQueueRedis.HASH_LENGTH);
+                String item = null;
+                try {
+                    final byte[] element = tuple.getBinaryElement();
+                    final MapValue pack = msgPack.read(element).asMapValue();
+                    for (Map.Entry<Value, Value> entry : pack.entrySet()) {
+                        if (entry.getKey().asRawValue().getString().equals("name")) {
+                            item = entry.getValue().asRawValue().getString();
+                            break;
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 return new ExpiringItem<>(item, (long) tuple.getScore());
             }).collect(toList());
     }
@@ -133,8 +161,18 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
 
     @Override
     public boolean contains(String item) {
-        return pool.safelyReturn(
-            p -> !p.zscan(queueKey, "0", new ScanParams().match(item + PATTERN_SUFFIX)).getResult().isEmpty());
+        try {
+            final MessagePack pack = new MessagePack();
+            final byte[] write = pack.write(item);
+            final byte[] toMatch = new byte[write.length + 2];
+            toMatch[0] = '*';
+            toMatch[toMatch.length - 1] = '*';
+            System.arraycopy(write, 0, toMatch, 1, write.length);
+            return pool.safelyReturn(p ->
+                    !p.zscan(queueKey, "0", new ScanParams().match(toMatch)).getResult().isEmpty());
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     @Override

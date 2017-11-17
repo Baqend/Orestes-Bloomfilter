@@ -2,28 +2,25 @@ package orestes.bloomfilter.test.cachesketch;
 
 import com.google.common.collect.Lists;
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.HashProvider;
 import orestes.bloomfilter.cachesketch.ExpirationQueue;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.cachesketch.ExpirationQueueMemory;
 import orestes.bloomfilter.cachesketch.ExpirationQueueRedis;
 import orestes.bloomfilter.memory.BloomFilterMemory;
 import orestes.bloomfilter.redis.helper.RedisPool;
+import orestes.bloomfilter.test.helper.Helper;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Protocol;
-import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
-import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
 
 /**
@@ -58,7 +55,8 @@ public class ExpirationQueueTest {
             queue = new ExpirationQueueMemory<>(handler);
         } else {
             pool = RedisPool.builder().host("localhost").port(6379).redisConnections(10).database(Protocol.DEFAULT_DATABASE).build();
-            queue = new ExpirationQueueRedis(pool, "queue", this::expirationHandler);
+            final FilterBuilder builder = new FilterBuilder(10000, 500).pool(pool);
+            queue = new ExpirationQueueRedis(builder, "queue", this::expirationHandler);
         }
     }
 
@@ -175,19 +173,18 @@ public class ExpirationQueueTest {
      */
     private boolean expirationHandler(ExpirationQueueRedis queue) {
         return pool.safelyReturn((jedis) -> {
-            Set<String> uniqueQueueKeys = queue.getExpiredItems(jedis);
+            final Set<byte[]> uniqueQueueKeys = queue.getExpiredItems(jedis);
 
-            final List<String> expiredElements = new ArrayList<>(uniqueQueueKeys);
             handlerCallsCount += uniqueQueueKeys.size();
 
             // If no element is expired, we have nothing to do
-            if (expiredElements.isEmpty()) {
+            if (uniqueQueueKeys.isEmpty()) {
                 return true;
             }
 
             // Remove expired elements from queue
             Transaction t = jedis.multi();
-            queue.removeElements(expiredElements, t);
+            queue.removeElements(uniqueQueueKeys, t);
 
             // Examine if transaction was aborted
             final boolean isAborted = t.exec().isEmpty();
