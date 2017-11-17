@@ -5,6 +5,7 @@ import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
+import org.omg.SendingContext.RunTime;
 
 import java.util.List;
 import java.util.Random;
@@ -21,10 +22,10 @@ import static java.util.stream.Collectors.toList;
 public class RedisBloomFilterThroughput {
     private static final int ITEMS = 100_000_000;
     private static final int SERVERS = 10;
-    private static final int USERS_PER_SERVER = 10;
+    private static final int USERS_PER_SERVER = 100;
     private static final int WRITE_PERIOD = 100;
     private static final int READ_PERIOD = 100;
-    private static final int TEST_RUNTIME = 10;
+    private static final int TEST_RUNTIME = 20;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(100);
     private final Random rnd = new Random(214576);
@@ -65,7 +66,7 @@ public class RedisBloomFilterThroughput {
         final List<ScheduledFuture<?>> processes = servers.stream().flatMap(this::startUsers).collect(toList());
 
         final CompletableFuture<Boolean> testResult = new CompletableFuture<>();
-        executor.schedule(() -> endTest(testResult, processes, servers, start), TEST_RUNTIME, TimeUnit.SECONDS);
+        Executors.newSingleThreadScheduledExecutor().schedule(() -> endTest(testResult, processes, servers, start), TEST_RUNTIME, TimeUnit.SECONDS);
 
         return testResult;
     }
@@ -107,9 +108,6 @@ public class RedisBloomFilterThroughput {
 
     private void readBloomFilter(ExpiringBloomFilter<String> server) {
         server.getBitSet();
-        if (rnd.nextDouble() < 0.001) {
-            System.out.println("read, ");
-        }
     }
 
     private void reportWrite(ExpiringBloomFilter<String> server) {
@@ -117,23 +115,21 @@ public class RedisBloomFilterThroughput {
         server.reportRead(item, 500, TimeUnit.MILLISECONDS);
         server.reportWrite(item);
         writes.getAndIncrement();
-        if (rnd.nextDouble() < 0.001) {
-            System.out.println("Writes: " + writes.get());
-        }
     }
 
     private void endTest(CompletableFuture<Boolean> resultFuture, List<ScheduledFuture<?>> processes, List<ExpiringBloomFilter<String>> servers, long startTime) {
-        System.out.println("Ending Test");
+        long endingStarted = (System.currentTimeMillis() - startTime);
+        System.out.println("Ending Test (Runtime: " + endingStarted + "ms)");
         processes.forEach(process -> process.cancel(false));
         long duration = (System.currentTimeMillis() - startTime);
-        System.out.println("Processes canceled (Runtime: " + duration + ")");
-        System.out.println("Writes: " + writes.get() + " Throughput: " + writes.get() / (duration / 1000) + "/s");
+        System.out.println("Processes canceled (Runtime: " + duration + "ms)");
+        System.out.println("Writes: " + writes.get() + "/" + ((1000 * TEST_RUNTIME * SERVERS * USERS_PER_SERVER) / WRITE_PERIOD) + ", Throughput: " + writes.get() / (duration / 1000) + "/s");
 
         waitForServersToClear(servers, resultFuture);
 
-        resultFuture.thenAccept(ignored -> {
+        resultFuture.thenAccept((ignored) -> {
 //            servers.forEach(server -> server.remove());
-            System.out.println("Bloom filter cleanup time: " + ((System.currentTimeMillis() - startTime) - duration) / 1000.0);
+            System.out.println("Bloom filter cleanup time: " + ((System.currentTimeMillis() - startTime - duration) / 1000.0) + "s");
         });
     }
 
