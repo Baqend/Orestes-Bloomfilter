@@ -13,6 +13,7 @@ import redis.clients.jedis.PipelineBase;
 import redis.clients.jedis.Transaction;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -30,7 +31,7 @@ import static java.util.stream.Collectors.toMap;
  *
  * @param <T> The type of the containing elements
  */
-public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, MigratableBloomFilter<T, CountingBloomFilterRedis<T>> {
+public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, MigratableBloomFilter<T> {
     protected final RedisKeys keys;
     protected final RedisPool pool;
     protected final RedisBitSet bloom;
@@ -54,7 +55,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
                 .safelyReturn(r -> r.hgetAll(keys.COUNTS_KEY)
                         .entrySet()
                         .stream()
-                        .collect(toMap(e -> Integer.valueOf(e.getKey()), e -> Long.valueOf(e.getValue()))));
+                        .collect(toMap(e -> decode(e.getKey()), e -> Long.valueOf(e.getValue()))));
     }
 
     @Override
@@ -262,10 +263,14 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     }
 
     public static String encode(int value) {
-        return Base64.getEncoder().encodeToString(
-                new byte[]{(byte) (value >>> 24), (byte) (value >>> 16), (byte) (value >>> 8), (byte) value});
+        final BigInteger bigInt = BigInteger.valueOf(value);
+        return Base64.getEncoder().encodeToString(bigInt.toByteArray());
     }
 
+    public static int decode(String value) {
+        final BigInteger bigInt = new BigInteger(Base64.getDecoder().decode(value));
+        return bigInt.intValue();
+    }
 
     private static String[] encode(int[] hashes) {
         return IntStream.of(hashes).mapToObj(CountingBloomFilterRedis::encode).toArray(String[]::new);
@@ -294,7 +299,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     }
 
     @Override
-    public CountingBloomFilterRedis<T> migrateFrom(BloomFilter<T> source) {
+    public void migrateFrom(BloomFilter<T> source) {
         if (!(source instanceof CountingBloomFilter) || !compatible(source)) {
             throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
@@ -306,8 +311,6 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         pool.transactionallyRetry(p -> {
             countSetToMigrate.forEach((position, value) -> set(position, value, p));
         }, keys.BITS_KEY, keys.COUNTS_KEY);
-
-        return this;
     }
 
     /**

@@ -5,13 +5,17 @@ import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.Tuple;
 
 import java.time.Clock;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static java.util.stream.Collectors.toMap;
 
 public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
     private final Clock clock;
@@ -60,15 +64,16 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     /**
      * @param TTL  the TTL to convert
      * @param unit the unit of the TTL
-     * @return timestamp from TTL in milliseconds
+     * @return timestamp from TTL in nanoseconds
      */
     private long ttlToTimestamp(long TTL, TimeUnit unit) {
-        return clock.instant().plusMillis(TimeUnit.MILLISECONDS.convert(TTL, unit)).toEpochMilli();
+        final long ttlInNanoseconds = NANOSECONDS.convert(TTL, unit);
+        return now() + ttlInNanoseconds;
     }
 
     @Override
     public boolean isCached(T element) {
-        Long remaining = getRemainingTTL(element, TimeUnit.MILLISECONDS);
+        Long remaining = getRemainingTTL(element, NANOSECONDS);
         return remaining != null && remaining > 0;
     }
 
@@ -99,31 +104,32 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
 
     @Override
     public void reportRead(T element, long TTL, TimeUnit unit) {
-        // Create timestamp from TTL
-        final long timestamp = ttlToTimestamp(TTL, unit);
-
-        pool.safelyDo(jedis -> jedis.evalsha(reportReadScript, 1, keys.TTL_KEY, String.valueOf(timestamp), element.toString()));
+        pool.safelyDo((jedis) -> {
+            // Create timestamp from TTL
+            final long timestamp = ttlToTimestamp(TTL, unit);
+            jedis.evalsha(reportReadScript, 1, keys.TTL_KEY, String.valueOf(timestamp), element.toString());
+        });
     }
 
     @Override
     public Long reportWrite(T element, TimeUnit unit) {
-        Long remaining = getRemainingTTL(element, TimeUnit.NANOSECONDS);
+        Long remaining = getRemainingTTL(element, NANOSECONDS);
         if (remaining != null && remaining >= 0) {
             add(element);
             queue.addTTL(element, remaining);
         }
-        return remaining != null ? unit.convert(remaining, TimeUnit.NANOSECONDS) : null;
+        return remaining != null ? unit.convert(remaining, NANOSECONDS) : null;
     }
 
     @Override
     public List<Long> reportWrites(List<T> elements, TimeUnit unit) {
-        List<Long> remainingTTLs = getRemainingTTLs(elements, TimeUnit.NANOSECONDS);
+        List<Long> remainingTTLs = getRemainingTTLs(elements, NANOSECONDS);
         List<T> filteredElements = new LinkedList<>();
         List<Long> reportedTTLs = new LinkedList<>();
         for (int i = 0; i < remainingTTLs.size(); i++) {
             Long remaining = remainingTTLs.get(i);
             if (remaining != null && remaining >= 0) {
-                reportedTTLs.add(unit.convert(remaining, TimeUnit.NANOSECONDS));
+                reportedTTLs.add(unit.convert(remaining, NANOSECONDS));
 
                 T element = elements.get(i);
                 filteredElements.add(element);
@@ -157,8 +163,13 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
 
     @Override
     public Stream<ExpiringItem<T>> streamExpirations() {
-        // TODO Refactor TTL list to use a redis map before implementing this.
-        throw new UnsupportedOperationException();
+        return pool.safelyReturn((jedis) -> {
+            final Set<Tuple> tuples = jedis.zrangeByScoreWithScores(keys.TTL_KEY, now(), Double.POSITIVE_INFINITY);
+
+            return tuples
+                    .stream()
+                    .map(it -> (ExpiringItem<T>) new ExpiringItem<>(it.getElement(), (long) it.getScore() - now()));
+        });
     }
 
     @Override
@@ -167,21 +178,21 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     }
 
     @Override
-    public CountingBloomFilterRedis<T> migrateFrom(BloomFilter<T> source) {
-        // Migrate CBF and FBF
+    public void migrateFrom(BloomFilter<T> source) {
+        // Migrate CBF and binary BF
         super.migrateFrom(source);
 
         if (!(source instanceof ExpiringBloomFilter) || !compatible(source)) {
             throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
 
-        // TODO migrate TLL list
-        ((ExpiringBloomFilter<T>) source).streamExpirations();
+        final ExpiringBloomFilter<T> ebfSource = (ExpiringBloomFilter<T>) source;
 
-        // migrate queue
-        ((ExpiringBloomFilter<T>) source).streamExpiringBFItems().forEach(queue::add);
+        // Migrate TTL list
+        migrateExpirations(ebfSource.streamExpirations());
 
-        return this;
+        // Migrate queue
+        ebfSource.streamExpiringBFItems().forEach(queue::add);
     }
 
     /**
@@ -196,14 +207,26 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
             return null;
         }
 
-        final long convert = unit.convert(score.longValue() - now(), TimeUnit.MILLISECONDS);
+        final long convert = unit.convert(score.longValue() - now(), NANOSECONDS);
         return convert <= 0 ? null : convert;
     }
 
     /**
-     * @return current timestamp in milliseconds
+     * @return current timestamp in nanoseconds
      */
     private long now() {
-        return clock.instant().toEpochMilli();
+        return NANOSECONDS.convert(clock.instant().toEpochMilli(), MILLISECONDS);
+    }
+
+    /**
+     * Streams items into the TTL list.
+     *
+     * @param items The stream of items.
+     */
+    private void migrateExpirations(Stream<ExpiringItem<T>> items) {
+        pool.safelyDo(jedis -> {
+            final Map<String, Double> scoreMembers = items.collect(toMap(e -> e.getItem().toString(), e -> now() + (double) e.getExpiration()));
+            jedis.zadd(keys.TTL_KEY, scoreMembers);
+        });
     }
 }

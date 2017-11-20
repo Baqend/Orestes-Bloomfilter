@@ -2,8 +2,8 @@ package orestes.bloomfilter.cachesketch;
 
 
 import orestes.bloomfilter.BloomFilter;
-import orestes.bloomfilter.CountingBloomFilter;
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.MigratableBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.memory.CountingBloomFilter32;
 
@@ -11,9 +11,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
-public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> implements ExpiringBloomFilter<T> {
+public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> implements ExpiringBloomFilter<T>, MigratableBloomFilter<T> {
     private final Map<T, Long> expirations = new ConcurrentHashMap<>();
     private ExpirationQueue<T> queue;
 
@@ -23,7 +22,7 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     }
 
     private Long ttlToTimestamp(long TTL, TimeUnit unit) {
-        return System.nanoTime() + TimeUnit.NANOSECONDS.convert(TTL, unit);
+        return now() + TimeUnit.NANOSECONDS.convert(TTL, unit);
     }
 
     private void onExpire(ExpiringItem<T> entry) {
@@ -39,7 +38,7 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     @Override
     public Long getRemainingTTL(T element, TimeUnit unit) {
         Long ts = expirations.get(element);
-        return ts != null ? unit.convert(ts - System.nanoTime(), TimeUnit.NANOSECONDS) : null;
+        return ts != null ? unit.convert(ts - now(), TimeUnit.NANOSECONDS) : null;
     }
 
     @Override
@@ -56,7 +55,7 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
             add(element);
             queue.addExpiration(element, ts);
         }
-        return ts != null ? unit.convert(ts - System.nanoTime(), TimeUnit.NANOSECONDS) : null;
+        return ts != null ? unit.convert(ts - now(), TimeUnit.NANOSECONDS) : null;
     }
 
     @Override
@@ -79,7 +78,7 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     }
 
     @Override
-    public CountingBloomFilter<T> migrateFrom(BloomFilter<T> source) {
+    public void migrateFrom(BloomFilter<T> source) {
         // Migrate CBF and FBF
         super.migrateFrom(source);
 
@@ -87,23 +86,39 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
             throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
 
+        final ExpiringBloomFilter<T> ebfSource = (ExpiringBloomFilter<T>) source;
+
         // Migrate TTL list
-        ((ExpiringBloomFilter<T>) source).streamExpirations()
-            .forEach(item -> expirations.put(item.getItem(), item.getExpiration()));
+        migrateExpirations(ebfSource);
 
         // Migrate expiration queue
-        ((ExpiringBloomFilter<T>) source).streamExpiringBFItems().forEach(queue::add);
-
-        return this;
+        ebfSource.streamExpiringBFItems().forEach(queue::add);
     }
 
     @Override
     public Stream<ExpiringItem<T>> streamExpirations() {
-        return expirations.entrySet().stream().map(entry -> new ExpiringItem<T>(entry.getKey(), entry.getValue()));
+        return expirations.entrySet().stream().map(entry -> new ExpiringItem<>(entry.getKey(), entry.getValue() - now()));
     }
 
     @Override
     public Stream<ExpiringItem<T>> streamExpiringBFItems() {
         return queue.streamEntries();
+    }
+
+    /**
+     * Returns the current time in nanoseconds.
+     *
+     * @return the current time in nanoseconds.
+     */
+    private long now() {
+        return System.nanoTime();
+    }
+
+    private void migrateExpirations(ExpiringBloomFilter<T> ebfSource) {
+        ebfSource.streamExpirations()
+                .forEach(item -> {
+                    final ExpiringItem<T> absolute = item.toAbsolute(now(), TimeUnit.NANOSECONDS);
+                    expirations.put(absolute.getItem(), absolute.getExpiration());
+                });
     }
 }

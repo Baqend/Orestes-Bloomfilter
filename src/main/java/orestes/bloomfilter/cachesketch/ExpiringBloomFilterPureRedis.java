@@ -78,9 +78,4 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
             return true;
         });
     }
-
-    @Override
-    public CountingBloomFilterRedis<String> migrateFrom(BloomFilter<String> source) {
-        return super.migrateFrom(source);
-    }
 }

@@ -2,6 +2,7 @@ package orestes.bloomfilter.cachesketch;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.CountingBloomFilter;
+import orestes.bloomfilter.MigratableBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 
 import java.util.List;
@@ -15,7 +16,7 @@ import java.util.stream.Stream;
  * expiration(obj).
  *
  */
-public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T> {
+public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, MigratableBloomFilter<T> {
 
     /**
      * Determines whether a given object is no-expired

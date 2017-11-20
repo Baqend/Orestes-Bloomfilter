@@ -58,6 +58,16 @@ public class CountingBFTest {
         }
     }
 
+    @Ignore
+    @Test
+    public void testEncodeDecode() {
+        final Random random = new Random();
+        for (long x = 0; x <= 100_000_000; x += 1) {
+            final int i = Math.abs(random.nextInt());
+            assertEquals(i, CountingBloomFilterRedis.decode(CountingBloomFilterRedis.encode(i)));
+        }
+    }
+
     @Test
     public void testCounterSizes() {
         int m = 100000;

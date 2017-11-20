@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 
-public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, MigratableBloomFilter<T, CountingBloomFilter<T>> {
+public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, MigratableBloomFilter<T> {
     private static final long serialVersionUID = -3207752201903871264L;
     protected FilterBuilder config;
     protected BloomFilterMemory<T> filter;
@@ -299,7 +299,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
     }
 
     @Override
-    public CountingBloomFilter<T> migrateFrom(BloomFilter<T> source) {
+    public void migrateFrom(BloomFilter<T> source) {
         if (!(source instanceof CountingBloomFilter) || !compatible(source)) {
             throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
@@ -309,7 +309,5 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
             set(position, value);
             filter.setBit(position, value > 0);
         });
-
-        return this;
     }
 }

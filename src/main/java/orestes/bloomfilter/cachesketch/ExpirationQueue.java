@@ -7,6 +7,8 @@ import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
 /**
  * Created on 04.10.17.
  *
@@ -22,7 +24,7 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      * @return whether the item has been added
      */
     default boolean addTTL(T item, long ttl, TimeUnit ttlUnit) {
-        return add(new ExpiringItem<>(item, System.nanoTime() + TimeUnit.NANOSECONDS.convert(ttl, ttlUnit)));
+        return add(new ExpiringItem<>(item, System.nanoTime() + NANOSECONDS.convert(ttl, ttlUnit)));
     }
 
     /**
@@ -33,7 +35,7 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      * @return whether the item has been added
      */
     default boolean addTTL(T item, long ttl) {
-        return addTTL(item, ttl, TimeUnit.NANOSECONDS);
+        return addTTL(item, ttl, NANOSECONDS);
     }
 
     /**
@@ -136,14 +138,25 @@ public interface ExpirationQueue<T> extends Iterable<T> {
             return expiration;
         }
 
+        /**
+         * Creates an absolute expiring item which contains the expiration absolute to a given point in time.
+         *
+         * @param time The time point to be absolute to.
+         * @param unit The time point's unit.
+         * @return A new expiring item instance.
+         */
+        public ExpiringItem<T> toAbsolute(long time, TimeUnit unit) {
+            return new ExpiringItem<>(item, expiration + NANOSECONDS.convert(time, unit));
+        }
+
         @Override
         public long getDelay(TimeUnit unit) {
-            return unit.convert(expiration - System.nanoTime(), TimeUnit.NANOSECONDS);
+            return unit.convert(expiration - System.nanoTime(), NANOSECONDS);
         }
 
         @Override
         public int compareTo(Delayed delayed) {
-            return Long.compare(getDelay(TimeUnit.NANOSECONDS), delayed.getDelay(TimeUnit.NANOSECONDS));
+            return Long.compare(getDelay(NANOSECONDS), delayed.getDelay(NANOSECONDS));
         }
 
         @Override

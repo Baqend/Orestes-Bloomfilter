@@ -290,6 +290,90 @@ public class ExpiringTest {
         }
     }
 
+    @Test
+    public void testMigrateFromInMemoryExpiringBloomFilter() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.001);
+
+        // Create the filter to migrate from
+        final ExpiringBloomFilterMemory<String> inMemory = new ExpiringBloomFilterMemory<>(b);
+        inMemory.reportRead("Foo", 50, TimeUnit.SECONDS);
+        assertTrue(inMemory.isCached("Foo"));
+        assertFalse(inMemory.contains("Foo"));
+        inMemory.reportRead("Bar", 40, TimeUnit.SECONDS);
+        assertTrue(inMemory.isCached("Bar"));
+        assertFalse(inMemory.contains("Bar"));
+        inMemory.reportRead("Baz", 30, TimeUnit.SECONDS);
+        inMemory.reportWrite("Baz");
+        assertTrue(inMemory.isCached("Baz"));
+        assertTrue(inMemory.contains("Baz"));
+
+        // Check state before migration
+        createFilter(b);
+        assertFalse(filter.isCached("Foo"));
+        assertFalse(filter.contains("Foo"));
+        assertFalse(filter.isCached("Bar"));
+        assertFalse(filter.contains("Bar"));
+        assertFalse(filter.isCached("Baz"));
+        assertFalse(filter.contains("Baz"));
+
+        // Check state after migration
+        inMemory.migrateTo(filter);
+        assertTrue(filter.isCached("Foo"));
+        assertFalse(filter.contains("Foo"));
+        assertRemainingTTL(filter.getRemainingTTL("Foo", TimeUnit.SECONDS), 30, 50);
+        assertTrue(filter.isCached("Bar"));
+        assertFalse(filter.contains("Bar"));
+        assertRemainingTTL(filter.getRemainingTTL("Bar", TimeUnit.SECONDS), 20, 40);
+        assertTrue(filter.isCached("Baz"));
+        assertTrue(filter.contains("Baz"));
+        assertRemainingTTL(filter.getRemainingTTL("Baz", TimeUnit.SECONDS), 10, 30);
+
+        // Cleanup in-memory BF
+        inMemory.clear();
+    }
+
+    @Test
+    public void testMigrateToInMemoryExpiringBloomFilter() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.001);
+
+        // Create the filter to migrate from
+        createFilter(b);
+        filter.reportRead("Foo", 50, TimeUnit.SECONDS);
+        assertTrue(filter.isCached("Foo"));
+        assertFalse(filter.contains("Foo"));
+        filter.reportRead("Bar", 40, TimeUnit.SECONDS);
+        assertTrue(filter.isCached("Bar"));
+        assertFalse(filter.contains("Bar"));
+        filter.reportRead("Baz", 30, TimeUnit.SECONDS);
+        filter.reportWrite("Baz");
+        assertTrue(filter.isCached("Baz"));
+        assertTrue(filter.contains("Baz"));
+
+        // Check state before migration
+        final ExpiringBloomFilterMemory<String> inMemory = new ExpiringBloomFilterMemory<>(b);
+        assertFalse(inMemory.isCached("Foo"));
+        assertFalse(inMemory.contains("Foo"));
+        assertFalse(inMemory.isCached("Bar"));
+        assertFalse(inMemory.contains("Bar"));
+        assertFalse(inMemory.isCached("Baz"));
+        assertFalse(inMemory.contains("Baz"));
+
+        // Check state after migration
+        filter.migrateTo(inMemory);
+        assertTrue(inMemory.isCached("Foo"));
+        assertFalse(inMemory.contains("Foo"));
+        assertRemainingTTL(inMemory.getRemainingTTL("Foo", TimeUnit.SECONDS), 30, 50);
+        assertTrue(inMemory.isCached("Bar"));
+        assertFalse(inMemory.contains("Bar"));
+        assertRemainingTTL(inMemory.getRemainingTTL("Bar", TimeUnit.SECONDS), 20, 40);
+        assertTrue(inMemory.isCached("Baz"));
+        assertTrue(inMemory.contains("Baz"));
+        assertRemainingTTL(inMemory.getRemainingTTL("Baz", TimeUnit.SECONDS), 10, 30);
+
+        // Cleanup in-memory BF
+        inMemory.clear();
+    }
+
     private void assertRemainingTTL(long ttl, long min, long max) {
         assertTrue("Assert remaining TTL is lower than " + max + " ms, but was " + ttl + " ms", ttl <= max);
         assertTrue("Assert remaining TTL is higher than " + min + " ms, but was " + ttl + " ms", ttl >= min);
