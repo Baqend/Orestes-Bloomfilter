@@ -1,16 +1,18 @@
 package performance;
 
+import com.codahale.metrics.ExponentiallyDecayingReservoir;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Snapshot;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
-import org.omg.SendingContext.RunTime;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -29,7 +31,17 @@ public class RedisBloomFilterThroughput {
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(100);
     private final Random rnd = new Random(214576);
-    private final AtomicInteger writes = new AtomicInteger();
+    private final Histogram readHistogram;
+    private final Histogram writeHistogram;
+    private final String testName;
+
+    public RedisBloomFilterThroughput(String name) {
+        testName = name;
+        System.out.println("-------------- " + name + " --------------");
+
+        this.readHistogram = new Histogram(new ExponentiallyDecayingReservoir());
+        this.writeHistogram = new Histogram(new ExponentiallyDecayingReservoir());
+    }
 
     public static void main(String[] args) {
         int m = 100_000;
@@ -42,17 +54,27 @@ public class RedisBloomFilterThroughput {
             .redisHost("127.0.0.1")
             .redisPort(6379)
             .redisConnections(10)
-            .overwriteIfExists(true);
+            .overwriteIfExists(true)
+            .complete();
 
-        final RedisBloomFilterThroughput test = new RedisBloomFilterThroughput();
+        RedisBloomFilterThroughput test;
 
-        System.out.println("-------------- Normal Redis --------------");
-        test.resetMetrics();
+        builder.pool().safelyDo(jedis -> jedis.flushAll());
+        test = new RedisBloomFilterThroughput("Redis Queue 1");
+        test.testPerformance(builder, ExpiringBloomFilterPureRedis.class).join();
+
+        builder.pool().safelyDo(jedis -> jedis.flushAll());
+        test = new RedisBloomFilterThroughput("Memory Queue 1");
         test.testPerformance(builder, ExpiringBloomFilterRedis.class).join();
 
-        System.out.println("-------------- Pure Redis --------------");
-        test.resetMetrics();
+        builder.pool().safelyDo(jedis -> jedis.flushAll());
+        test = new RedisBloomFilterThroughput("Redis Queue 2");
         test.testPerformance(builder, ExpiringBloomFilterPureRedis.class).join();
+
+        builder.pool().safelyDo(jedis -> jedis.flushAll());
+        test = new RedisBloomFilterThroughput("Memory Queue 2");
+        test.testPerformance(builder, ExpiringBloomFilterRedis.class).join();
+
         System.exit(0);
     }
 
@@ -69,10 +91,6 @@ public class RedisBloomFilterThroughput {
         Executors.newSingleThreadScheduledExecutor().schedule(() -> endTest(testResult, processes, servers, start), TEST_RUNTIME, TimeUnit.SECONDS);
 
         return testResult;
-    }
-
-    public void resetMetrics() {
-        writes.set(0);
     }
 
     private ExpiringBloomFilter<String> createBloomFilter(FilterBuilder builder, Class<? extends ExpiringBloomFilterRedis> type) {
@@ -95,26 +113,29 @@ public class RedisBloomFilterThroughput {
             final int randomDelay = rnd.nextInt(1000);
 
             // report reads and writes periodically
-            final ScheduledFuture<?> writeProcess = executor.scheduleAtFixedRate(() -> reportWrite(server), randomDelay,
-                WRITE_PERIOD, TimeUnit.MILLISECONDS);
+            final ScheduledFuture<?> writeProcess = executor.scheduleAtFixedRate(
+                () -> doReportWrite(server), randomDelay, WRITE_PERIOD, TimeUnit.MILLISECONDS);
 
             // read Bloom filter periodically
             final ScheduledFuture<?> bloomFilterReadProcess = executor.scheduleAtFixedRate(
-                () -> readBloomFilter(server), randomDelay, READ_PERIOD, TimeUnit.MILLISECONDS);
+                () -> doReadBloomFilter(server), randomDelay, READ_PERIOD, TimeUnit.MILLISECONDS);
 
             return Stream.of(writeProcess, bloomFilterReadProcess);
         }).flatMap(it -> it);
     }
 
-    private void readBloomFilter(ExpiringBloomFilter<String> server) {
+    private void doReadBloomFilter(ExpiringBloomFilter<String> server) {
+        final long start = System.nanoTime();
         server.getBitSet();
+        readHistogram.update(System.nanoTime() - start);
     }
 
-    private void reportWrite(ExpiringBloomFilter<String> server) {
+    private void doReportWrite(ExpiringBloomFilter<String> server) {
+        final long start = System.nanoTime();
         final String item = getRandomItem();
         server.reportRead(item, 500, TimeUnit.MILLISECONDS);
         server.reportWrite(item);
-        writes.getAndIncrement();
+        writeHistogram.update(System.nanoTime() - start);
     }
 
     private void endTest(CompletableFuture<Boolean> resultFuture, List<ScheduledFuture<?>> processes, List<ExpiringBloomFilter<String>> servers, long startTime) {
@@ -123,14 +144,31 @@ public class RedisBloomFilterThroughput {
         processes.forEach(process -> process.cancel(false));
         long duration = (System.currentTimeMillis() - startTime);
         System.out.println("Processes canceled (Runtime: " + duration + "ms)");
-        System.out.println("Writes: " + writes.get() + "/" + ((1000 * TEST_RUNTIME * SERVERS * USERS_PER_SERVER) / WRITE_PERIOD) + ", Throughput: " + writes.get() / (duration / 1000) + "/s");
+        System.out.println("Writes: " + writeHistogram.getCount() + "/" + ((1000 * TEST_RUNTIME * SERVERS * USERS_PER_SERVER) / WRITE_PERIOD) + ", Throughput: " + writeHistogram.getCount() / (duration / 1000) + "/s");
 
+        dumpHistogram("Reads", readHistogram);
+        dumpHistogram("Writes", writeHistogram);
         waitForServersToClear(servers, resultFuture);
 
         resultFuture.thenAccept((ignored) -> {
 //            servers.forEach(server -> server.remove());
             System.out.println("Bloom filter cleanup time: " + ((System.currentTimeMillis() - startTime - duration) / 1000.0) + "s");
         });
+    }
+
+    private void dumpHistogram(String name, Histogram histogram) {
+        final Snapshot snapshot = histogram.getSnapshot();
+        final String format = String.format(
+                Locale.ENGLISH,
+                "('%s', %.4f, %.4f, %.4f, %.4f, %.4f),",
+                testName + " " + name,
+                snapshot.getMin() / 1e6d,
+                snapshot.getValue(0.25) / 1e6d,
+                snapshot.getMedian() / 1e6d,
+                snapshot.getValue(0.75) / 1e6d,
+                snapshot.getMax() / 1e6d
+        );
+        System.out.println(format);
     }
 
     private void waitForServersToClear(List<ExpiringBloomFilter<String>> servers, CompletableFuture<Boolean> future) {

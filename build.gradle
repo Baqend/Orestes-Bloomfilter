@@ -25,7 +25,8 @@ dependencies {
             'junit:junit:4.11',
             'org.apache.commons:commons-math:2.2',
             'com.google.guava:guava:18.0',
-            'org.apache.commons:commons-lang3:3.0'
+            'org.apache.commons:commons-lang3:3.0',
+            'io.dropwizard.metrics:metrics-core:3.2.3',
     )
 }
 
