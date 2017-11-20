@@ -48,6 +48,11 @@ task sourcesJar(type: Jar) {
     from sourceSets.main.allSource
 }
 
+task redisBloomFilterLatency(type: JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    main = 'performance.RedisBloomFilterThroughput'
+}
+
 test {
     dependsOn 'startRedis'
     finalizedBy 'stopRedis'
