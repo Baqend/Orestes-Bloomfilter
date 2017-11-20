@@ -53,6 +53,11 @@ task redisBloomFilterLatency(type: JavaExec) {
     main = 'performance.RedisBloomFilterThroughput'
 }
 
+task redisMigrationLatency(type: JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    main = 'performance.BloomFilterMigrationThroughput'
+}
+
 test {
     dependsOn 'startRedis'
     finalizedBy 'stopRedis'
