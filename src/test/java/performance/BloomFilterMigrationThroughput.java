@@ -1,6 +1,5 @@
 package performance;
 
-import com.codahale.metrics.Counter;
 import com.codahale.metrics.ExponentiallyDecayingReservoir;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Snapshot;
@@ -26,12 +25,11 @@ import static java.util.stream.Collectors.toList;
  */
 public class BloomFilterMigrationThroughput {
     private static final int ITEMS = 1_000_000;
-    private static final int SERVERS = 1;
+    private static final int SERVERS = 15;
     private static final int TEST_RUNTIME = 120;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(100);
     private final Random rnd = new Random(214576);
-    private final Counter migCounter = new Counter();
     private final Histogram migHistogram = new Histogram(new ExponentiallyDecayingReservoir());
     private final String testName;
     private final boolean toServer;
@@ -93,7 +91,7 @@ public class BloomFilterMigrationThroughput {
         System.out.println("done.");
 
         final long start = System.currentTimeMillis();
-        final List<ScheduledFuture<?>> processes = servers.stream().flatMap(this::startUsers).collect(toList());
+        final List<Future<?>> processes = servers.stream().flatMap(this::startServer).collect(toList());
 
         final CompletableFuture<Boolean> testResult = new CompletableFuture<>();
         Executors.newSingleThreadScheduledExecutor().schedule(() -> endTest(testResult, processes, servers, start), TEST_RUNTIME, TimeUnit.SECONDS);
@@ -102,6 +100,7 @@ public class BloomFilterMigrationThroughput {
     }
 
     private ExpiringBloomFilter<String> createBloomFilter(FilterBuilder builder, Class<? extends ExpiringBloomFilterRedis> type) {
+        builder.name(createRandomName());
         ExpiringBloomFilterRedis<String> result;
         if (type == ExpiringBloomFilterRedis.class) {
             result = new ExpiringBloomFilterRedis<>(builder);
@@ -114,14 +113,21 @@ public class BloomFilterMigrationThroughput {
         return result;
     }
 
-    private Stream<ScheduledFuture<?>> startUsers(ExpiringBloomFilter<String> server) {
-        final int randomDelay = rnd.nextInt(1000);
+    private String createRandomName() {
+        final String chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        final StringBuilder builder = new StringBuilder(6);
+        for (int i = 0; i < builder.capacity(); i += 1) {
+            builder.append(chars.charAt(rnd.nextInt(chars.length())));
+        }
 
+        return builder.toString();
+    }
+
+    private Stream<Future<?>> startServer(ExpiringBloomFilter<String> server) {
         // Schedule migration periodically
-        final ScheduledFuture<?> writeProcess = executor.scheduleWithFixedDelay(
-                () -> doMigrateToRedis(server), randomDelay, 1, TimeUnit.MILLISECONDS);
+        final Future<?> future = executor.submit(() -> doMigrateToRedis(server));
 
-        return Stream.of(writeProcess);
+        return Stream.of(future);
     }
 
     private void doMigrateToRedis(ExpiringBloomFilter<String> server) {
@@ -131,11 +137,10 @@ public class BloomFilterMigrationThroughput {
         } else {
             inMemoryFilter.migrateFrom(server);
         }
-        migCounter.inc();
         migHistogram.update(System.nanoTime() - start);
     }
 
-    private void endTest(CompletableFuture<Boolean> resultFuture, List<ScheduledFuture<?>> processes, List<ExpiringBloomFilter<String>> servers, long startTime) {
+    private void endTest(CompletableFuture<Boolean> resultFuture, List<Future<?>> processes, List<ExpiringBloomFilter<String>> servers, long startTime) {
         long endingStarted = System.currentTimeMillis() - startTime;
         System.out.println("Ending Test (Runtime: " + endingStarted + "ms)");
         processes.forEach(process -> process.cancel(false));
@@ -143,8 +148,9 @@ public class BloomFilterMigrationThroughput {
         System.out.println("Processes canceled (Runtime: " + duration + "ms)");
 
         final Snapshot snapshot = migHistogram.getSnapshot();
-        System.out.println("Count       : " + migCounter.getCount());
-        System.out.println("Throughput  : " + (migCounter.getCount() / (duration / 1000)) + "/s");
+        System.out.println("Servers     : " + SERVERS);
+        System.out.println("Count       : " + migHistogram.getCount());
+        System.out.println("Throughput  : " + (migHistogram.getCount() / (duration / 1000)) + "/s");
         System.out.println("Latency Avg : " + (snapshot.getMean() / 1e6d) + "ms");
         System.out.println("Latency Min : " + (snapshot.getMin() / 1e6d) + "ms");
         System.out.println("Latency Q1  : " + (snapshot.getValue(.25) / 1e6d) + "ms");
