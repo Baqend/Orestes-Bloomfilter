@@ -72,9 +72,11 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
      */
     synchronized private boolean expirationHandler(ExpirationQueueRedis queue) {
         return pool.safelyReturn((jedis) -> {
-            final String now = String.valueOf(System.nanoTime());
+            final long nowT = System.nanoTime();
+            final String now = String.valueOf(nowT);
+            System.out.println("[" + config.name() + "] Started expiration queue script");
             jedis.evalsha(exportQueueScript, 3, keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY, now);
-
+            System.out.println("[" + config.name() + "] Finished expiration queue script after " + (System.nanoTime() - nowT) / 1e6 + "ms");
             return true;
         });
     }

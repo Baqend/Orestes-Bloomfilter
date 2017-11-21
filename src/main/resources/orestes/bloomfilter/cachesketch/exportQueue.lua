@@ -2,9 +2,10 @@ local QUEUE_KEY = KEYS[1]
 local COUNTS_KEY = KEYS[2]
 local BITS_KEY = KEYS[3]
 local now = ARGV[1]
+local LIMIT = 16384
 
 -- Get expired elements from Redis
-local expiredElements = redis.call("ZRANGEBYSCORE", QUEUE_KEY, 0, now)
+local expiredElements = redis.call("ZRANGEBYSCORE", QUEUE_KEY, 0, now, "LIMIT", 0, LIMIT)
 
 local counts = {} -- Collect all counts
 for _, msgPack in ipairs(expiredElements) do

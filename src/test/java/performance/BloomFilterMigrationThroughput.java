@@ -3,6 +3,7 @@ package performance;
 import com.codahale.metrics.ExponentiallyDecayingReservoir;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Snapshot;
+import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
@@ -27,6 +28,7 @@ public class BloomFilterMigrationThroughput {
     private static final int ITEMS = 1_000_000;
     private static final int SERVERS = 15;
     private static final int TEST_RUNTIME = 120;
+    private static final int COOL_DOWN_TIME = 60;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(100);
     private final Random rnd = new Random(214576);
@@ -100,12 +102,12 @@ public class BloomFilterMigrationThroughput {
     }
 
     private ExpiringBloomFilter<String> createBloomFilter(FilterBuilder builder, Class<? extends ExpiringBloomFilterRedis> type) {
-        builder.name(createRandomName());
+        final FilterBuilder clone = builder.clone().name(createRandomName());
         ExpiringBloomFilterRedis<String> result;
         if (type == ExpiringBloomFilterRedis.class) {
-            result = new ExpiringBloomFilterRedis<>(builder);
+            result = new ExpiringBloomFilterRedis<>(clone);
         } else if (type == ExpiringBloomFilterPureRedis.class) {
-            result = new ExpiringBloomFilterPureRedis(builder);
+            result = new ExpiringBloomFilterPureRedis(clone);
         } else {
             throw new IllegalArgumentException("Unknown Bloom filter type: " + type);
         }
@@ -126,7 +128,6 @@ public class BloomFilterMigrationThroughput {
     private Stream<Future<?>> startServer(ExpiringBloomFilter<String> server) {
         // Schedule migration periodically
         final Future<?> future = executor.submit(() -> doMigrateToRedis(server));
-
         return Stream.of(future);
     }
 
@@ -166,7 +167,7 @@ public class BloomFilterMigrationThroughput {
     }
 
     private void waitForServersToClear(List<ExpiringBloomFilter<String>> servers, CompletableFuture<Boolean> future) {
-        final boolean serversDone = servers.stream().allMatch(it -> it.getBitSet().isEmpty());
+        final boolean serversDone = servers.stream().allMatch(BloomFilter::isEmpty);
         if (serversDone) {
             future.complete(true);
         } else {
@@ -184,7 +185,7 @@ public class BloomFilterMigrationThroughput {
 
     private void addNewItem(ExpiringBloomFilter<String> server) {
         final String item = String.valueOf(rnd.nextInt(ITEMS));
-        server.reportRead(item, TEST_RUNTIME + 1, TimeUnit.SECONDS);
+        server.reportRead(item, TEST_RUNTIME + rnd.nextInt(COOL_DOWN_TIME), TimeUnit.SECONDS);
         server.reportWrite(item);
     }
 }

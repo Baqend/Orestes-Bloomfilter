@@ -231,13 +231,15 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
 
     /**
      * Schedules a new job to work the queue.
-     * @param aboutToEnd Whether the last job is about to end or needs to be canceled
+     * @param shouldNotCancel Whether the last job is about to end or needs to be canceled
      * @param delay When to schedule the new job
      * @param unit The time unit for the delay
      */
-    synchronized private void scheduleJob(boolean aboutToEnd, long delay, TimeUnit unit) {
-        ScheduledFuture<?> currentJob = this.job;
-        if (!aboutToEnd && currentJob != null) {
+    synchronized private void scheduleJob(boolean shouldNotCancel, long delay, TimeUnit unit) {
+        ScheduledFuture<?> currentJob = job;
+        if (!shouldNotCancel && currentJob != null) {
+//            currentJob.get()
+            System.out.println("[" + builder.name() + "] Cancel active job");
             currentJob.cancel(false);
         }
         job = scheduler.schedule(this::expirationJob, delay, unit);
@@ -252,8 +254,11 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
             boolean success = expirationHandler.apply(this);
             nextDelay = success? estimateNextDelay() : MIN_JOB_DELAY;
         } catch (Exception e) {
-            LOG.error("Error executing expiration job.", e);
+            System.out.println("[" + this.builder.name() + "] Error in script: " + e.getMessage());
+            e.printStackTrace();
+//            LOG.error("Error executing expiration job.", e);
         } finally {
+            System.out.println("[" + this.builder.name() + "] Starting the next job");
             scheduleJob(true, nextDelay, TimeUnit.NANOSECONDS);
         }
     }
