@@ -59,10 +59,20 @@ public interface ExpirationQueue<T> extends Iterable<T> {
     /**
      * Adds an expiring item to the queue.
      *
-     * @param item The item to add to the queue
-     * @return whether the item has been added
+     * @param item The item to add to the queue.
+     * @return whether the item has been added.
      */
     boolean add(ExpiringItem<T> item);
+
+    /**
+     * Adds many items to the expiration queue.
+     *
+     * @param items A stream of items to add to the queue.
+     * @return whether all items have been added.
+     */
+    default boolean addMany(Stream<ExpiringItem<T>> items) {
+        return items.allMatch(this::add);
+    }
 
     /**
      * Returns the items in the queue which are not expired yet.

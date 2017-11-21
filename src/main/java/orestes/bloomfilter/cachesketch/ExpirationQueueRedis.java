@@ -15,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -97,6 +98,25 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
                 final String hash = createRandomHash();
                 done = p.zadd(queueKey.getBytes(), item.getExpiration(), encodeItem(item, hash)) == 1;
             } while (!done);
+        });
+        return true;
+    }
+
+    @Override
+    public boolean addMany(Stream<ExpiringItem<String>> items) {
+        pool.safelyDo((jedis) -> {
+            final Pipeline pipeline = jedis.pipelined();
+            final AtomicInteger ctr = new AtomicInteger(0);
+            items.forEach((item) -> {
+                final String hash = createRandomHash();
+                pipeline.zadd(queueKey.getBytes(), item.getExpiration(), encodeItem(item, hash));
+
+                if (ctr.incrementAndGet() >= 1000) {
+                    ctr.set(0);
+                    pipeline.sync();
+                }
+            });
+            pipeline.sync();
         });
         return true;
     }

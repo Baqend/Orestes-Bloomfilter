@@ -9,13 +9,13 @@ import redis.clients.jedis.Tuple;
 
 import java.time.Clock;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
-import static java.util.stream.Collectors.toMap;
 
 public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
     private final Clock clock;
@@ -188,11 +188,13 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
 
         final ExpiringBloomFilter<T> ebfSource = (ExpiringBloomFilter<T>) source;
 
-        // Migrate TTL list
-        migrateExpirations(ebfSource.streamExpirations());
+        CompletableFuture.allOf(
+            // Migrate TTL list
+            CompletableFuture.runAsync(() -> migrateExpirations(ebfSource.streamExpirations())),
 
-        // Migrate queue
-        ebfSource.streamExpiringBFItems().forEach(queue::add);
+            // Migrate queue
+            CompletableFuture.runAsync(() -> queue.addMany(ebfSource.streamExpiringBFItems()))
+        ).join();
     }
 
     /**
@@ -224,9 +226,18 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
      * @param items The stream of items.
      */
     private void migrateExpirations(Stream<ExpiringItem<T>> items) {
-        pool.safelyDo(jedis -> {
-            final Map<String, Double> scoreMembers = items.collect(toMap(e -> e.getItem().toString(), e -> now() + (double) e.getExpiration()));
-            jedis.zadd(keys.TTL_KEY, scoreMembers);
+        pool.safelyDo((jedis) -> {
+            final Pipeline pipeline = jedis.pipelined();
+            final AtomicInteger ctr = new AtomicInteger(0);
+            items.forEach((item) -> {
+                pipeline.zadd(keys.TTL_KEY, (double) item.getExpiration(), item.getItem().toString());
+                // Sync every thousandth item
+                if (ctr.incrementAndGet() >= 1000) {
+                    ctr.set(0);
+                    pipeline.sync();
+                }
+            });
+            pipeline.sync();
         });
     }
 }

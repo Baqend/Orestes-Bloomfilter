@@ -25,11 +25,9 @@ import static java.util.stream.Collectors.toList;
  * @author Konstantin Simon Maria Möllers
  */
 public class BloomFilterMigrationThroughput {
-    private static final int ITEMS = 100_000_000;
-    private static final int SERVERS = 10;
-    private static final int USERS_PER_SERVER = 1;
-    private static final int READ_PERIOD = 100;
-    private static final int TEST_RUNTIME = 10;
+    private static final int ITEMS = 1_000_000;
+    private static final int SERVERS = 1;
+    private static final int TEST_RUNTIME = 120;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(100);
     private final Random rnd = new Random(214576);
@@ -51,42 +49,48 @@ public class BloomFilterMigrationThroughput {
 
         System.err.println("Please make sure to have Redis running on 127.0.0.1:6379.");
         final FilterBuilder builder = new FilterBuilder(m, k).hashFunction(HashMethod.Murmur3)
-            .name("purity")
-            .redisBacked(true)
-            .redisHost("127.0.0.1")
-            .redisPort(6379)
-            .redisConnections(10)
-            .overwriteIfExists(true)
-            .complete();
+                .name("purity")
+                .redisBacked(true)
+                .redisHost("127.0.0.1")
+                .redisPort(6379)
+                .redisConnections(10)
+                .overwriteIfExists(true)
+                .complete();
 
         BloomFilterMigrationThroughput test;
 
-        builder.pool().safelyDo(jedis -> jedis.flushAll());
-        test = new BloomFilterMigrationThroughput("Memory Queue, to server", true);
-        test.testPerformance(builder, ExpiringBloomFilterRedis.class).join();
+//        test = new BloomFilterMigrationThroughput("Memory Queue, to server", true);
+//        test.testPerformance(builder, ExpiringBloomFilterRedis.class).join();
 
-        builder.pool().safelyDo(jedis -> jedis.flushAll());
         test = new BloomFilterMigrationThroughput("Redis Queue, to server", true);
         test.testPerformance(builder, ExpiringBloomFilterPureRedis.class).join();
 
-        builder.pool().safelyDo(jedis -> jedis.flushAll());
-        test = new BloomFilterMigrationThroughput("Memory Queue, from server", false);
-        test.testPerformance(builder, ExpiringBloomFilterRedis.class).join();
+//        test = new BloomFilterMigrationThroughput("Memory Queue, from server", false);
+//        test.testPerformance(builder, ExpiringBloomFilterRedis.class).join();
 
-        builder.pool().safelyDo(jedis -> jedis.flushAll());
-        test = new BloomFilterMigrationThroughput("Redis Queue, from server", false);
-        test.testPerformance(builder, ExpiringBloomFilterPureRedis.class).join();
+//        test = new BloomFilterMigrationThroughput("Redis Queue, from server", false);
+//        test.testPerformance(builder, ExpiringBloomFilterPureRedis.class).join();
 
         System.exit(0);
     }
 
 
     public CompletableFuture<Boolean> testPerformance(FilterBuilder builder, Class<? extends ExpiringBloomFilterRedis> type) {
-        inMemoryFilter = new ExpiringBloomFilterMemory<>(builder);
+        System.out.print("Flushing Redis ... ");
+        builder.pool().safelyDo(jedis -> jedis.flushAll());
+        System.out.println("done.");
 
+        System.out.print("Creating in-memory Bloom filter ... ");
+        inMemoryFilter = new ExpiringBloomFilterMemory<>(builder);
+        if (toServer) addNewItems(inMemoryFilter, ITEMS);
+        System.out.println("done.");
+
+        System.out.print("Creating server Bloom filters ... ");
         List<ExpiringBloomFilter<String>> servers = IntStream.range(0, SERVERS)
-            .mapToObj(i -> createBloomFilter(builder, type))
-            .collect(toList());
+                .mapToObj(i -> createBloomFilter(builder, type))
+                .collect(toList());
+        if (!toServer) addNewItems(servers.get(0), ITEMS);
+        System.out.println("done.");
 
         final long start = System.currentTimeMillis();
         final List<ScheduledFuture<?>> processes = servers.stream().flatMap(this::startUsers).collect(toList());
@@ -107,33 +111,17 @@ public class BloomFilterMigrationThroughput {
             throw new IllegalArgumentException("Unknown Bloom filter type: " + type);
         }
 
-        result.clear();
         return result;
     }
 
     private Stream<ScheduledFuture<?>> startUsers(ExpiringBloomFilter<String> server) {
-        return IntStream.range(0, USERS_PER_SERVER).mapToObj(userId -> {
-            final int randomDelay = rnd.nextInt(1000);
+        final int randomDelay = rnd.nextInt(1000);
 
-            // Schedule migCounter periodically
+        // Schedule migration periodically
+        final ScheduledFuture<?> writeProcess = executor.scheduleWithFixedDelay(
+                () -> doMigrateToRedis(server), randomDelay, 1, TimeUnit.MILLISECONDS);
 
-            final ScheduledFuture<?> writeProcess = executor.scheduleWithFixedDelay(
-                    () -> doMigrateToRedis(server), randomDelay, 1, TimeUnit.MILLISECONDS);
-
-            // Perform some reads and writes periodically
-            final ScheduledFuture<?> readProcess = executor.scheduleAtFixedRate(
-                    () -> doReportRead(server), randomDelay, 100, TimeUnit.MILLISECONDS);
-
-            // Read Bloom filter periodically
-            final ScheduledFuture<?> bloomFilterReadProcess = executor.scheduleAtFixedRate(
-                () -> readBloomFilter(server), randomDelay, READ_PERIOD, TimeUnit.MILLISECONDS);
-
-            return Stream.of(writeProcess, readProcess, bloomFilterReadProcess);
-        }).flatMap(it -> it);
-    }
-
-    private void readBloomFilter(ExpiringBloomFilter<String> server) {
-        server.getBitSet();
+        return Stream.of(writeProcess);
     }
 
     private void doMigrateToRedis(ExpiringBloomFilter<String> server) {
@@ -145,17 +133,6 @@ public class BloomFilterMigrationThroughput {
         }
         migCounter.inc();
         migHistogram.update(System.nanoTime() - start);
-    }
-
-    private void doReportRead(ExpiringBloomFilter<String> server) {
-        final String item = getRandomItem();
-        if (toServer) {
-            inMemoryFilter.reportRead(item, 500, TimeUnit.MILLISECONDS);
-            inMemoryFilter.reportWrite(item);
-        } else {
-            server.reportRead(item, 500, TimeUnit.MILLISECONDS);
-            server.reportWrite(item);
-        }
     }
 
     private void endTest(CompletableFuture<Boolean> resultFuture, List<ScheduledFuture<?>> processes, List<ExpiringBloomFilter<String>> servers, long startTime) {
@@ -191,7 +168,17 @@ public class BloomFilterMigrationThroughput {
         }
     }
 
-    private String getRandomItem() {
-        return String.valueOf(rnd.nextInt(ITEMS));
+    private void addNewItems(ExpiringBloomFilter<String> server, int numberOfItems) {
+        IntStream.range(0, numberOfItems)
+                .parallel()
+                .forEach(i -> {
+                    addNewItem(server);
+                });
+    }
+
+    private void addNewItem(ExpiringBloomFilter<String> server) {
+        final String item = String.valueOf(rnd.nextInt(ITEMS));
+        server.reportRead(item, TEST_RUNTIME + 1, TimeUnit.SECONDS);
+        server.reportWrite(item);
     }
 }
