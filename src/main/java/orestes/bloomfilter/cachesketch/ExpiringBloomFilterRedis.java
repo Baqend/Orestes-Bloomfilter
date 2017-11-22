@@ -230,7 +230,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
             final Pipeline pipeline = jedis.pipelined();
             final AtomicInteger ctr = new AtomicInteger(0);
             items.forEach((item) -> {
-                pipeline.zadd(keys.TTL_KEY, (double) item.getExpiration(), item.getItem().toString());
+                pipeline.zadd(keys.TTL_KEY, (double) now() + item.getExpiration(), item.getItem().toString());
                 // Sync every thousandth item
                 if (ctr.incrementAndGet() >= 1000) {
                     ctr.set(0);
