@@ -26,8 +26,8 @@ import static java.util.stream.Collectors.toList;
  */
 public class BloomFilterMigrationThroughput {
     private static final int ITEMS = 1_000_000;
-    private static final int SERVERS = 15;
-    private static final int TEST_RUNTIME = 120;
+    private static final int SERVERS = 1;
+    private static final long TEST_RUNTIME = 10L;
     private static final int COOL_DOWN_TIME = 60;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(100);
@@ -185,7 +185,7 @@ public class BloomFilterMigrationThroughput {
 
     private void addNewItem(ExpiringBloomFilter<String> server) {
         final String item = String.valueOf(rnd.nextInt(ITEMS));
-        server.reportRead(item, TEST_RUNTIME + rnd.nextInt(COOL_DOWN_TIME), TimeUnit.SECONDS);
+        server.reportRead(item, 1_000_000L * TEST_RUNTIME + rnd.nextInt(Integer.MAX_VALUE), TimeUnit.NANOSECONDS);
         server.reportWrite(item);
     }
 }

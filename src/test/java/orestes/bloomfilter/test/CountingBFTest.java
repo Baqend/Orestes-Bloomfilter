@@ -3,7 +3,7 @@ package orestes.bloomfilter.test;
 import orestes.bloomfilter.CountingBloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
-import orestes.bloomfilter.redis.CountingBloomFilterRedis;
+import orestes.bloomfilter.redis.RedisUtils;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -39,32 +39,6 @@ public class CountingBFTest {
             return createCountingFilter(n, p, hm);
         } else {
             return createCountingRedisFilter(name, n, p, hm, true);
-        }
-    }
-
-    @Ignore
-    @Test
-    public void testEncodeIsCollisionFree() {
-        final Random random = new Random();
-        for (long x = 0; x <= 100_000_000; x += 1) {
-            final int i = Math.abs(random.nextInt());
-            final int j = Math.abs(random.nextInt());
-            if (i == j) continue;
-
-            final String str1 = CountingBloomFilterRedis.encode(i);
-            final String str2 = CountingBloomFilterRedis.encode(j);
-
-            assertFalse(i + " and " + j + " should differ", str1.equals(str2));
-        }
-    }
-
-    @Ignore
-    @Test
-    public void testEncodeDecode() {
-        final Random random = new Random();
-        for (long x = 0; x <= 100_000_000; x += 1) {
-            final int i = Math.abs(random.nextInt());
-            assertEquals(i, CountingBloomFilterRedis.decode(CountingBloomFilterRedis.encode(i)));
         }
     }
 

@@ -1,6 +1,7 @@
 package orestes.bloomfilter.cachesketch;
 
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.redis.CountingBloomFilterRedis;
 import orestes.bloomfilter.redis.helper.RedisPool;
 import org.msgpack.MessagePack;
 import org.msgpack.type.MapValue;
@@ -124,7 +125,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
     /**
      * Encodes the given item into a message pack.
      *
-     * @param item The item to encode.
+     * @param item The item to encodeKey.
      * @param hash A hash to make the pack unique.
      * @return A packed item.
      */
@@ -133,7 +134,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
         map.put("name", item.getItem());
         map.put("hash", hash);
 
-        final int[] positions = this.builder.hashFunction().hash(item.getItem().getBytes(), this.builder.size(), this.builder.hashes());
+        int[] positions = builder.hashFunction().hash(item.getItem().getBytes(), builder.size(), builder.hashes());
         map.put("positions", positions);
 
         try {

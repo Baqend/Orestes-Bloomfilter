@@ -13,7 +13,6 @@ import redis.clients.jedis.PipelineBase;
 import redis.clients.jedis.Transaction;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -51,11 +50,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
 
     @Override
     public Map<Integer, Long> getCountMap() {
-        return pool.allowingSlaves()
-                .safelyReturn(r -> r.hgetAll(keys.COUNTS_KEY)
-                        .entrySet()
-                        .stream()
-                        .collect(toMap(e -> decode(e.getKey()), e -> Long.valueOf(e.getValue()))));
+        return pool.allowingSlaves().safelyReturn(r -> RedisUtils.decodeMap(r.hgetAll(keys.COUNTS_KEY.getBytes())));
     }
 
     @Override
@@ -66,7 +61,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
                 bloom.set(p, position, true);
             }
             for (int position : hashes) {
-                p.hincrBy(keys.COUNTS_KEY, encode(position), 1);
+                p.hincrBy(keys.COUNTS_KEY.getBytes(), RedisUtils.encodeKey(position), 1);
             }
         }, keys.BITS_KEY, keys.COUNTS_KEY);
         return results.stream().skip(config().hashes()).map(i -> (Long) i).min(Comparator.<Long>naturalOrder()).get();
@@ -111,7 +106,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
             // Add to counting Bloom filter
             for (int[] hashes : allHashes) {
                 for (int position : hashes) {
-                    p.hincrBy(keys.COUNTS_KEY, encode(position), 1);
+                    p.hincrBy(keys.COUNTS_KEY.getBytes(), RedisUtils.encodeKey(position), 1);
                 }
             }
         }, keys.BITS_KEY, keys.COUNTS_KEY);
@@ -180,9 +175,9 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     @Override
     public long getEstimatedCount(T element) {
         return pool.allowingSlaves().safelyReturn(jedis -> {
-            String[] hashesString = encode(hash(toBytes(element)));
-            List<String> hmget = jedis.hmget(keys.COUNTS_KEY, hashesString);
-            return hmget.stream().mapToLong(i -> i == null ? 0L : Long.valueOf(i)).min().orElse(0L);
+            byte[][] hashesString = RedisUtils.encodeKey(hash(toBytes(element)));
+            List<byte[]> hmget = jedis.hmget(keys.COUNTS_KEY.getBytes(), hashesString);
+            return hmget.stream().mapToLong(i -> i == null ? 0L : RedisUtils.decodeValue(i)).min().orElse(0L);
         });
     }
 
@@ -262,20 +257,6 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         return pool;
     }
 
-    public static String encode(int value) {
-        final BigInteger bigInt = BigInteger.valueOf(value);
-        return Base64.getEncoder().encodeToString(bigInt.toByteArray());
-    }
-
-    public static int decode(String value) {
-        final BigInteger bigInt = new BigInteger(Base64.getDecoder().decode(value));
-        return bigInt.intValue();
-    }
-
-    private static String[] encode(int[] hashes) {
-        return IntStream.of(hashes).mapToObj(CountingBloomFilterRedis::encode).toArray(String[]::new);
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -320,18 +301,16 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
      * @param positions The positions to retrieve.
      * @return A map returning the count for each position.
      */
-    protected Map<Integer, Long> getCounts(Jedis jedis, int... positions) {
+    private Map<Integer, Long> getCounts(Jedis jedis, int... positions) {
         // Get the corresponding keys for the positions in Redis
-        final String[] keysToDec = Arrays.stream(positions)
-                .mapToObj(CountingBloomFilterRedis::encode)
-                .toArray(String[]::new);
+        final byte[][] keysToDec = RedisUtils.encodeKey(positions);
 
         // Get the resulting counts in the CBF after the elements have been removed
-        final List<String> values = jedis.hmget(keys.COUNTS_KEY, keysToDec);
+        final List<byte[]> values = jedis.hmget(keys.COUNTS_KEY.getBytes(), keysToDec);
         return IntStream.range(0, positions.length)
                 .collect(
                         HashMap::new,
-                        (m, i) -> m.put(positions[i], values.get(i) == null ? 0L : Long.valueOf(values.get(i))),
+                        (m, i) -> m.put(positions[i], values.get(i) == null ? 0L : RedisUtils.decodeValue(values.get(i))),
                         Map::putAll
                 );
     }
@@ -342,10 +321,8 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
      * @param p      The Jedis pipeline to use.
      * @param counts The new counts to set.
      */
-    protected void setCounts(PipelineBase p, Map<Integer, Long> counts) {
-        final Map<String, String> hash = counts.entrySet().stream()
-                .collect(toMap(e -> encode(e.getKey()), e -> e.getValue().toString()));
-        p.hmset(keys.COUNTS_KEY, hash);
+    private void setCounts(PipelineBase p, Map<Integer, Long> counts) {
+        p.hmset(keys.COUNTS_KEY.getBytes(), RedisUtils.encodeMap(counts));
     }
 
     /**
@@ -354,7 +331,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
      * @param p      The Jedis pipeline to use.
      * @param counts The new counts to update the filter from.
      */
-    protected void updateBinaryBloomFilter(PipelineBase p, Map<Integer, Long> counts) {
+    private void updateBinaryBloomFilter(PipelineBase p, Map<Integer, Long> counts) {
         counts.forEach((position, count) -> bloom.set(p, position, count > 0));
     }
 
@@ -367,6 +344,6 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
      */
     private void set(int position, long value, Pipeline p) {
         bloom.set(p, position, value > 0);
-        p.hset(keys.COUNTS_KEY, encode(position), String.valueOf(value));
+        p.hset(keys.COUNTS_KEY.getBytes(), RedisUtils.encodeKey(position), RedisUtils.encodeValue(value));
     }
 }
