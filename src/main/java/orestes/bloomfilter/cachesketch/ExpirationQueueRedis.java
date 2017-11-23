@@ -134,7 +134,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
             final AtomicInteger ctr = new AtomicInteger(0);
             items.forEach((item) -> {
                 final String hash = createRandomHash();
-                pipeline.zadd(queueKey.getBytes(), item.getExpiration(), encodeItem(item, hash));
+                pipeline.zadd(queueKey.getBytes(), now() + item.getExpiration(), encodeItem(item, hash));
 
                 if (ctr.incrementAndGet() >= 1000) {
                     ctr.set(0);
