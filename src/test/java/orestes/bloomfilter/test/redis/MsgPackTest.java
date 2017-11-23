@@ -21,7 +21,7 @@ public class MsgPackTest {
     @Before
     public void setUp() throws Exception {
         builder = new FilterBuilder(10_000, 0.002).complete();
-        queue = new ExpirationQueueRedis(builder, "foo", q -> true);
+        queue = new ExpirationQueueRedis(builder, "foo", () -> true);
     }
 
     @Test

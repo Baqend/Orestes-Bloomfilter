@@ -1,34 +1,56 @@
 package orestes.bloomfilter.cachesketch;
 
 
-import java.util.Iterator;
 import java.util.Optional;
 import java.util.Queue;
-import java.util.concurrent.DelayQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
-    private final Thread workerThread;
+    private Future<?> future;
+    private boolean isEnabled = false;
     private final DelayQueue<ExpiringItem<T>> delayedQueue;
     private final Consumer<ExpiringItem<T>> handler;
 
     public ExpirationQueueMemory(Consumer<ExpiringItem<T>> handler) {
         this.delayedQueue =  new DelayQueue<>();
         this.handler = handler;
-        this.workerThread = new Thread(() -> {
+        enable();
+    }
+
+    @Override
+    public boolean enable() {
+        if (isEnabled) return false;
+
+        isEnabled = true;
+        future = Executors.newSingleThreadExecutor().submit(() -> {
             try {
-                while (true) {
+                while (isEnabled) {
                     // take() blocks until the next item expires
                     ExpiringItem<T> e = delayedQueue.take();
-                    this.handler.accept(e);
+                    if (e.getItem() != null) {
+                        this.handler.accept(e);
+                    }
                 }
             } catch (InterruptedException ignored) {
             }
         });
-        workerThread.setDaemon(true);
-        workerThread.start();
+        return true;
+    }
+
+    @Override
+    public boolean disable() {
+        if (!isEnabled) return false;
+
+        isEnabled = false;
+        delayedQueue.add(new ExpiringItem<>(null, 0));
+        try {
+            future.get();
+            return true;
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -64,6 +86,11 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
 
     @Override
     public Stream<ExpiringItem<T>> streamEntries() {
-        return delayedQueue.stream();
+        return delayedQueue.stream().filter(it -> it.getItem() != null);
+    }
+
+    @Override
+    public long now() {
+        return System.nanoTime();
     }
 }

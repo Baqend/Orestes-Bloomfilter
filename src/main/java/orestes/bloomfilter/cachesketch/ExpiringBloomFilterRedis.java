@@ -178,6 +178,11 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     }
 
     @Override
+    public boolean setExpirationEnabled(boolean enabled) {
+        return queue.setEnabled(enabled);
+    }
+
+    @Override
     public void migrateFrom(BloomFilter<T> source) {
         // Migrate CBF and binary BF
         super.migrateFrom(source);
@@ -187,6 +192,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         }
 
         final ExpiringBloomFilter<T> ebfSource = (ExpiringBloomFilter<T>) source;
+        ebfSource.disableExpiration();
 
         CompletableFuture.allOf(
             // Migrate TTL list
@@ -195,6 +201,15 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
             // Migrate queue
             CompletableFuture.runAsync(() -> queue.addMany(ebfSource.streamExpiringBFItems()))
         ).join();
+
+        ebfSource.enableExpiration();
+    }
+
+    /**
+     * @return current timestamp in nanoseconds
+     */
+    protected long now() {
+        return NANOSECONDS.convert(clock.instant().toEpochMilli(), MILLISECONDS);
     }
 
     /**
@@ -211,13 +226,6 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
 
         final long convert = unit.convert(score.longValue() - now(), NANOSECONDS);
         return convert <= 0 ? null : convert;
-    }
-
-    /**
-     * @return current timestamp in nanoseconds
-     */
-    private long now() {
-        return NANOSECONDS.convert(clock.instant().toEpochMilli(), MILLISECONDS);
     }
 
     /**

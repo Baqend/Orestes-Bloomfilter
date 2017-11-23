@@ -1,107 +1,54 @@
 local QUEUE_KEY = KEYS[1]
 local COUNTS_KEY = KEYS[2]
 local BITS_KEY = KEYS[3]
-local now = ARGV[1]
-local LIMIT = 16384
+local NOW = ARGV[1]
 
---[[
--- Returns a slice of a table.
---]]
-local function slice(table, fromIndex, toIndex)
-    local pos, new = 1, {}
-    if toIndex > #table then
-        toIndex = #table
-    end
-
-    for i = fromIndex, toIndex do
-        new[pos] = table[i]
-        pos = pos + 1
-    end
-
-    return new
-end
-
---[[
--- Encodes an integer key as byte array.
---]]
-local function encodeKey(int)
-    local result = {}
-    for i = 0, 3 do
-        result[4 - i] = string.char(bit.band(bit.rshift(int, i * 8), 0xFF))
-    end
-    return table.concat(result)
-end
-
---[[
--- Encodes many integers as byte arrays.
---]]
-local function encodeKeys(ints)
-    local result = {}
-    for i, value in ipairs(ints) do
-        result[i] = encodeKey(value)
-    end
-    return result
-end
+-- Find a good limit
+local limit = 10000
 
 -- Get expired elements from Redis
-local expiredElements = redis.call("ZRANGEBYSCORE", QUEUE_KEY, 0, now, "WITHSCORES", "LIMIT", 0, LIMIT)
+local expiredElements = redis.call("ZRANGEBYSCORE", QUEUE_KEY, 0, NOW, "WITHSCORES", "LIMIT", 0, limit)
 local length = #expiredElements
-if length < 1 then
-    return
-end
+if length < 1 then return 0 end
 
-local maxScore = 0
-local allPositions = {}
-for i = 1, #expiredElements - 1, 2 do
+local maxScore
+local lastScore
+for i = length - 1, 1, -2 do
     local msgPack = expiredElements[i]
-    local score = tonumber(expiredElements[i + 1])
-    if score > maxScore then maxScore = score end
+
+    -- Retrieve max score and zrem scores
+    if maxScore == nil then
+        local score = tonumber(expiredElements[i + 1])
+        if lastScore == nil or lastScore == score then
+            lastScore = score
+            redis.call("ZREM", QUEUE_KEY, msgPack)
+        else
+            maxScore = score
+        end
+    end
 
     -- Unpack the message pack, retrieve values
     local entry = cmsgpack.unpack(msgPack)
 
-    -- Add to all positions
+    -- Process positions
     for _, position in ipairs(entry.positions) do
-        table.insert(allPositions, position)
+        -- Encode the key
+        local key = string.char(
+            bit.rshift(position, 24),
+            bit.band(bit.rshift(position, 16), 0xFF),
+            bit.band(bit.rshift(position, 8), 0xFF),
+            bit.band(position, 0xFF)
+        )
+
+        -- Decrement count
+        local count = redis.call("HINCRBY", COUNTS_KEY, key, -1)
+
+        -- If count is not positive, clear the bit at the given position
+        if count <= 0 then redis.call("SETBIT", BITS_KEY, position, 0) end
     end
 end
 
 -- Remove elements from the queue
-redis.call("ZREMRANGEBYSCORE", QUEUE_KEY, 0, maxScore)
+if maxScore ~= nil then redis.call("ZREMRANGEBYSCORE", QUEUE_KEY, 0, maxScore) end
 
--- Batch 20 elements
-local BATCH = 20
-for j = 1, #allPositions, BATCH do
-    local positionSlice = slice(allPositions, j, j + BATCH)
-    local keys = encodeKeys(positionSlice)
-
-    -- Collect all counts
-    local counts = redis.call("HMGET", COUNTS_KEY, unpack(keys))
-
-    -- Decrement all counts
-    local hmset = {}
-    local setbits = {}
-    for i, foundValue in ipairs(counts) do
-        local count = tonumber(foundValue)
-        redis.log(redis.LOG_WARNING, "count(" .. positionSlice[i] .. ") -> " .. count)
-
-        -- Insert key first
-        table.insert(hmset, keys[i])
-
-        -- Insert new count second
-        counts[i] = count - 1
-        table.insert(hmset, counts[i])
-
-        -- Collect bits to clear
-        setbits[positionSlice[i]] = count <= 1
-    end
-    redis.call("HMSET", COUNTS_KEY, unpack(hmset))
-
-    -- Reset all positions in binary BF which have to be reset
-    for position, shouldClear in pairs(setbits) do
-        -- If count is not positive, clear the bit at the given position
-        if shouldClear then
-            redis.call("SETBIT", BITS_KEY, position, 0)
-        end
-    end
-end
+return length / 2

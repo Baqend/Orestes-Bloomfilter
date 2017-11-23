@@ -2,7 +2,8 @@ package orestes.bloomfilter.cachesketch;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
-import orestes.bloomfilter.redis.CountingBloomFilterRedis;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -14,6 +15,11 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
     private final ExpirationQueueRedis redisQueue;
     private final int id =  new Random().nextInt();
     private final String exportQueueScript = loadLuaScript("exportQueue.lua");
+
+    /**
+     * Logger for the {@link ExpiringBloomFilterPureRedis} class
+     */
+    private static final Logger LOG = LoggerFactory.getLogger(ExpiringBloomFilterPureRedis.class);
 
     public ExpiringBloomFilterPureRedis(FilterBuilder builder) {
         super(builder, false);
@@ -64,20 +70,29 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
         redisQueue.remove();
     }
 
+    @Override
+    public void migrateFrom(BloomFilter<String> source) {
+        super.migrateFrom(source);
+        redisQueue.triggerExpirationHandling(1, TimeUnit.NANOSECONDS);
+    }
+
     /**
      * Handles expiring items from the expiration queue.
      *
-     * @param queue The queue that may have expired items.
      * @return true if successful, false otherwise.
      */
-    synchronized private boolean expirationHandler(ExpirationQueueRedis queue) {
-        return pool.safelyReturn((jedis) -> {
-            final long nowT = System.nanoTime();
-            final String now = String.valueOf(nowT);
-            System.out.println("[" + config.name() + "] Started expiration queue script");
-            jedis.evalsha(exportQueueScript, 3, keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY, now);
-            System.out.println("[" + config.name() + "] Finished expiration queue script after " + (System.nanoTime() - nowT) / 1e6 + "ms");
-            return true;
-        });
+    synchronized public boolean expirationHandler() {
+        final long now = now();
+        LOG.debug("[" + config.name() + "] Expiring items ...");
+        long expiredItems = pool.safelyReturn((jedis) -> (long) jedis.evalsha(
+                exportQueueScript, 3,
+                // Keys:
+                keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY,
+                // Args:
+                String.valueOf(now)
+        ));
+        LOG.debug("[" + config.name() + "] Script expired " + expiredItems + " items within " + (now() - now) / 1e6 + "ms");
+        return true;
     }
+
 }

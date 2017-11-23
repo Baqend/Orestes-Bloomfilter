@@ -109,5 +109,20 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, Migratab
      */
     Stream<ExpiringItem<T>> streamExpiringBFItems();
 
+    /**
+     * Sets whether expiration should be turned on.
+     *
+     * @return Whether state could be changed successfully.
+     */
+    boolean setExpirationEnabled(boolean enabled);
+
+    default boolean enableExpiration() {
+        return setExpirationEnabled(true);
+    }
+
+    default boolean disableExpiration() {
+        return setExpirationEnabled(false);
+    }
+
     BloomFilter<T> getClonedBloomFilter();
 }

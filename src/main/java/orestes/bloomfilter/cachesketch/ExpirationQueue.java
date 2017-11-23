@@ -24,7 +24,7 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      * @return whether the item has been added
      */
     default boolean addTTL(T item, long ttl, TimeUnit ttlUnit) {
-        return add(new ExpiringItem<>(item, System.nanoTime() + NANOSECONDS.convert(ttl, ttlUnit)));
+        return add(new ExpiringItem<>(item, now() + NANOSECONDS.convert(ttl, ttlUnit)));
     }
 
     /**
@@ -47,6 +47,30 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      */
     default boolean addExpiration(T item, long timestamp) {
         return add(new ExpiringItem<>(item, timestamp));
+    }
+
+    /**
+     * Enables the expiration queue, continuing it to expire items.
+     *
+     * @return {@code true}, if queue could be enabled.
+     */
+    boolean enable();
+
+    /**
+     * Disables the expiration queue, stopping it from expire items.
+     *
+     * @return {@code true}, if queue could be disabled.
+     */
+    boolean disable();
+
+    /**
+     * Either enables or disables the queue, controllig if it expires items.
+     *
+     * @param enabled If {@code true}, the queue should be expiring items.
+     * @return {@code true}, if queue could be enabled or disabled.
+     */
+    default boolean setEnabled(boolean enabled) {
+        return enabled ? enable() : disable();
     }
 
     /**
@@ -108,6 +132,13 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      * @return all entries of a stream
      */
     Stream<ExpiringItem<T>> streamEntries();
+
+    /**
+     * Returns the current clock in nanoseconds.
+     *
+     * @return The current point in time.
+     */
+    long now();
 
     @Override
     default Iterator<T> iterator() {

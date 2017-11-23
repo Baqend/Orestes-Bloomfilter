@@ -10,6 +10,9 @@ import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterMemory;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.impl.SimpleLoggerFactory;
 
 import java.util.List;
 import java.util.Random;
@@ -27,7 +30,7 @@ import static java.util.stream.Collectors.toList;
 public class BloomFilterMigrationThroughput {
     private static final int ITEMS = 1_000_000;
     private static final int SERVERS = 1;
-    private static final long TEST_RUNTIME = 10L;
+    private static final long TEST_RUNTIME = 20L;
     private static final int COOL_DOWN_TIME = 60;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(100);
@@ -37,18 +40,19 @@ public class BloomFilterMigrationThroughput {
     private final boolean toServer;
     private ExpiringBloomFilterMemory<String> inMemoryFilter;
 
+    /**
+     * Logger for the {@link BloomFilterMigrationThroughput} class
+     */
+    private static final Logger LOG = LoggerFactory.getLogger(BloomFilterMigrationThroughput.class);
+
     private BloomFilterMigrationThroughput(String name, boolean toServer) {
-        System.out.println("-------------- " + name + " --------------");
+        LOG.info("Running Test: " + name);
         this.testName = name;
         this.toServer = toServer;
     }
 
     public static void main(String[] args) {
-        int m = 100_000;
-        int k = 10;
-
-        System.err.println("Please make sure to have Redis running on 127.0.0.1:6379.");
-        final FilterBuilder builder = new FilterBuilder(m, k).hashFunction(HashMethod.Murmur3)
+        final FilterBuilder builder = new FilterBuilder(ITEMS, 0.02).hashFunction(HashMethod.Murmur3)
                 .name("purity")
                 .redisBacked(true)
                 .redisHost("127.0.0.1")
@@ -76,21 +80,18 @@ public class BloomFilterMigrationThroughput {
 
 
     public CompletableFuture<Boolean> testPerformance(FilterBuilder builder, Class<? extends ExpiringBloomFilterRedis> type) {
-        System.out.print("Flushing Redis ... ");
         builder.pool().safelyDo(jedis -> jedis.flushAll());
-        System.out.println("done.");
+        LOG.debug("Flushed Redis");
 
-        System.out.print("Creating in-memory Bloom filter ... ");
         inMemoryFilter = new ExpiringBloomFilterMemory<>(builder);
         if (toServer) addNewItems(inMemoryFilter, ITEMS);
-        System.out.println("done.");
+        LOG.debug("Created in-memory Bloom filter");
 
-        System.out.print("Creating server Bloom filters ... ");
         List<ExpiringBloomFilter<String>> servers = IntStream.range(0, SERVERS)
                 .mapToObj(i -> createBloomFilter(builder, type))
                 .collect(toList());
         if (!toServer) addNewItems(servers.get(0), ITEMS);
-        System.out.println("done.");
+        LOG.debug("Created " + SERVERS + " server Bloom filters");
 
         final long start = System.currentTimeMillis();
         final List<Future<?>> processes = servers.stream().flatMap(this::startServer).collect(toList());
@@ -143,26 +144,26 @@ public class BloomFilterMigrationThroughput {
 
     private void endTest(CompletableFuture<Boolean> resultFuture, List<Future<?>> processes, List<ExpiringBloomFilter<String>> servers, long startTime) {
         long endingStarted = System.currentTimeMillis() - startTime;
-        System.out.println("Ending Test (Runtime: " + endingStarted + "ms)");
+        LOG.info("Ending Test (Runtime: " + endingStarted + "ms)");
         processes.forEach(process -> process.cancel(false));
         long duration = System.currentTimeMillis() - startTime;
-        System.out.println("Processes canceled (Runtime: " + duration + "ms)");
+        LOG.info("Processes canceled (Runtime: " + duration + "ms)");
 
         final Snapshot snapshot = migHistogram.getSnapshot();
-        System.out.println("Servers     : " + SERVERS);
-        System.out.println("Count       : " + migHistogram.getCount());
-        System.out.println("Throughput  : " + (migHistogram.getCount() / (duration / 1000)) + "/s");
-        System.out.println("Latency Avg : " + (snapshot.getMean() / 1e6d) + "ms");
-        System.out.println("Latency Min : " + (snapshot.getMin() / 1e6d) + "ms");
-        System.out.println("Latency Q1  : " + (snapshot.getValue(.25) / 1e6d) + "ms");
-        System.out.println("Latency Q2  : " + (snapshot.getValue(.5) / 1e6d) + "ms");
-        System.out.println("Latency Q3  : " + (snapshot.getValue(.75) / 1e6d) + "ms");
-        System.out.println("Latency Max : " + (snapshot.getMax() / 1e6d) + "ms");
+        LOG.info("Servers     : " + SERVERS);
+        LOG.info("Count       : " + migHistogram.getCount());
+        LOG.info("Throughput  : " + (migHistogram.getCount() / (duration / 1000)) + "/s");
+        LOG.info("Latency Avg : " + (snapshot.getMean() / 1e6d) + "ms");
+        LOG.info("Latency Min : " + (snapshot.getMin() / 1e6d) + "ms");
+        LOG.info("Latency Q1  : " + (snapshot.getValue(.25) / 1e6d) + "ms");
+        LOG.info("Latency Q2  : " + (snapshot.getValue(.5) / 1e6d) + "ms");
+        LOG.info("Latency Q3  : " + (snapshot.getValue(.75) / 1e6d) + "ms");
+        LOG.info("Latency Max : " + (snapshot.getMax() / 1e6d) + "ms");
 
         waitForServersToClear(servers, resultFuture);
 
         resultFuture.thenAccept((ignored) -> {
-            System.out.println("Bloom filter cleanup time: " + ((System.currentTimeMillis() - startTime - duration) / 1000.0) + "s");
+            LOG.info("Bloom filter cleanup time: " + ((System.currentTimeMillis() - startTime - duration) / 1000.0) + "s");
         });
     }
 
@@ -185,7 +186,7 @@ public class BloomFilterMigrationThroughput {
 
     private void addNewItem(ExpiringBloomFilter<String> server) {
         final String item = String.valueOf(rnd.nextInt(ITEMS));
-        server.reportRead(item, 1_000_000L * TEST_RUNTIME + rnd.nextInt(Integer.MAX_VALUE), TimeUnit.NANOSECONDS);
+        server.reportRead(item, TimeUnit.NANOSECONDS.convert(TEST_RUNTIME, TimeUnit.SECONDS) + rnd.nextInt(Integer.MAX_VALUE), TimeUnit.NANOSECONDS);
         server.reportWrite(item);
     }
 }

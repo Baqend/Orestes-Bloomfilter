@@ -87,12 +87,15 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
         }
 
         final ExpiringBloomFilter<T> ebfSource = (ExpiringBloomFilter<T>) source;
+        ebfSource.disableExpiration();
 
         // Migrate TTL list
         migrateExpirations(ebfSource);
 
         // Migrate expiration queue
         ebfSource.streamExpiringBFItems().forEach(queue::add);
+
+        ebfSource.enableExpiration();
     }
 
     @Override
@@ -103,6 +106,11 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     @Override
     public Stream<ExpiringItem<T>> streamExpiringBFItems() {
         return queue.streamEntries();
+    }
+
+    @Override
+    public boolean setExpirationEnabled(boolean enabled) {
+        return queue.setEnabled(enabled);
     }
 
     /**

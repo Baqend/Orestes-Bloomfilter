@@ -21,6 +21,7 @@ public class RedisUtilsTest {
     public void testEncodeKey() {
         final int i = 42;
         assertArrayEquals(new byte[] { 0, 0, 0, 42 }, RedisUtils.encodeKey(i));
+        assertArrayEquals("\0\0\0*".getBytes(), RedisUtils.encodeKey(i));
         final int j = 0x41424344;
         assertArrayEquals("ABCD".getBytes(), RedisUtils.encodeKey(j));
     }
