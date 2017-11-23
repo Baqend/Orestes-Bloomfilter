@@ -338,13 +338,13 @@ public class ExpiringTest {
 
         // Create the filter to migrate from
         createFilter(b);
-        filter.reportRead("Foo", 50, TimeUnit.SECONDS);
+        filter.reportRead("Foo", 5, TimeUnit.SECONDS);
         assertTrue(filter.isCached("Foo"));
         assertFalse(filter.contains("Foo"));
-        filter.reportRead("Bar", 40, TimeUnit.SECONDS);
+        filter.reportRead("Bar", 4, TimeUnit.SECONDS);
         assertTrue(filter.isCached("Bar"));
         assertFalse(filter.contains("Bar"));
-        filter.reportRead("Baz", 30, TimeUnit.SECONDS);
+        filter.reportRead("Baz", 3, TimeUnit.SECONDS);
         filter.reportWrite("Baz");
         assertTrue(filter.isCached("Baz"));
         assertTrue(filter.contains("Baz"));
@@ -362,13 +362,22 @@ public class ExpiringTest {
         filter.migrateTo(inMemory);
         assertTrue(inMemory.isCached("Foo"));
         assertFalse(inMemory.contains("Foo"));
-        assertRemainingTTL(inMemory.getRemainingTTL("Foo", TimeUnit.SECONDS), 30, 50);
+        assertRemainingTTL(inMemory.getRemainingTTL("Foo", TimeUnit.SECONDS), 3, 5);
         assertTrue(inMemory.isCached("Bar"));
         assertFalse(inMemory.contains("Bar"));
-        assertRemainingTTL(inMemory.getRemainingTTL("Bar", TimeUnit.SECONDS), 20, 40);
+        assertRemainingTTL(inMemory.getRemainingTTL("Bar", TimeUnit.SECONDS), 2, 4);
         assertTrue(inMemory.isCached("Baz"));
         assertTrue(inMemory.contains("Baz"));
-        assertRemainingTTL(inMemory.getRemainingTTL("Baz", TimeUnit.SECONDS), 10, 30);
+        assertRemainingTTL(inMemory.getRemainingTTL("Baz", TimeUnit.SECONDS), 1, 3);
+
+        // Ensure everything expires as suspected
+        Thread.sleep(5000);
+        assertFalse(filter.contains("Foo"));
+        assertFalse(filter.contains("Bar"));
+        assertFalse(filter.contains("Baz"));
+        assertFalse(inMemory.contains("Foo"));
+        assertFalse(inMemory.contains("Bar"));
+        assertFalse(inMemory.contains("Baz"));
 
         // Cleanup in-memory BF
         inMemory.clear();

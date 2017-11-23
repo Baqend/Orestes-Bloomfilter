@@ -93,8 +93,9 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
             return false;
         }
 
+        LOG.debug("Enabling expiration queue");
         isEnabled = true;
-        scheduleJob(true, MAX_JOB_DELAY, TimeUnit.NANOSECONDS);
+        scheduleJob(true, estimateNextDelay(), TimeUnit.NANOSECONDS);
         return true;
     }
 
@@ -104,6 +105,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
             return false;
         }
 
+        LOG.debug("Disabling expiration queue");
         isEnabled = false;
         job.cancel(false);
         job = null;
@@ -275,6 +277,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
      * The job that starts handling expiring item from the queue.
      */
     private void expirationJob() {
+        LOG.debug("expirationJob");
         long nextDelay = MIN_JOB_DELAY;
         try {
             boolean success = expirationHandler.get();
