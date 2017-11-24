@@ -4,6 +4,7 @@ import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.redis.CountingBloomFilterRedis;
+import orestes.bloomfilter.redis.RedisUtils;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Tuple;
 
@@ -14,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
@@ -61,19 +62,9 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
         this.removeAndEstimateCount(entry.getItem());
     }
 
-    /**
-     * @param TTL  the TTL to convert
-     * @param unit the unit of the TTL
-     * @return timestamp from TTL in nanoseconds
-     */
-    private long ttlToTimestamp(long TTL, TimeUnit unit) {
-        final long ttlInNanoseconds = NANOSECONDS.convert(TTL, unit);
-        return now() + ttlInNanoseconds;
-    }
-
     @Override
     public boolean isCached(T element) {
-        Long remaining = getRemainingTTL(element, NANOSECONDS);
+        Long remaining = getRemainingTTL(element, MICROSECONDS);
         return remaining != null && remaining > 0;
     }
 
@@ -106,7 +97,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     public void reportRead(T element, long TTL, TimeUnit unit) {
         pool.safelyDo((jedis) -> {
             // Create timestamp from TTL
-            final long timestamp = ttlToTimestamp(TTL, unit);
+            final double timestamp = remainingTTLToScore(TTL, unit);
             jedis.evalsha(reportReadScript, 1, keys.TTL_KEY, String.valueOf(timestamp), element.toString());
         });
     }
@@ -123,13 +114,13 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
 
     @Override
     public List<Long> reportWrites(List<T> elements, TimeUnit unit) {
-        List<Long> remainingTTLs = getRemainingTTLs(elements, NANOSECONDS);
+        List<Long> remainingTTLs = getRemainingTTLs(elements, MICROSECONDS);
         List<T> filteredElements = new LinkedList<>();
         List<Long> reportedTTLs = new LinkedList<>();
         for (int i = 0; i < remainingTTLs.size(); i++) {
             Long remaining = remainingTTLs.get(i);
             if (remaining != null && remaining >= 0) {
-                reportedTTLs.add(unit.convert(remaining, NANOSECONDS));
+                reportedTTLs.add(unit.convert(remaining, MICROSECONDS));
 
                 T element = elements.get(i);
                 filteredElements.add(element);
@@ -173,8 +164,8 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
     }
 
     @Override
-    public Stream<ExpiringItem<T>> streamExpiringBFItems() {
-        return queue.streamEntries();
+    public Stream<ExpiringItem<T>> streamWrittenItems() {
+        return queue.streamEntries().map(item -> item.convert(NANOSECONDS, MICROSECONDS));
     }
 
     @Override
@@ -199,17 +190,28 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
             CompletableFuture.runAsync(() -> migrateExpirations(ebfSource.streamExpirations())),
 
             // Migrate queue
-            CompletableFuture.runAsync(() -> queue.addMany(ebfSource.streamExpiringBFItems()))
+            CompletableFuture.runAsync(() -> queue.addMany(ebfSource.streamWrittenItems()))
         ).join();
 
         ebfSource.enableExpiration();
     }
 
     /**
-     * @return current timestamp in nanoseconds
+     * @return current timestamp in microseconds
      */
     protected long now() {
-        return NANOSECONDS.convert(clock.instant().toEpochMilli(), MILLISECONDS);
+        return RedisUtils.getRedisTimePoint(clock);
+    }
+
+    /**
+     * Converts a desired unit to the score stored in Redis.
+     *
+     * @param TTL  the TTL to convert
+     * @param unit the unit of the TTL
+     * @return timestamp from TTL in microseconds
+     */
+    private double remainingTTLToScore(long TTL, TimeUnit unit) {
+        return now() + MICROSECONDS.convert(TTL, unit);
     }
 
     /**
@@ -224,7 +226,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
             return null;
         }
 
-        final long convert = unit.convert(score.longValue() - now(), NANOSECONDS);
+        final long convert = unit.convert(score.longValue() - now(), MICROSECONDS);
         return convert <= 0 ? null : convert;
     }
 
@@ -238,7 +240,7 @@ public class ExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> imp
             final Pipeline pipeline = jedis.pipelined();
             final AtomicInteger ctr = new AtomicInteger(0);
             items.forEach((item) -> {
-                pipeline.zadd(keys.TTL_KEY, (double) now() + item.getExpiration(), item.getItem().toString());
+                pipeline.zadd(keys.TTL_KEY, remainingTTLToScore(item.getExpiration(), MICROSECONDS), item.getItem().toString());
                 // Sync every thousandth item
                 if (ctr.incrementAndGet() >= 1000) {
                     ctr.set(0);

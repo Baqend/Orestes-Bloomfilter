@@ -12,6 +12,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
 public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> implements ExpiringBloomFilter<T>, MigratableBloomFilter<T> {
     private final Map<T, Long> expirations = new ConcurrentHashMap<>();
     private ExpirationQueue<T> queue;
@@ -90,22 +93,22 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
         ebfSource.disableExpiration();
 
         // Migrate TTL list
-        migrateExpirations(ebfSource);
+        migrateExpirations(ebfSource.streamExpirations());
 
         // Migrate expiration queue
-        ebfSource.streamExpiringBFItems().forEach(queue::add);
+        migrateWrittenItems(ebfSource.streamWrittenItems());
 
         ebfSource.enableExpiration();
     }
 
     @Override
     public Stream<ExpiringItem<T>> streamExpirations() {
-        return expirations.entrySet().stream().map(entry -> new ExpiringItem<>(entry.getKey(), entry.getValue() - now()));
+        return expirations.entrySet().stream().map(entry -> new ExpiringItem<>(entry.getKey(), toRelativeMicroseconds(entry.getValue())));
     }
 
     @Override
-    public Stream<ExpiringItem<T>> streamExpiringBFItems() {
-        return queue.streamEntries();
+    public Stream<ExpiringItem<T>> streamWrittenItems() {
+        return queue.streamEntries().map(item -> item.convert(NANOSECONDS, MICROSECONDS));
     }
 
     @Override
@@ -122,11 +125,24 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
         return System.nanoTime();
     }
 
-    private void migrateExpirations(ExpiringBloomFilter<T> ebfSource) {
-        ebfSource.streamExpirations()
-                .forEach(item -> {
-                    final ExpiringItem<T> absolute = item.toAbsolute(now(), TimeUnit.NANOSECONDS);
-                    expirations.put(absolute.getItem(), absolute.getExpiration());
-                });
+    private void migrateExpirations(Stream<ExpiringItem<T>> stream) {
+        stream.forEach(item -> {
+            final ExpiringItem<T> absolute = item.convert(MICROSECONDS, NANOSECONDS).addDelay(now());
+            expirations.put(absolute.getItem(), absolute.getExpiration());
+        });
+    }
+
+    private void migrateWrittenItems(Stream<ExpiringItem<T>> stream) {
+        stream.map(it -> it.convert(MICROSECONDS, NANOSECONDS).addDelay(now())).forEach(queue::add);
+    }
+
+    /**
+     * Converts the in-memory expirations to relative microseconds.
+     *
+     * @param nanosFromMemory The expirations to convert.
+     * @return Relative microsecond representation of that value.
+     */
+    private long toRelativeMicroseconds(long nanosFromMemory) {
+        return MICROSECONDS.convert(nanosFromMemory - now(), NANOSECONDS);
     }
 }

@@ -2,10 +2,7 @@ package orestes.bloomfilter.test.cachesketch;
 
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
-import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
-import orestes.bloomfilter.cachesketch.ExpiringBloomFilterMemory;
-import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
-import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
+import orestes.bloomfilter.cachesketch.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,7 +15,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.*;
 
@@ -291,6 +290,57 @@ public class ExpiringTest {
     }
 
     @Test
+    public void testStreamExpirations() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.001);
+        createFilter(b);
+
+        filter.reportRead("Foo", 2, TimeUnit.SECONDS);
+        assertTrue(filter.isCached("Foo"));
+        assertFalse(filter.contains("Foo"));
+        filter.reportRead("Bar", 4, TimeUnit.SECONDS);
+        assertTrue(filter.isCached("Bar"));
+        assertFalse(filter.contains("Bar"));
+        filter.reportRead("Baz", 3, TimeUnit.SECONDS);
+        filter.reportWrite("Baz");
+        assertTrue(filter.isCached("Baz"));
+        assertTrue(filter.contains("Baz"));
+
+        final Stream<ExpirationQueue.ExpiringItem<String>> stream = filter.streamExpirations();
+        final Set<ExpirationQueue.ExpiringItem<String>> set = stream.collect(Collectors.toSet());
+
+        assertEquals(3, set.size());
+        assertItemExists(set, "Foo", 1, 2, TimeUnit.SECONDS);
+        assertItemExists(set, "Bar", 3, 4, TimeUnit.SECONDS);
+        assertItemExists(set, "Baz", 2, 3, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void testStreamWrittenItems() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.001);
+        createFilter(b);
+
+        filter.reportRead("Foo", 2, TimeUnit.SECONDS);
+        assertTrue(filter.isCached("Foo"));
+        assertFalse(filter.contains("Foo"));
+        filter.reportRead("Bar", 4, TimeUnit.SECONDS);
+        filter.reportWrite("Bar");
+        assertTrue(filter.isCached("Bar"));
+        assertTrue(filter.contains("Bar"));
+        filter.reportRead("Baz", 3, TimeUnit.SECONDS);
+        filter.reportWrite("Baz");
+        assertTrue(filter.isCached("Baz"));
+        assertTrue(filter.contains("Baz"));
+
+        final Stream<ExpirationQueue.ExpiringItem<String>> stream = filter.streamWrittenItems();
+        final Set<ExpirationQueue.ExpiringItem<String>> set = stream.collect(Collectors.toSet());
+
+        assertEquals(2, set.size());
+        System.out.println(set);
+        assertItemExists(set, "Bar", 3, 4, TimeUnit.SECONDS);
+        assertItemExists(set, "Baz", 2, 3, TimeUnit.SECONDS);
+    }
+
+    @Test
     public void testMigrateFromInMemoryExpiringBloomFilter() throws Exception {
         FilterBuilder b = new FilterBuilder(100000, 0.001);
 
@@ -386,5 +436,13 @@ public class ExpiringTest {
     private void assertRemainingTTL(long ttl, long min, long max) {
         assertTrue("Assert remaining TTL is lower than " + max + " ms, but was " + ttl + " ms", ttl <= max);
         assertTrue("Assert remaining TTL is higher than " + min + " ms, but was " + ttl + " ms", ttl >= min);
+    }
+
+    private void assertItemExists(Collection<ExpirationQueue.ExpiringItem<String>> actual, String expected, long expirationMin, long expirationMax, TimeUnit unit) {
+        long min = TimeUnit.MICROSECONDS.convert(expirationMin, unit);
+        long max = TimeUnit.MICROSECONDS.convert(expirationMax, unit);
+        final String u = unit.toString().toLowerCase();
+        final String message = "Expect expirations to contain " + expected + " with a TTL from " + expirationMin + " to " + expirationMax + " " + u;
+        assertTrue(message, actual.stream().anyMatch(item -> item.getItem().equals(expected) && item.getExpiration() <= max && item.getExpiration() >= min));
     }
 }

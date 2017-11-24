@@ -86,7 +86,7 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
 
     @Override
     public Stream<ExpiringItem<T>> streamEntries() {
-        return delayedQueue.stream().filter(it -> it.getItem() != null);
+        return delayedQueue.stream().filter(it -> it.getItem() != null).map(it -> it.removeDelay(now()));
     }
 
     @Override

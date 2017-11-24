@@ -7,13 +7,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
  * Created by erik on 09.10.17.
  */
 public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<String> {
     private final ExpirationQueueRedis redisQueue;
-    private final int id =  new Random().nextInt();
     private final String exportQueueScript = loadLuaScript("exportQueue.lua");
 
     /**
@@ -76,6 +76,11 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
         redisQueue.triggerExpirationHandling(1, TimeUnit.NANOSECONDS);
     }
 
+    @Override
+    public Stream<ExpirationQueue.ExpiringItem<String>> streamWrittenItems() {
+        return redisQueue.streamEntries();
+    }
+
     /**
      * Handles expiring items from the expiration queue.
      *
@@ -91,7 +96,7 @@ public class ExpiringBloomFilterPureRedis extends ExpiringBloomFilterRedis<Strin
                 // Args:
                 String.valueOf(now)
         ));
-        LOG.debug("[" + config.name() + "] Script expired " + expiredItems + " items within " + (now() - now) / 1e6 + "ms");
+        LOG.debug("[" + config.name() + "] Script expired " + expiredItems + " items within " + (now() - now) + "µs");
         return true;
     }
 

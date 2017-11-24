@@ -1,6 +1,10 @@
 package orestes.bloomfilter.redis;
 
+import orestes.bloomfilter.redis.helper.RedisPool;
+
 import java.nio.ByteBuffer;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -85,5 +89,25 @@ public class RedisUtils {
      */
     public static long decodeValue(byte[] value) {
         return Long.parseLong(new String(value));
+    }
+
+    /**
+     * Returns Redis's point in time.
+     *
+     * @param redisClock The Redis's clock to get the time point for.
+     * @return The current point of time for that Redis.
+     */
+    public static long getRedisTimePoint(Clock redisClock) {
+        final Instant instant = redisClock.instant();
+        final int nanos = instant.getNano();
+        final long seconds = instant.getEpochSecond();
+        if (seconds < 0 && nanos > 0) {
+            long micros = Math.multiplyExact(seconds+1, 1000_000L);
+            long adjustment = nanos / 1000 - 1;
+            return Math.addExact(micros, adjustment);
+        } else {
+            long micros = Math.multiplyExact(seconds, 1000_000L);
+            return Math.addExact(micros, nanos / 1000);
+        }
     }
 }

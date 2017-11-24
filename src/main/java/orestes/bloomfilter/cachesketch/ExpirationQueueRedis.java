@@ -1,6 +1,7 @@
 package orestes.bloomfilter.cachesketch;
 
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.redis.RedisUtils;
 import orestes.bloomfilter.redis.helper.RedisPool;
 import org.msgpack.MessagePack;
 import org.msgpack.type.MapValue;
@@ -10,16 +11,18 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.*;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -31,13 +34,13 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
     private static final Logger LOG = LoggerFactory.getLogger(ExpirationQueueRedis.class);
     private static final int HASH_LENGTH = 8;
     /**
-     * Maximum delay between jobs in seconds
+     * Maximum delay between jobs in microseconds
      */
-    private final long MAX_JOB_DELAY = TimeUnit.NANOSECONDS.convert(60, TimeUnit.SECONDS);
+    private final long MAX_JOB_DELAY = MICROSECONDS.convert(60, TimeUnit.SECONDS);
     /**
-     * Minimum delay between jobs in seconds
+     * Minimum delay between jobs in microseconds
      */
-    private final long MIN_JOB_DELAY = TimeUnit.NANOSECONDS.convert(100, TimeUnit.MILLISECONDS);
+    private final long MIN_JOB_DELAY = MICROSECONDS.convert(100, TimeUnit.MILLISECONDS);
 
     private final RedisPool pool;
     private final String queueKey;
@@ -48,6 +51,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
     private final MessagePack msgPack;
     private ScheduledFuture<?> job;
     private boolean isEnabled;
+    private final Clock redisClock;
 
     /**
      *  Creates an ExpirationQueueRedis.
@@ -62,6 +66,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
         this.queueKey = queueKey;
         this.expirationHandler = expirationHandler;
         this.scheduler = Executors.newScheduledThreadPool(1);
+        redisClock = pool.getClock();
         clear();
         enable();
     }
@@ -83,7 +88,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
      * @return All expired elements from this queue with their unique identifier.
      */
     public Set<byte[]> getExpiredItems(Jedis jedis) {
-        final long now = now();
+        final long now = now() / 1000;
         return jedis.zrangeByScore(queueKey.getBytes(), 0, now);
     }
 
@@ -95,7 +100,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
 
         LOG.debug("Enabling expiration queue");
         isEnabled = true;
-        scheduleJob(true, estimateNextDelay(), TimeUnit.NANOSECONDS);
+        scheduleJob(true, estimateNextDelay(), MICROSECONDS);
         return true;
     }
 
@@ -123,7 +128,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
             boolean done;
             do {
                 final String hash = createRandomHash();
-                done = p.zadd(queueKey.getBytes(), item.getExpiration(), encodeItem(item, hash)) == 1;
+                done = p.zadd(queueKey.getBytes(), item.convert(NANOSECONDS, MICROSECONDS).getExpiration(), encodeItem(item, hash)) == 1;
             } while (!done);
         });
         return true;
@@ -136,7 +141,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
             final AtomicInteger ctr = new AtomicInteger(0);
             items.forEach((item) -> {
                 final String hash = createRandomHash();
-                pipeline.zadd(queueKey.getBytes(), now() + item.getExpiration(), encodeItem(item, hash));
+                pipeline.zadd(queueKey.getBytes(), now() / 1000 + item.getExpiration(), encodeItem(item, hash));
 
                 if (ctr.incrementAndGet() >= 1000) {
                     ctr.set(0);
@@ -168,6 +173,28 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Decodes a given item from a message pack.
+     *
+     * @param bytes The bytes to decode.
+     * @return An unpacked item name.
+     */
+    public String decodeItem(byte[] bytes) {
+        final MapValue map;
+        try {
+            map = msgPack.read(bytes).asMapValue();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        for (Map.Entry<Value, Value> entry : map.entrySet()) {
+            if (entry.getKey().asRawValue().getString().equals("name")) {
+                return entry.getValue().asRawValue().getString();
+            }
+        }
+
+        throw new RuntimeException("Name is missing in message pack");
     }
 
     @Override
@@ -229,9 +256,12 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
 
     @Override
     public Stream<ExpiringItem<String>> streamEntries() {
-        Set<Tuple> allTuples = pool.safelyReturn(p -> p.zrangeWithScores(queueKey, 0, -1));
+        Set<Tuple> allTuples = pool.safelyReturn(p -> p.zrangeWithScores(queueKey.getBytes(), 0, -1));
         return allTuples.stream()
-            .map(tuple -> new ExpiringItem<>(tuple.getElement(), (long) tuple.getScore()));
+            .map(tuple -> {
+                final long relativeExpiration = (long) (tuple.getScore() - now() / 1000);
+                return new ExpiringItem<>(decodeItem(tuple.getBinaryElement()), relativeExpiration);
+            });
     }
 
     /**
@@ -285,18 +315,18 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
         } catch (Exception e) {
             LOG.error("[" + this.builder.name() + "] Error in script", e);
         } finally {
-            scheduleJob(true, nextDelay, TimeUnit.NANOSECONDS);
+            scheduleJob(true, nextDelay, MICROSECONDS);
         }
     }
 
     /**
-     * Returns the delay in nanoseconds when to next check the queue for expired items.
+     * Returns the delay in microseconds when to next check the queue for expired items.
      *
-     * @return The delay in nanoseconds.
+     * @return The delay in microseconds.
      */
     private long estimateNextDelay() {
         return pool.safelyReturn(p -> {
-            final long now = now();
+            final long now = now() / 1000;
             long max = now + MAX_JOB_DELAY;
             Set<Tuple> nextQueueItems = p.zrangeByScoreWithScores(queueKey, 0, max, 0, 5);
 
@@ -322,7 +352,7 @@ public class ExpirationQueueRedis implements ExpirationQueue<String> {
      * @return Timestamp in nanoseconds.
      */
     public long now() {
-        return pool.getClock().instant().toEpochMilli() * 1_000_000L;
+        return RedisUtils.getRedisTimePoint(redisClock) * 1000;
     }
 
     private String createRandomHash() {

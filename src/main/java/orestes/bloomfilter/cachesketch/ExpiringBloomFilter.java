@@ -96,18 +96,19 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, Migratab
     }
 
     /**
-     * Returns a stream with all cached objects and their expire time.
+     * Returns a stream with all cached objects and their remaining TTL in microseconds.
      *
-     * @return all expiring objects as a stream
+     * @return All expiring objects as a stream.
      */
     Stream<ExpiringItem<T>> streamExpirations();
 
     /**
-     * Returns a stream with all items that have been inserted into the Bloom filter and their expire time.
+     * Returns a stream with all items that have been inserted into the
+     * binary and counting Bloom filter and their remaining TTL in microseconds.
      *
-     * @return all expiring objects contained in the bloom filter
+     * @return All expiring objects contained in the Bloom filter.
      */
-    Stream<ExpiringItem<T>> streamExpiringBFItems();
+    Stream<ExpiringItem<T>> streamWrittenItems();
 
     /**
      * Sets whether expiration should be turned on.

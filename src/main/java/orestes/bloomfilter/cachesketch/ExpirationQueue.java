@@ -2,7 +2,6 @@ package orestes.bloomfilter.cachesketch;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Queue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -180,14 +179,34 @@ public interface ExpirationQueue<T> extends Iterable<T> {
         }
 
         /**
-         * Creates an absolute expiring item which contains the expiration absolute to a given point in time.
+         * Converts the items unit from one unit to another.
          *
-         * @param time The time point to be absolute to.
-         * @param unit The time point's unit.
+         * @param sourceUnit The source time unit.
+         * @param targetUnit The target time unit.
          * @return A new expiring item instance.
          */
-        public ExpiringItem<T> toAbsolute(long time, TimeUnit unit) {
-            return new ExpiringItem<>(item, expiration + NANOSECONDS.convert(time, unit));
+        public ExpiringItem<T> convert(TimeUnit sourceUnit, TimeUnit targetUnit) {
+            return new ExpiringItem<>(item, targetUnit.convert(expiration, sourceUnit));
+        }
+
+        /**
+         * Adds some delay to this expiring item.
+         *
+         * @param delay The delay to add.
+         * @return A new expiring item instance.
+         */
+        public ExpiringItem<T> addDelay(long delay) {
+            return new ExpiringItem<>(item, expiration + delay);
+        }
+
+        /**
+         * Removes some delay from this expiring item.
+         *
+         * @param delay The delay to add.
+         * @return A new expiring item instance.
+         */
+        public ExpiringItem<T> removeDelay(long delay) {
+            return new ExpiringItem<>(item, expiration - delay);
         }
 
         @Override
