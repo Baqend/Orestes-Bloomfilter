@@ -11,3 +11,4 @@
 .classpath
 .project
 .settings/
+*.csv
