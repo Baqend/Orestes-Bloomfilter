@@ -1,8 +1,6 @@
 package orestes.bloomfilter.cachesketch;
 
-import orestes.bloomfilter.BloomFilter;
-import orestes.bloomfilter.CountingBloomFilter;
-import orestes.bloomfilter.MigratableBloomFilter;
+import orestes.bloomfilter.*;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 
 import java.util.List;
@@ -16,7 +14,7 @@ import java.util.stream.Stream;
  * expiration(obj).
  *
  */
-public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, MigratableBloomFilter<T> {
+public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLiveMapAware<T>, ExpirationMapAware<T>, MigratableBloomFilter<T> {
 
     /**
      * Determines whether a given object is no-expired
@@ -24,7 +22,9 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, Migratab
      * @param element the element (or its id)
      * @return <code>true</code> if the element is non-expired
      */
-    boolean isCached(T element);
+    default boolean isCached(T element) {
+        return getTimeToLiveMap().containsKey(element);
+    }
 
     /**
      * Return the expiration timestamp of an object
@@ -33,7 +33,9 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, Migratab
      * @param unit    the time unit of the returned ttl
      * @return the remaining ttl
      */
-    Long getRemainingTTL(T element, TimeUnit unit);
+    default Long getRemainingTTL(T element, TimeUnit unit) {
+        return getTimeToLiveMap().getRemaining(element, unit);
+    }
 
     /**
      * Return the expiration timestamps of the given object
@@ -94,21 +96,6 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, Migratab
     default List<Long> reportWrites(List<T> elements, TimeUnit unit) {
         return elements.stream().map(el -> reportWrite(el, unit)).collect(Collectors.toList());
     }
-
-    /**
-     * Returns a stream with all cached objects and their remaining TTL in microseconds.
-     *
-     * @return All expiring objects as a stream.
-     */
-    Stream<ExpiringItem<T>> streamExpirations();
-
-    /**
-     * Returns a stream with all items that have been inserted into the
-     * binary and counting Bloom filter and their remaining TTL in microseconds.
-     *
-     * @return All expiring objects contained in the Bloom filter.
-     */
-    Stream<ExpiringItem<T>> streamWrittenItems();
 
     /**
      * Sets whether expiration should be turned on.

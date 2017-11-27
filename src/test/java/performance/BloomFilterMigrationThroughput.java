@@ -12,7 +12,6 @@ import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.impl.SimpleLoggerFactory;
 
 import java.util.List;
 import java.util.Random;
@@ -79,7 +78,7 @@ public class BloomFilterMigrationThroughput {
     }
 
 
-    public CompletableFuture<Boolean> testPerformance(FilterBuilder builder, Class<? extends ExpiringBloomFilterRedis> type) {
+    public CompletableFuture<Boolean> testPerformance(FilterBuilder builder, Class<? extends ExpiringBloomFilter> type) {
         builder.pool().safelyDo(jedis -> jedis.flushAll());
         LOG.debug("Flushed Redis");
 
@@ -102,9 +101,9 @@ public class BloomFilterMigrationThroughput {
         return testResult;
     }
 
-    private ExpiringBloomFilter<String> createBloomFilter(FilterBuilder builder, Class<? extends ExpiringBloomFilterRedis> type) {
+    private ExpiringBloomFilter<String> createBloomFilter(FilterBuilder builder, Class<? extends ExpiringBloomFilter> type) {
         final FilterBuilder clone = builder.clone().name(createRandomName());
-        ExpiringBloomFilterRedis<String> result;
+        ExpiringBloomFilter<String> result;
         if (type == ExpiringBloomFilterRedis.class) {
             result = new ExpiringBloomFilterRedis<>(clone);
         } else if (type == ExpiringBloomFilterPureRedis.class) {

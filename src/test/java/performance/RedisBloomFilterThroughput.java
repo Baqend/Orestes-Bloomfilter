@@ -5,10 +5,12 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Snapshot;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.HashProvider.HashMethod;
+import orestes.bloomfilter.cachesketch.AbstractExpiringBloomFilterRedis;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
 
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -34,16 +36,19 @@ public class RedisBloomFilterThroughput {
     private final Histogram readHistogram;
     private final Histogram writeHistogram;
     private final String testName;
+    private static PrintWriter writer;
 
     public RedisBloomFilterThroughput(String name) {
         testName = name;
-        System.out.println("-------------- " + name + " --------------");
+        System.err.println("-------------- " + name + " --------------");
 
         this.readHistogram = new Histogram(new ExponentiallyDecayingReservoir());
         this.writeHistogram = new Histogram(new ExponentiallyDecayingReservoir());
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        writer = new PrintWriter(RedisBloomFilterThroughput.class.getSimpleName() + ".csv", "UTF-8");
+
         int m = 100_000;
         int k = 10;
 
@@ -75,13 +80,14 @@ public class RedisBloomFilterThroughput {
         test = new RedisBloomFilterThroughput("Memory Queue 2");
         test.testPerformance(builder, ExpiringBloomFilterRedis.class).join();
 
+        writer.close();
         System.exit(0);
     }
 
 
-    public CompletableFuture<Boolean> testPerformance(FilterBuilder builder, Class<? extends ExpiringBloomFilterRedis> type) {
+    public CompletableFuture<Boolean> testPerformance(FilterBuilder builder, Class<? extends AbstractExpiringBloomFilterRedis> type) {
         List<ExpiringBloomFilter<String>> servers = IntStream.range(0, SERVERS)
-            .mapToObj(i -> createBloomFilter(builder, type))
+            .mapToObj(i -> createBloomFilter(i, builder, type))
             .collect(toList());
 
         final long start = System.currentTimeMillis();
@@ -93,13 +99,13 @@ public class RedisBloomFilterThroughput {
         return testResult;
     }
 
-    private ExpiringBloomFilter<String> createBloomFilter(FilterBuilder builder, Class<? extends ExpiringBloomFilterRedis> type) {
-        ExpiringBloomFilterRedis<String> result;
+    private ExpiringBloomFilter<String> createBloomFilter(int i, FilterBuilder builder, Class<? extends AbstractExpiringBloomFilterRedis> type) {
+        ExpiringBloomFilter<String> result;
         if (type == ExpiringBloomFilterRedis.class) {
-            result = new ExpiringBloomFilterRedis<>(builder);
+            result = new ExpiringBloomFilterRedis<>(builder.clone().name("Server " + (i + 1)));
         } else
         if (type == ExpiringBloomFilterPureRedis.class) {
-            result = new ExpiringBloomFilterPureRedis(builder);
+            result = new ExpiringBloomFilterPureRedis(builder.clone().name("Server " + (i + 1)));
         } else {
             throw new IllegalArgumentException("Unknown Bloom filter type: " + type);
         }
@@ -140,11 +146,11 @@ public class RedisBloomFilterThroughput {
 
     private void endTest(CompletableFuture<Boolean> resultFuture, List<ScheduledFuture<?>> processes, List<ExpiringBloomFilter<String>> servers, long startTime) {
         long endingStarted = (System.currentTimeMillis() - startTime);
-        System.out.println("Ending Test (Runtime: " + endingStarted + "ms)");
+        System.err.println("Ending Test (Runtime: " + endingStarted + "ms)");
         processes.forEach(process -> process.cancel(false));
         long duration = (System.currentTimeMillis() - startTime);
-        System.out.println("Processes canceled (Runtime: " + duration + "ms)");
-        System.out.println("Writes: " + writeHistogram.getCount() + "/" + ((1000 * TEST_RUNTIME * SERVERS * USERS_PER_SERVER) / WRITE_PERIOD) + ", Throughput: " + writeHistogram.getCount() / (duration / 1000) + "/s");
+        System.err.println("Processes canceled (Runtime: " + duration + "ms)");
+        System.err.println("Writes: " + writeHistogram.getCount() + "/" + ((1000 * TEST_RUNTIME * SERVERS * USERS_PER_SERVER) / WRITE_PERIOD) + ", Throughput: " + writeHistogram.getCount() / (duration / 1000) + "/s");
 
         dumpHistogram("Reads", readHistogram);
         dumpHistogram("Writes", writeHistogram);
@@ -152,7 +158,7 @@ public class RedisBloomFilterThroughput {
 
         resultFuture.thenAccept((ignored) -> {
 //            servers.forEach(server -> server.remove());
-            System.out.println("Bloom filter cleanup time: " + ((System.currentTimeMillis() - startTime - duration) / 1000.0) + "s");
+            System.err.println("Bloom filter cleanup time: " + ((System.currentTimeMillis() - startTime - duration) / 1000.0) + "s");
         });
     }
 
@@ -160,7 +166,7 @@ public class RedisBloomFilterThroughput {
         final Snapshot snapshot = histogram.getSnapshot();
         final String format = String.format(
                 Locale.ENGLISH,
-                "('%s', %.4f, %.4f, %.4f, %.4f, %.4f),",
+                "'%s', %.4f, %.4f, %.4f, %.4f, %.4f",
                 testName + " " + name,
                 snapshot.getMin() / 1e6d,
                 snapshot.getValue(0.25) / 1e6d,
@@ -168,7 +174,7 @@ public class RedisBloomFilterThroughput {
                 snapshot.getValue(0.75) / 1e6d,
                 snapshot.getMax() / 1e6d
         );
-        System.out.println(format);
+        writer.println(format);
     }
 
     private void waitForServersToClear(List<ExpiringBloomFilter<String>> servers, CompletableFuture<Boolean> future) {

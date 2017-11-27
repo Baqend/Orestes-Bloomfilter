@@ -28,11 +28,11 @@ public class RedisLuaPerformance {
     private static final Logger LOG = LoggerFactory.getLogger(RedisLuaPerformance.class);
 
     public static void main(String[] args) {
-        final int runs = 100;
-        final int[] items = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500};
+        final int runs = 10;
+        final int[] items = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10_000};
         for (int item : items) {
             final RedisLuaPerformance test = new RedisLuaPerformance(item, runs);
-            printResult(item + " els", test.getResult());
+            printResult(item + "", test.getResult());
         }
         System.exit(0);
     }
@@ -69,14 +69,14 @@ public class RedisLuaPerformance {
         for (int run = 0; run < runs; run += 1) {
             for (int i = 0; i < items; i += 1) {
                 final String element = String.valueOf(rnd.nextInt());
-                bloomFilter.reportRead(element, 5, TimeUnit.MILLISECONDS);
+                bloomFilter.reportRead(element, 50, TimeUnit.MILLISECONDS);
                 if (!bloomFilter.reportWrite(element)) {
                     throw new RuntimeException("Did not write " + element);
                 }
             }
 
             try {
-                Thread.sleep(10);
+                Thread.sleep(60);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -84,7 +84,7 @@ public class RedisLuaPerformance {
             LOG.debug("Start estimation");
             final long started = System.nanoTime();
             while (!bloomFilter.isEmpty()) {
-                bloomFilter.expirationHandler();
+                bloomFilter.onExpire();
             }
             histogram.update(System.nanoTime() - started);
             LOG.debug("Estimated " + (System.nanoTime() - started));

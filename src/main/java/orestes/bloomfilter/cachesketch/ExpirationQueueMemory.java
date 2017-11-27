@@ -1,11 +1,18 @@
 package orestes.bloomfilter.cachesketch;
 
 
+import orestes.bloomfilter.TimeMap;
+
 import java.util.Optional;
 import java.util.Queue;
-import java.util.concurrent.*;
+import java.util.concurrent.DelayQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     private Future<?> future;
@@ -14,7 +21,7 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     private final Consumer<ExpiringItem<T>> handler;
 
     public ExpirationQueueMemory(Consumer<ExpiringItem<T>> handler) {
-        this.delayedQueue =  new DelayQueue<>();
+        this.delayedQueue = new DelayQueue<>();
         this.handler = handler;
         enable();
     }
@@ -44,7 +51,7 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
         if (!isEnabled) return false;
 
         isEnabled = false;
-        delayedQueue.add(new ExpiringItem<>(null, 0));
+        delayedQueue.add(new ExpiringItem<>(null, 0, NANOSECONDS));
         try {
             future.get();
             return true;
@@ -85,12 +92,16 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     }
 
     @Override
-    public Stream<ExpiringItem<T>> streamEntries() {
-        return delayedQueue.stream().filter(it -> it.getItem() != null).map(it -> it.removeDelay(now()));
+    public TimeMap<T> getExpirationMap() {
+        return delayedQueue.stream().collect(
+                TimeMap::new,
+                (item, map) -> item.put(map.getItem(), map.getExpiration(MILLISECONDS)),
+                TimeMap::putAll
+        );
     }
 
     @Override
-    public long now() {
-        return System.nanoTime();
+    public void setExpirationMap(TimeMap<T> map) {
+        map.forEach((item, ttl) -> addExpiration(item, ttl, MILLISECONDS));
     }
 }

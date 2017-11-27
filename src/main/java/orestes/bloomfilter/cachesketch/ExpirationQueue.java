@@ -1,19 +1,21 @@
 package orestes.bloomfilter.cachesketch;
 
+import orestes.bloomfilter.ExpirationMapAware;
+
+import java.time.Clock;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * Created on 04.10.17.
  *
  * @author Konstantin Simon Maria Möllers
  */
-public interface ExpirationQueue<T> extends Iterable<T> {
+public interface ExpirationQueue<T> extends Iterable<T>, ExpirationMapAware<T> {
     /**
      * Adds an item with a time to live (TTL) to the queue.
      *
@@ -23,18 +25,7 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      * @return whether the item has been added
      */
     default boolean addTTL(T item, long ttl, TimeUnit ttlUnit) {
-        return add(new ExpiringItem<>(item, now() + NANOSECONDS.convert(ttl, ttlUnit)));
-    }
-
-    /**
-     * Adds an item with a time to live (TTL) to the queue.
-     *
-     * @param item The item to add to the queue
-     * @param ttl  The time to live of the item, in nanoseconds
-     * @return whether the item has been added
-     */
-    default boolean addTTL(T item, long ttl) {
-        return addTTL(item, ttl, NANOSECONDS);
+        return add(new ExpiringItem<>(item, now() + MILLISECONDS.convert(ttl, ttlUnit), MILLISECONDS));
     }
 
     /**
@@ -42,10 +33,11 @@ public interface ExpirationQueue<T> extends Iterable<T> {
      *
      * @param item      The item to add to the queue
      * @param timestamp The timestamp when the item expires, in nanoseconds since {@link System#nanoTime()}
+     * @param timeUnit  The timestamp's time unit.
      * @return whether the item has been added
      */
-    default boolean addExpiration(T item, long timestamp) {
-        return add(new ExpiringItem<>(item, timestamp));
+    default boolean addExpiration(T item, long timestamp, TimeUnit timeUnit) {
+        return add(new ExpiringItem<>(item, timestamp, timeUnit));
     }
 
     /**
@@ -88,16 +80,6 @@ public interface ExpirationQueue<T> extends Iterable<T> {
     boolean add(ExpiringItem<T> item);
 
     /**
-     * Adds many items to the expiration queue.
-     *
-     * @param items A stream of items to add to the queue.
-     * @return whether all items have been added.
-     */
-    default boolean addMany(Stream<ExpiringItem<T>> items) {
-        return items.allMatch(this::add);
-    }
-
-    /**
      * Returns the items in the queue which are not expired yet.
      *
      * @return a queue of non-expired items
@@ -126,18 +108,13 @@ public interface ExpirationQueue<T> extends Iterable<T> {
     boolean remove(T item);
 
     /**
-     * Returns a stream containing all entries of this stream.
-     *
-     * @return all entries of a stream
-     */
-    Stream<ExpiringItem<T>> streamEntries();
-
-    /**
-     * Returns the current clock in nanoseconds.
+     * Returns the current clock in milliseconds.
      *
      * @return The current point in time.
      */
-    long now();
+    default long now() {
+        return Clock.systemUTC().millis();
+    }
 
     @Override
     default Iterator<T> iterator() {
@@ -159,9 +136,9 @@ public interface ExpirationQueue<T> extends Iterable<T> {
          * @param item       The actual item which expires
          * @param expiration The expiration timestamp, relative to {@link java.lang.System#nanoTime()}
          */
-        public ExpiringItem(T item, long expiration) {
+        public ExpiringItem(T item, long expiration, TimeUnit timeUnit) {
             this.item = item;
-            this.expiration = expiration;
+            this.expiration = MILLISECONDS.convert(expiration, timeUnit);
         }
 
         /**
@@ -172,51 +149,20 @@ public interface ExpirationQueue<T> extends Iterable<T> {
         }
 
         /**
-         * @return the timestamp when the item expires
+         * @return the timestamp in nanoseconds when the item expires
          */
-        public long getExpiration() {
-            return expiration;
-        }
-
-        /**
-         * Converts the items unit from one unit to another.
-         *
-         * @param sourceUnit The source time unit.
-         * @param targetUnit The target time unit.
-         * @return A new expiring item instance.
-         */
-        public ExpiringItem<T> convert(TimeUnit sourceUnit, TimeUnit targetUnit) {
-            return new ExpiringItem<>(item, targetUnit.convert(expiration, sourceUnit));
-        }
-
-        /**
-         * Adds some delay to this expiring item.
-         *
-         * @param delay The delay to add.
-         * @return A new expiring item instance.
-         */
-        public ExpiringItem<T> addDelay(long delay) {
-            return new ExpiringItem<>(item, expiration + delay);
-        }
-
-        /**
-         * Removes some delay from this expiring item.
-         *
-         * @param delay The delay to add.
-         * @return A new expiring item instance.
-         */
-        public ExpiringItem<T> removeDelay(long delay) {
-            return new ExpiringItem<>(item, expiration - delay);
+        public long getExpiration(TimeUnit timeUnit) {
+            return timeUnit.convert(expiration, MILLISECONDS);
         }
 
         @Override
         public long getDelay(TimeUnit unit) {
-            return unit.convert(expiration - System.nanoTime(), NANOSECONDS);
+            return unit.convert(expiration - Clock.systemUTC().millis(), MILLISECONDS);
         }
 
         @Override
         public int compareTo(Delayed delayed) {
-            return Long.compare(getDelay(NANOSECONDS), delayed.getDelay(NANOSECONDS));
+            return Long.compare(getDelay(MILLISECONDS), delayed.getDelay(MILLISECONDS));
         }
 
         @Override
