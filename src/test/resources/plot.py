@@ -11,6 +11,7 @@ def customized_box_plot(percentiles, axes, redraw=True, *args, **kwargs):
 
     n_box = len(percentiles)
     boxplot = axes.boxplot([[-9, -4, 2, 4, 9], ] * n_box, *args, **kwargs)
+    y_min = None
     y_max = None
 
     for box_no, (label, q1_start, q2_start, q3_start, q4_start, q4_end) in enumerate(percentiles):
@@ -21,11 +22,14 @@ def customized_box_plot(percentiles, axes, redraw=True, *args, **kwargs):
         boxplot['boxes'][box_no].set_ydata([q2_start, q2_start, q4_start, q4_start, q2_start])
         boxplot['medians'][box_no].set_ydata([q3_start, q3_start])
 
+        if y_min is None or y_min > q2_start:
+            y_min = q2_start
+
         if y_max is None or y_max < q4_start:
             y_max = q4_start
 
     # axes.set_yscale('log')
-    axes.set_ylim(ymin=0, ymax=math.ceil(y_max + 1))
+    axes.set_ylim(ymin=math.floor(y_min), ymax=math.ceil(y_max + 1))
 
     # If redraw is set to true, the canvas is updated.
     if redraw:
