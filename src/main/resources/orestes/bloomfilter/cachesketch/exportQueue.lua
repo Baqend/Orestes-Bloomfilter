@@ -4,7 +4,7 @@ local BITS_KEY = KEYS[3]
 local NOW = ARGV[1]
 
 -- Find a good limit
-local limit = 10000
+local limit = 100
 
 -- Get expired elements from Redis
 local expiredElements = redis.call("ZRANGEBYSCORE", QUEUE_KEY, 0, NOW, "WITHSCORES", "LIMIT", 0, limit)
