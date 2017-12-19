@@ -256,7 +256,6 @@ public class FilterBuilder implements Cloneable, Serializable {
         return this;
     }
 
-
     /**
      * Sets the method used to generate hash values. Possible hash methods are documented in the corresponding enum
      * {@link HashProvider.HashMethod}. <p><b>Default</b>: MD5</p>
