@@ -46,9 +46,9 @@ public class CountingBloomFilter32<T> extends CountingBloomFilterMemory<T>{
 
     @Override
     public Map<Integer, Long> getCountMap() {
-        final Map<Integer, Long> result = new HashMap<>();
+        Map<Integer, Long> result = new HashMap<>();
         for (int i = 0; i < counters.length; i++) {
-            final long count = Integer.toUnsignedLong(counters[i]);
+            long count = Integer.toUnsignedLong(counters[i]);
             if (count > 0) {
                 result.put(i, count);
             }

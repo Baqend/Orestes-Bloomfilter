@@ -241,14 +241,14 @@ public class RedisBFTest {
     }
 
 
-    public static void concurrentBenchmark(List<BloomFilter<String>> bfs, final int opsPerThread) {
+    public static void concurrentBenchmark(List<BloomFilter<String>> bfs, int opsPerThread) {
         ExecutorService pool = Executors.newFixedThreadPool(bfs.size());
         List<Runnable> threads = new ArrayList<>(bfs.size());
-        final List<String> items = new ArrayList<>(opsPerThread);
+        List<String> items = new ArrayList<>(opsPerThread);
         for (int i = 0; i < opsPerThread; i++) {
             items.add(String.valueOf(i));
         }
-        for (final BloomFilter<String> bf : bfs) {
+        for (BloomFilter<String> bf : bfs) {
             threads.add(new Runnable() {
 
                 @Override
@@ -296,7 +296,7 @@ public class RedisBFTest {
     
     @Test
     public void testDatabase() throws Exception {
-        final String filterName = "dbtest";
+        String filterName = "dbtest";
         BloomFilter<String> bfDb1 = createFilter(filterName, 10_000, 0.01, true);
         assertEquals(filterName, bfDb1.config().name());
         bfDb1.add("element1");

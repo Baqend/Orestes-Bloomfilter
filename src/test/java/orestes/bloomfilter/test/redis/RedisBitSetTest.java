@@ -17,8 +17,8 @@ public class RedisBitSetTest {
 
     @Test
     public void testBitSetStoredCorrectly() {
-        final int length = 20;
-        final BitSet primes = new BitSet(length);
+        int length = 20;
+        BitSet primes = new BitSet(length);
         primes.flip(2, length);
         for (int i = 0; i < length; i++) {
             if (primes.get(i)) {
@@ -75,7 +75,7 @@ public class RedisBitSetTest {
     @Test
     public void testIsEmpty() throws Exception {
         int max = 1_000_000;
-        final RedisBitSet bitSet = new RedisBitSet(Helper.getPool(), "isEmpty", max);
+        RedisBitSet bitSet = new RedisBitSet(Helper.getPool(), "isEmpty", max);
         bitSet.clear();
         assertTrue(bitSet.isEmpty());
 
@@ -97,7 +97,7 @@ public class RedisBitSetTest {
     @Test
     public void testLength() throws Exception {
         int max = 1_000_000;
-        final RedisBitSet bitSet = new RedisBitSet(Helper.getPool(), "length", max);
+        RedisBitSet bitSet = new RedisBitSet(Helper.getPool(), "length", max);
 
         bitSet.clear();
         assertEquals(0, bitSet.length());
@@ -130,7 +130,7 @@ public class RedisBitSetTest {
     @Test
     public void testFromByteArrayReverse() throws Exception {
         byte[] bytes = {-128, 0, 0, 1};
-        final BitSet bitSet = RedisBitSet.fromByteArrayReverse(bytes);
+        BitSet bitSet = RedisBitSet.fromByteArrayReverse(bytes);
         assertEquals(32, bitSet.length());
         assertTrue(bitSet.get(0));
         for (int i = 1; i < 31; i += 1) {
@@ -139,24 +139,24 @@ public class RedisBitSetTest {
         assertTrue(bitSet.get(31));
 
         // Check reverse operation
-        final byte[] reverse = RedisBitSet.toByteArrayReverse(bitSet);
+        byte[] reverse = RedisBitSet.toByteArrayReverse(bitSet);
         assertArrayEquals(bytes, reverse);
     }
 
     @Test
     public void testToByteArrayReverse() throws Exception {
-        final BitSet bitSet = new BitSet();
+        BitSet bitSet = new BitSet();
         bitSet.set(0, true);
         bitSet.set(15, true);
         bitSet.set(24, true);
         assertEquals(25, bitSet.length());
 
-        final byte[] bytes = RedisBitSet.toByteArrayReverse(bitSet);
-        final byte[] expected = {-128, 1, 0, -128};
+        byte[] bytes = RedisBitSet.toByteArrayReverse(bitSet);
+        byte[] expected = {-128, 1, 0, -128};
         assertArrayEquals(expected, bytes);
 
         // Check reverse operation
-        final BitSet reverse = RedisBitSet.fromByteArrayReverse(bytes);
+        BitSet reverse = RedisBitSet.fromByteArrayReverse(bytes);
         assertEquals(bitSet, reverse);
     }
 }

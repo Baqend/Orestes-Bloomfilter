@@ -25,10 +25,10 @@ public class MessagePackEncoderTest {
 
     @Test
     public void testEncodeItem() throws Exception {
-        final String name = "Some random name";
+        String name = "Some random name";
 
-        final int[] positions = builder.hashFunction().hash(name.getBytes(), builder.size(), builder.hashes());
-        final byte[] write = encoder.encodeItem(name, positions);
+        int[] positions = builder.hashFunction().hash(name.getBytes(), builder.size(), builder.hashes());
+        byte[] write = encoder.encodeItem(name, positions);
         printBytes(write);
 
         // Check pack is a three entry map
@@ -47,7 +47,7 @@ public class MessagePackEncoderTest {
 
     @Test
     public void testDecodeItem() throws Exception {
-        final byte[] read = {-125, -92, 110, 97, 109, 101, -80, 83, 111, 109, 101, 32, 114, 97, 110, 100, 111, 109, 32,
+        byte[] read = {-125, -92, 110, 97, 109, 101, -80, 83, 111, 109, 101, 32, 114, 97, 110, 100, 111, 109, 32,
                 110, 97, 109, 101, -87, 112, 111, 115, 105, 116, 105, 111, 110, 115, -103, -51, -1, 23, -51, -104, -122,
                 -51, 49, -11, -50, 0, 1, -60, -87, -50, 0, 1, 94, 24, -51, -9, -121, -51, -112, -10, -51, 42, 101, -50,
                 0, 1, -67, 25, -92, 104, 97, 115, 104, -88, 101, 100, 97, 49, 99, 57, 53, 56};
@@ -57,7 +57,7 @@ public class MessagePackEncoderTest {
 
     void printBytes(byte[] bytes) {
         for (byte b : bytes) {
-            final char ch = (char) b;
+            char ch = (char) b;
             if (Character.isLetterOrDigit(b) || b == 32) {
                 System.out.print(ch);
             } else {

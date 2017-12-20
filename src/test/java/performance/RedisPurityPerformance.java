@@ -28,7 +28,7 @@ public class RedisPurityPerformance {
         int k = 10;
 
 
-        final FilterBuilder builder = new FilterBuilder(m, k)
+        FilterBuilder builder = new FilterBuilder(m, k)
             .hashFunction(HashMethod.Murmur3)
             .name("purity")
             .redisBacked(true)
@@ -38,8 +38,8 @@ public class RedisPurityPerformance {
             .overwriteIfExists(true);
 
         try {
-            final ExpiringBloomFilterPureRedis pure = new ExpiringBloomFilterPureRedis(builder);
-            final ExpiringBloomFilterRedis<String> unpure = new ExpiringBloomFilterRedis<>(builder);
+            ExpiringBloomFilterPureRedis pure = new ExpiringBloomFilterPureRedis(builder);
+            ExpiringBloomFilterRedis<String> unpure = new ExpiringBloomFilterRedis<>(builder);
 //            final ExpiringBloomFilterMemory<String> unpure = new ExpiringBloomFilterMemory<>(builder);
 
             dumbAdds(pure);
@@ -58,13 +58,13 @@ public class RedisPurityPerformance {
         System.out.println(b.isEmpty());
         System.out.println(b.getBitSet().length());
         Random r = new Random();
-        final boolean[] stop = {false};
+        boolean[] stop = {false};
 
         // Start a reading thread
-        final Thread reader = new Thread(() -> {
+        Thread reader = new Thread(() -> {
             int[] lastCount = {-1, -1, -1, -1, -1};
             while (true) {
-                final BitSet bitSet = b.getBitSet();
+                BitSet bitSet = b.getBitSet();
                 lastCount[0] = lastCount[1];
                 lastCount[1] = lastCount[2];
                 lastCount[2] = lastCount[3];
@@ -88,11 +88,11 @@ public class RedisPurityPerformance {
         reader.start();
 
 
-        final HashSet<String> processed = new HashSet<>();
+        HashSet<String> processed = new HashSet<>();
         System.err.println("Threads started.");
         long start = System.currentTimeMillis();
         for (int j = 0; j < CONCURRENT_USERS; j += 1) {
-            final Thread thread = new Thread(() -> {
+            Thread thread = new Thread(() -> {
                 while (true) {
                     String item;
                     do {

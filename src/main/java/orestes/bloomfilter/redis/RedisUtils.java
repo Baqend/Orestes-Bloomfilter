@@ -1,10 +1,6 @@
 package orestes.bloomfilter.redis;
 
-import orestes.bloomfilter.redis.helper.RedisPool;
-
 import java.nio.ByteBuffer;
-import java.time.Clock;
-import java.time.Instant;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -27,7 +23,7 @@ public class RedisUtils {
      */
     public static Map<byte[], byte[]> encodeMap(Map<Integer, Long> map) {
         return map.entrySet().stream()
-                .collect(toMap(e -> RedisUtils.encodeKey(e.getKey()), e -> RedisUtils.encodeValue(e.getValue())));
+            .collect(toMap(e -> encodeKey(e.getKey()), e -> encodeValue(e.getValue())));
     }
 
     /**
@@ -68,7 +64,7 @@ public class RedisUtils {
      */
     public static Map<Integer, Long> decodeMap(Map<byte[], byte[]> map) {
         return map.entrySet().stream()
-                .collect(toMap(e -> RedisUtils.decodeKey(e.getKey()), e -> RedisUtils.decodeValue(e.getValue())));
+            .collect(toMap(e -> decodeKey(e.getKey()), e -> decodeValue(e.getValue())));
     }
 
     /**
@@ -89,15 +85,5 @@ public class RedisUtils {
      */
     public static long decodeValue(byte[] value) {
         return Long.parseLong(new String(value));
-    }
-
-    /**
-     * Returns Redis's point in time.
-     *
-     * @param redisClock The Redis's clock to get the time point for.
-     * @return The current point of time for that Redis.
-     */
-    public static long getRedisTimePoint(Clock redisClock) {
-        return redisClock.millis();
     }
 }

@@ -34,8 +34,8 @@ public class MessagePackEncoder {
      * @return A packed item.
      */
     public byte[] encodeItem(String item, int[] positions) {
-        final String hash = createRandomHash();
-        final HashMap<String, Object> map = new HashMap<>();
+        String hash = createRandomHash();
+        HashMap<String, Object> map = new HashMap<>();
         map.put("name", item);
         map.put("hash", hash);
         map.put("positions", positions);
@@ -54,7 +54,7 @@ public class MessagePackEncoder {
      * @return An unpacked item name.
      */
     public String decodeItem(byte[] bytes) {
-        final MapValue map;
+        MapValue map;
         try {
             map = messagePack.read(bytes).asMapValue();
         } catch (IOException e) {

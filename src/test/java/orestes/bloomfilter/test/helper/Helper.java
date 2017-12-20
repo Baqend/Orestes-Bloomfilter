@@ -27,7 +27,7 @@ public class Helper {
     private static final String sentinelHostName = host;
     private static final String sentinelClusterName = "bf-cluster";
 
-    static private Set<String> getSentinelNodes() {
+    private static Set<String> getSentinelNodes() {
         Set<String> sentinels = new HashSet<>();
         sentinels.add(sentinelHostName + ":16385");
         sentinels.add(sentinelHostName + ":16386");

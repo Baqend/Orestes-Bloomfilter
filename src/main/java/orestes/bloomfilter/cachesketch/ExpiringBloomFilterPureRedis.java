@@ -5,14 +5,12 @@ import orestes.bloomfilter.TimeMap;
 import orestes.bloomfilter.redis.MessagePackEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Tuple;
 
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -38,7 +36,7 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
 
     private final String exportQueueScript = loadLuaScript("exportQueue.lua");
     private final Random random = new Random();
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final MessagePackEncoder msgPack;
     private ScheduledFuture<?> job;
     private boolean isEnabled;
@@ -51,14 +49,14 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
 
     @Override
     public void clear() {
-        pool.safelyDo((jedis) -> {
+        try (Jedis jedis = pool.getResource()) {
             // Delete all used fields from Redis
             jedis.del(keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY, keys.TTL_KEY);
-        });
+        }
     }
 
     @Override
-    public void remove() {
+    public synchronized void remove() {
         super.remove();
         if (job != null) {
             job.cancel(true);
@@ -68,14 +66,14 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
 
     @Override
     public void addToQueue(String item, long remaining, TimeUnit timeUnit) {
-        pool.safelyDo(p -> {
+        try (Jedis jedis = pool.getResource()) {
             boolean done;
             do {
                 int[] positions = hash(item.getBytes());
-                final byte[] member = msgPack.encodeItem(item, positions);
-                done = p.zadd(keys.EXPIRATION_QUEUE_KEY.getBytes(), now() + MILLISECONDS.convert(remaining, timeUnit), member) == 1;
+                byte[] member = msgPack.encodeItem(item, positions);
+                done = jedis.zadd(keys.EXPIRATION_QUEUE_KEY.getBytes(), now() + MILLISECONDS.convert(remaining, timeUnit), member) == 1;
             } while (!done);
-        });
+        }
         triggerExpirationHandling(remaining, timeUnit);
     }
 
@@ -84,38 +82,42 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
      *
      * @return true if successful, false otherwise.
      */
-    synchronized public boolean onExpire() {
-        final long now = now();
-        LOG.debug("[" + config.name() + "] Expiring items ... " + now);
-        long expiredItems = pool.safelyReturn((jedis) -> (long) jedis.evalsha(
+    public synchronized boolean onExpire() {
+        long now = now();
+        LOG.debug("[{}] Expiring items ... {}", config.name(), now);
+        try (Jedis jedis = pool.getResource()) {
+            long expiredItems = (long) jedis.evalsha(
                 exportQueueScript, 3,
                 // Keys:
                 keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY,
                 // Args:
                 String.valueOf(now)
-        ));
-        LOG.debug("[" + config.name() + "] Script expired " + expiredItems + " items within " + (now() - now) + "ms");
-        return true;
+            );
+            LOG.debug("[{}] Script expired {} items within {}ms", config.name(), expiredItems, now() - now);
+            return true;
+        }
     }
 
 
     @Override
     public TimeMap<String> getExpirationMap() {
-        return pool.safelyReturn(p -> p.zrangeWithScores(keys.EXPIRATION_QUEUE_KEY.getBytes(), 0, -1))
+        try (Jedis jedis = pool.getResource()) {
+            return jedis.zrangeWithScores(keys.EXPIRATION_QUEUE_KEY.getBytes(), 0, -1)
                 .stream()
                 .collect(TimeMap.collectMillis(
-                        tuple -> msgPack.decodeItem(tuple.getBinaryElement()),
-                        tuple -> (long) tuple.getScore()
+                    tuple -> msgPack.decodeItem(tuple.getBinaryElement()),
+                    tuple -> (long) tuple.getScore()
                 ));
+        }
     }
 
     @Override
     public void setExpirationMap(TimeMap<String> map) {
-        pool.safelyDo((jedis) -> {
-            final Pipeline pipeline = jedis.pipelined();
-            final AtomicInteger ctr = new AtomicInteger(0);
+        try (Jedis jedis = pool.getResource()) {
+            Pipeline pipeline = jedis.pipelined();
+            AtomicInteger ctr = new AtomicInteger(0);
             map.forEach((item, expiration) -> {
-                final int[] positions = hash(item);
+                int[] positions = hash(item);
                 pipeline.zadd(keys.EXPIRATION_QUEUE_KEY.getBytes(), expiration, msgPack.encodeItem(item, positions));
 
                 if (ctr.incrementAndGet() >= 1000) {
@@ -124,7 +126,7 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
                 }
             });
             pipeline.sync();
-        });
+        }
     }
 
     @Override
@@ -138,11 +140,11 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
      * @param delay The delay when to trigger expiration
      * @param unit The time unit of the delay
      */
-    synchronized private void triggerExpirationHandling(long delay, TimeUnit unit) {
+    private synchronized void triggerExpirationHandling(long delay, TimeUnit unit) {
         if (!isEnabled) return;
-        long delayInMilliseconds = TimeUnit.MILLISECONDS.convert(delay, unit);
-        long currentDelay = job.getDelay(TimeUnit.MILLISECONDS);
-        if (currentDelay > delayInMilliseconds + MIN_JOB_DELAY) {
+        long delayInMilliseconds = MILLISECONDS.convert(delay, unit);
+        long currentDelay = job.getDelay(MILLISECONDS);
+        if (currentDelay > (delayInMilliseconds + MIN_JOB_DELAY)) {
             scheduleJob(false, delay, unit);
         }
     }
@@ -153,13 +155,13 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
      * @param delay When to schedule the new job
      * @param unit The time unit for the delay
      */
-    synchronized private void scheduleJob(boolean shouldNotCancel, long delay, TimeUnit unit) {
+    private synchronized void scheduleJob(boolean shouldNotCancel, long delay, TimeUnit unit) {
         ScheduledFuture<?> currentJob = job;
-        if (!shouldNotCancel && currentJob != null) {
-            LOG.debug("[" + config.name() + "] Cancel active job");
+        if (!shouldNotCancel && (currentJob != null)) {
+            LOG.debug("[{}] Cancel active job", config.name());
             currentJob.cancel(false);
         }
-        LOG.debug("[" + this.config.name() + "] Scheduled the next expiration job in " + TimeUnit.MILLISECONDS.convert(delay, unit) + "ms");
+        LOG.debug("[" + this.config.name() + "] Scheduled the next expiration job in " + MILLISECONDS.convert(delay, unit) + "ms");
         job = scheduler.schedule(this::expirationJob, delay, unit);
     }
 
@@ -184,28 +186,28 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
      * @return The delay in milliseconds.
      */
     private long estimateNextDelay() {
-        return pool.safelyReturn(p -> {
-            final long now = now();
+        try (Jedis jedis = pool.getResource()) {
+            long now = now();
             long max = now + MAX_JOB_DELAY;
-            Set<Tuple> nextQueueItems = p.zrangeByScoreWithScores(keys.EXPIRATION_QUEUE_KEY, 0, max, 0, 5);
+            Set<Tuple> nextQueueItems = jedis.zrangeByScoreWithScores(keys.EXPIRATION_QUEUE_KEY, 0, max, 0, 5);
 
             if (nextQueueItems.isEmpty()) {
-                LOG.debug("[" + config.name() + "] Queue empty, next try in " + MAX_JOB_DELAY + "ms");
+                LOG.debug("[{}] Queue empty, next try in {}ms", config.name(), MAX_JOB_DELAY);
                 return MAX_JOB_DELAY;
             }
 
-            final long next = nextQueueItems.stream()
+            long next = nextQueueItems.stream()
                     .skip(random.nextInt(nextQueueItems.size()))
                     .findFirst()
                     .map(Tuple::getScore)
                     .map(it -> Math.min(MAX_JOB_DELAY, Math.max(MIN_JOB_DELAY, it.longValue() - now)))
                     .orElse(MAX_JOB_DELAY);
-            LOG.debug("[" + config.name() + "] Estimated a next delay of " + next + "ms");
+            LOG.debug("[{}] Estimated a next delay of {}ms", config.name(), next);
             return next;
-        });
+        }
     }
 
-    private boolean enableJob() {
+    private synchronized boolean enableJob() {
         if (isEnabled) {
             return false;
         }
@@ -216,7 +218,7 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
         return true;
     }
 
-    private boolean disableJob() {
+    private synchronized boolean disableJob() {
         if (!isEnabled) {
             return false;
         }

@@ -4,6 +4,7 @@ import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.TimeMap;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
+import redis.clients.jedis.Jedis;
 
 import java.util.concurrent.TimeUnit;
 
@@ -18,13 +19,13 @@ public class ExpiringBloomFilterRedis<T> extends AbstractExpiringBloomFilterRedi
     }
 
     @Override
-    void addToQueue(T element, long remaining, TimeUnit timeUnit) {
+    protected void addToQueue(T element, long remaining, TimeUnit timeUnit) {
         queue.addExpiration(element, now() + remaining, timeUnit);
     }
 
     @Override
     public void clear() {
-        pool.safelyDo((jedis) -> {
+        try (Jedis jedis = pool.getResource()) {
             // Clear CBF, Bits, and TTLs
             jedis.del(keys.COUNTS_KEY, keys.BITS_KEY, keys.TTL_KEY);
             // During init, ONLY clear CBF
@@ -33,7 +34,7 @@ public class ExpiringBloomFilterRedis<T> extends AbstractExpiringBloomFilterRedi
             }
             // Clear Queue
             queue.clear();
-        });
+        }
     }
 
     @Override

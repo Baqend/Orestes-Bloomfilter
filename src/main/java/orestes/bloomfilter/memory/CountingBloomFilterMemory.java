@@ -38,7 +38,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
 
     @Override
     public Map<Integer, Long> getCountMap() {
-        final Map<Integer, Long> result = new HashMap<>();
+        Map<Integer, Long> result = new HashMap<>();
         for (int i = 0, low = 0, high = low + config().countingBits(); low < counts.length(); i++, low += config.countingBits(), high += config.countingBits()) {
             long count = 0;
             for (int j = low; j < high; j++) {
@@ -80,7 +80,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
         return IntStream.of(hash(element))
             .mapToLong(hash -> {
                 // Decrement the count at the position "hash" and return the new value
-                final long count = decrement(hash);
+                long count = decrement(hash);
 
                 // Remove each bit at the position "hash" if count is now zero
                 filter.setBit(hash, count > 0);
@@ -134,8 +134,8 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
     }
 
     protected long count(int index) {
-        final int low = index * config().countingBits();
-        final int high = low + config().countingBits();
+        int low = index * config().countingBits();
+        int high = low + config().countingBits();
 
         long count = 0;
         //bit * 2^0 + bit * 2^1 ...
@@ -149,8 +149,8 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
     }
 
     protected void set(int index, long newValue) {
-        final int low = index * config().countingBits();
-        final int high = low + config().countingBits() - 1;
+        int low = index * config().countingBits();
+        int high = low + config().countingBits() - 1;
 
         //bit * 2^0 + bit * 2^1 ...
         for (int i = high; i >= low; i--) {
@@ -304,7 +304,7 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
             throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
 
-        final CountingBloomFilter<T> cbf = (CountingBloomFilter<T>) source;
+        CountingBloomFilter<T> cbf = (CountingBloomFilter<T>) source;
         cbf.getCountMap().forEach((position, value) -> {
             set(position, value);
             filter.setBit(position, value > 0);

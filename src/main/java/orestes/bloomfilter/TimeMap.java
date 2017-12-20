@@ -54,22 +54,22 @@ public final class TimeMap<T> implements Map<T, Long> {
     }
     
     public Long get(Object key, TimeUnit timeUnit) {
-        final Long sourceDuration = get(key);
+        Long sourceDuration = get(key);
         return sourceDuration == null ? null : timeUnit.convert(sourceDuration, MILLISECONDS);
     }
 
     public long putRemaining(T key, long value, TimeUnit timeUnit) {
-        final long absoluteValue = clock.instant().plusMillis(MILLISECONDS.convert(value, timeUnit)).toEpochMilli();
+        long absoluteValue = clock.instant().plusMillis(MILLISECONDS.convert(value, timeUnit)).toEpochMilli();
         return compute(key, (item, oldValue) -> oldValue == null ? absoluteValue : Math.max(oldValue, absoluteValue));
     }
 
     public Long getRemaining(Object key, TimeUnit timeUnit) {
-        final Long get = get(key);
+        Long get = get(key);
         if (get == null) {
             return null;
         }
 
-        final long remainingMillis = get - now();
+        long remainingMillis = get - now();
         return remainingMillis <= 0L ? null : timeUnit.convert(remainingMillis, MILLISECONDS);
     }
 
@@ -115,7 +115,7 @@ public final class TimeMap<T> implements Map<T, Long> {
     @Override
     public boolean equals(Object o) {
         if (o instanceof TimeMap) {
-            final TimeMap other = (TimeMap) o;
+            TimeMap other = (TimeMap) o;
             return map.equals(other.map);
         }
 

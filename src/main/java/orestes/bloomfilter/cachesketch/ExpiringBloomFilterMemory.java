@@ -70,7 +70,7 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
             throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
 
-        final ExpiringBloomFilter<T> ebfSource = (ExpiringBloomFilter<T>) source;
+        ExpiringBloomFilter<T> ebfSource = (ExpiringBloomFilter<T>) source;
         ebfSource.disableExpiration();
 
         // Migrate TTL map

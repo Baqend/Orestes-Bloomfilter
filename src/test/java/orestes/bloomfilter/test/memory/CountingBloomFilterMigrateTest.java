@@ -51,7 +51,7 @@ public class CountingBloomFilterMigrateTest {
 
     @Before
     public void setUp() throws Exception {
-        final Constructor<? extends CountingBloomFilterMemory<String>> constructor = cbfClass.getConstructor(FilterBuilder.class);
+        Constructor<? extends CountingBloomFilterMemory<String>> constructor = cbfClass.getConstructor(FilterBuilder.class);
         cbf1 = constructor.newInstance(configure(1000, 0.02, HashMethod.MD5).countingBits(countingBits));
         cbf2 = constructor.newInstance(configure(1000, 0.02, HashMethod.MD5).countingBits(countingBits));
     }

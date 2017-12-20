@@ -126,7 +126,7 @@ public class RedisBitSet extends BitSet {
     @Override
     public int length() {
         return pool.safelyReturn(jedis -> {
-            final int byteCount = jedis.strlen(name).intValue();
+            int byteCount = jedis.strlen(name).intValue();
             if (byteCount == 0) {
                 return 0;
             }
@@ -195,8 +195,8 @@ public class RedisBitSet extends BitSet {
     }
 
     //Copied from: https://github.com/xetorthio/jedis/issues/301
-    public static BitSet fromByteArrayReverse(final byte[] bytes) {
-        final BitSet bits = new BitSet();
+    public static BitSet fromByteArrayReverse(byte[] bytes) {
+        BitSet bits = new BitSet();
         for (int i = 0; i < bytes.length * 8; i++) {
             if ((bytes[i / 8] & (1 << (7 - (i % 8)))) != 0) {
                 bits.set(i);
@@ -206,11 +206,11 @@ public class RedisBitSet extends BitSet {
     }
 
     //Copied from: https://github.com/xetorthio/jedis/issues/301
-    public static byte[] toByteArrayReverse(final BitSet bits) {
-        final byte[] bytes = new byte[(bits.length() + 7) / 8];
+    public static byte[] toByteArrayReverse(BitSet bits) {
+        byte[] bytes = new byte[(bits.length() + 7) / 8];
         for (int i = 0; i < bits.length(); i++) {
             if (bits.get(i)) {
-                final int value = bytes[i / 8] | (1 << (7 - (i % 8)));
+                int value = bytes[i / 8] | (1 << (7 - (i % 8)));
                 bytes[i / 8] = (byte) value;
             }
         }

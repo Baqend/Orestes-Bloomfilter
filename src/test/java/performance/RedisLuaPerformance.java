@@ -28,17 +28,17 @@ public class RedisLuaPerformance {
     private static final Logger LOG = LoggerFactory.getLogger(RedisLuaPerformance.class);
 
     public static void main(String[] args) {
-        final int runs = 10;
-        final int[] items = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10_000};
+        int runs = 10;
+        int[] items = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10_000};
         for (int item : items) {
-            final RedisLuaPerformance test = new RedisLuaPerformance(item, runs);
+            RedisLuaPerformance test = new RedisLuaPerformance(item, runs);
             printResult(item + "", test.getResult());
         }
         System.exit(0);
     }
 
     private static void printResult(String label, Snapshot snapshot) {
-        final String format = String.format(
+        String format = String.format(
                 Locale.ENGLISH,
                 "('%s', %.4f, %.4f, %.4f, %.4f, %.4f),",
                 label,
@@ -54,7 +54,7 @@ public class RedisLuaPerformance {
     public RedisLuaPerformance(int items, int runs) {
         histogram = new Histogram(new ExponentiallyDecayingReservoir());
 
-        final FilterBuilder builder = new FilterBuilder(1_000_000, 0.02)
+        FilterBuilder builder = new FilterBuilder(1_000_000, 0.02)
                 .hashFunction(HashProvider.HashMethod.Murmur3)
                 .redisBacked(true)
                 .redisHost("127.0.0.1")
@@ -63,12 +63,12 @@ public class RedisLuaPerformance {
                 .overwriteIfExists(true)
                 .complete();
 
-        final ExpiringBloomFilterPureRedis bloomFilter = new ExpiringBloomFilterPureRedis(builder);
+        ExpiringBloomFilterPureRedis bloomFilter = new ExpiringBloomFilterPureRedis(builder);
         bloomFilter.disableExpiration();
 
         for (int run = 0; run < runs; run += 1) {
             for (int i = 0; i < items; i += 1) {
-                final String element = String.valueOf(rnd.nextInt());
+                String element = String.valueOf(rnd.nextInt());
                 bloomFilter.reportRead(element, 50, TimeUnit.MILLISECONDS);
                 if (!bloomFilter.reportWrite(element)) {
                     throw new RuntimeException("Did not write " + element);
@@ -82,7 +82,7 @@ public class RedisLuaPerformance {
             }
 
             LOG.debug("Start estimation");
-            final long started = System.nanoTime();
+            long started = System.nanoTime();
             while (!bloomFilter.isEmpty()) {
                 bloomFilter.onExpire();
             }

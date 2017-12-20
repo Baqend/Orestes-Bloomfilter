@@ -50,7 +50,7 @@ public class CountingBloomFilterMemoryTest {
 
     @Before
     public void setUp() throws Exception {
-        final Constructor<? extends CountingBloomFilterMemory<String>> constructor = cbfClass.getConstructor(FilterBuilder.class);
+        Constructor<? extends CountingBloomFilterMemory<String>> constructor = cbfClass.getConstructor(FilterBuilder.class);
         cbf = constructor.newInstance(configure(1000, 0.02, HashMethod.MD5).countingBits(countingBits));
     }
 
@@ -73,11 +73,11 @@ public class CountingBloomFilterMemoryTest {
         assertTrue(cbf.contains("foo"));
 
         // Test the bits set
-        final BitSet bitSet = cbf.getBitSet();
+        BitSet bitSet = cbf.getBitSet();
         assertBitsSet(bitSet, 4484, 4918, 5583, 6134, 6341, 7596);
 
         // Test the new count map
-        final Map<Integer, Long> countMap = cbf.getCountMap();
+        Map<Integer, Long> countMap = cbf.getCountMap();
         assertAllEqual(1L, countMap, 4484, 4918, 5583, 6134, 6341, 7596);
     }
 
@@ -96,11 +96,11 @@ public class CountingBloomFilterMemoryTest {
         assertEquals(1L, cbf.getEstimatedCount("bar"));
 
         // Test the bits set
-        final BitSet bitSet = cbf.getBitSet();
+        BitSet bitSet = cbf.getBitSet();
         assertBitsSet(bitSet, 1770, 2285, 2861, 4484, 4742, 4918, 5431, 5583, 6134, 6341, 7596, 7745);
 
         // Test the new count map
-        final Map<Integer, Long> countMap = cbf.getCountMap();
+        Map<Integer, Long> countMap = cbf.getCountMap();
         assertAllEqual(1L, countMap, 1770, 2285, 2861, 4484, 4742, 4918, 5431, 5583, 6134, 6341, 7596, 7745);
 
         // Add the second foo entry
@@ -114,7 +114,7 @@ public class CountingBloomFilterMemoryTest {
         assertBitsSet(bitSet, 1770, 2285, 2861, 4484, 4742, 4918, 5431, 5583, 6134, 6341, 7596, 7745);
 
         // Test the new count map
-        final Map<Integer, Long> countMap2 = cbf.getCountMap();
+        Map<Integer, Long> countMap2 = cbf.getCountMap();
         assertEquals(12, countMap2.size());
         assertEquals(1L, (long) countMap2.get(1770));
         assertEquals(1L, (long) countMap2.get(2285));
@@ -162,11 +162,11 @@ public class CountingBloomFilterMemoryTest {
         assertEquals(0L, cbf.getEstimatedCount("foo"));
 
         // Test the bits set
-        final BitSet bitSet = cbf.getBitSet();
+        BitSet bitSet = cbf.getBitSet();
         assertEquals(0, bitSet.cardinality());
 
         // Test the new count map
-        final Map<Integer, Long> countMap = cbf.getCountMap();
+        Map<Integer, Long> countMap = cbf.getCountMap();
         assertEquals(0, countMap.size());
     }
 
@@ -194,11 +194,11 @@ public class CountingBloomFilterMemoryTest {
         assertEquals(0L, cbf.getEstimatedCount("foo"));
 
         // Test the bits set
-        final BitSet bitSet = cbf.getBitSet();
+        BitSet bitSet = cbf.getBitSet();
         assertEquals(0, bitSet.cardinality());
 
         // Test the new count map
-        final Map<Integer, Long> countMap = cbf.getCountMap();
+        Map<Integer, Long> countMap = cbf.getCountMap();
         assertEquals(0, countMap.size());
     }
 
@@ -215,7 +215,7 @@ public class CountingBloomFilterMemoryTest {
             }
 
             // Set an overflow handler
-            final boolean[] called = {false};
+            boolean[] called = {false};
             cbf.setOverflowHandler(() -> called[0] = true);
             assertFalse(called[0]);
 

@@ -26,8 +26,8 @@ public class HashProvider {
     static int hashBytes(byte a[]) {
         // 32 bit FNV constants. Using longs as Java does not support unsigned
         // datatypes.
-        final long FNV_PRIME = 16777619;
-        final long FNV_OFFSET_BASIS = 2166136261l;
+        long FNV_PRIME = 16777619;
+        long FNV_OFFSET_BASIS = 2166136261l;
 
         if (a == null)
             return 0;
@@ -130,9 +130,9 @@ public class HashProvider {
      */
     public static int[] hashSimpleLCG(byte[] value, int m, int k) {
         // Java constants
-        final long multiplier = 0x5DEECE66DL;
-        final long addend = 0xBL;
-        final long mask = (1L << 48) - 1;
+        long multiplier = 0x5DEECE66DL;
+        long addend = 0xBL;
+        long mask = (1L << 48) - 1;
 
         // Generate int from byte Array using the FNV hash
         int reduced = Math.abs(hashBytes(value));
@@ -174,8 +174,8 @@ public class HashProvider {
     public static int murmur3_signed(int seed, byte[] bytes) {
         int h1 = seed;
         //Standard in Guava
-        final int c1 = 0xcc9e2d51;
-        final int c2 = 0x1b873593;
+        int c1 = 0xcc9e2d51;
+        int c2 = 0x1b873593;
         int len = bytes.length;
         int i = 0;
 

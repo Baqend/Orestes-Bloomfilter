@@ -12,16 +12,10 @@ import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.PipelineBase;
 import redis.clients.jedis.Transaction;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 /**
  * Uses regular key-value pairs for counting instead of a bitarray. This introduces a space overhead but allows
@@ -50,7 +44,9 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
 
     @Override
     public Map<Integer, Long> getCountMap() {
-        return pool.allowingSlaves().safelyReturn(r -> RedisUtils.decodeMap(r.hgetAll(keys.COUNTS_KEY.getBytes())));
+        try (Jedis r = pool.allowingSlaves().getResource()) {
+            return RedisUtils.decodeMap(r.hgetAll(keys.COUNTS_KEY.getBytes()));
+        }
     }
 
     @Override
@@ -64,28 +60,12 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
                 p.hincrBy(keys.COUNTS_KEY.getBytes(), RedisUtils.encodeKey(position), 1);
             }
         }, keys.BITS_KEY, keys.COUNTS_KEY);
-        return results.stream().skip(config().hashes()).map(i -> (Long) i).min(Comparator.<Long>naturalOrder()).get();
+        return results.stream().skip(config().hashes()).mapToLong(i -> (long) i).min().orElse(0L);
     }
 
     @Override
     public List<Boolean> addAll(Collection<T> elements) {
         return addAndEstimateCountRaw(elements).stream().map(el -> el == 1).collect(toList());
-    }
-
-    /**
-     * Load a Lua script into Redis.
-     *
-     * @param filename The filename of the script.
-     * @return A handle to the loaded script.
-     */
-    protected String loadLuaScript(String filename) {
-        try {
-            final URL resource = getClass().getResource(filename);
-            final String script = new String(Files.readAllBytes(Paths.get(resource.toURI())));
-            return pool.safelyReturn(jedis -> jedis.scriptLoad(script));
-        } catch (URISyntaxException | IOException exception) {
-            throw new RuntimeException("Could not load Lua script " + filename, exception);
-        }
     }
 
     /**
@@ -116,10 +96,10 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         List<Long> mins = new LinkedList<>();
         for (int i = results.size() / 2; i < results.size(); i += config().hashes()) {
             long min = results.subList(i, i + config().hashes())
-                    .stream()
-                    .map(val -> (Long) val)
-                    .min(Comparator.<Long>naturalOrder())
-                    .get();
+                .stream()
+                .map(val -> (Long) val)
+                .min(Comparator.<Long>naturalOrder())
+                .get();
             mins.add(min);
         }
         return mins;
@@ -134,65 +114,67 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
     }
 
     @Override
-    public synchronized long removeAndEstimateCountRaw(byte[] value) {
-        return pool.safelyReturn((jedis) -> {
-            // Forbid writing to counting Bloom filter in the meantime
-            jedis.watch(keys.COUNTS_KEY);
+    public long removeAndEstimateCountRaw(byte[] value) {
+        try (Jedis jedis = pool.getResource()) {
+            while (true) {
+                // Forbid writing to counting Bloom filter in the meantime
+                jedis.watch(keys.COUNTS_KEY);
 
-            // Get all Bloom filter positions to decrement when removing the element
-            final int[] positions = hash(value);
+                // Get all Bloom filter positions to decrement when removing the element
+                int[] positions = hash(value);
 
-            // Get the resulting counts in the CBF after the elements have been removed
-            final Map<Integer, Long> posToCountMap = getCounts(jedis, positions);
+                // Get the resulting counts in the CBF after the elements have been removed
+                Map<Integer, Long> posToCountMap = getCounts(jedis, positions);
 
-            // Decrement counts
-            final HashMap<Integer, Integer> countMap = new HashMap<>(positions.length);
-            for (int position : positions) {
-                countMap.compute(position, (k, v) -> v == null ? 1 : v + 1);
+                // Decrement counts
+                HashMap<Integer, Integer> countMap = new HashMap<>(positions.length);
+                for (int position : positions) {
+                    countMap.compute(position, (k, v) -> (v == null) ? 1 : (v + 1));
+                }
+                posToCountMap.replaceAll((position, count) -> count - countMap.get(position));
+
+                // Start updating the CBF and FBF transactionally
+                Transaction tx = jedis.multi();
+
+                // Decrement counts in CBF
+                setCounts(tx, posToCountMap);
+
+                // Reset bits in BBF
+                updateBinaryBloomFilter(tx, posToCountMap);
+
+                // Commit transaction and return whether successful
+                boolean hasFailed = tx.exec().isEmpty();
+
+                if (!hasFailed) {
+                    //noinspection ConstantConditions
+                    return posToCountMap.values().stream().mapToLong(Long::valueOf).min().getAsLong();
+                }
             }
-            posToCountMap.replaceAll((position, count) -> count - countMap.get(position));
-
-            // Start updating the CBF and FBF transactionally
-            final Transaction tx = jedis.multi();
-
-            // Decrement counts in CBF
-            setCounts(tx, posToCountMap);
-
-            // Reset bits in BBF
-            updateBinaryBloomFilter(tx, posToCountMap);
-
-            // Commit transaction and return whether successful
-            boolean isAborted = tx.exec().isEmpty();
-            if (isAborted) {
-                // Try again if transaction failed
-                return removeAndEstimateCountRaw(value);
-            }
-
-            return posToCountMap.values().stream().mapToLong(Long::valueOf).min().getAsLong();
-        });
+        }
     }
 
     @Override
     public long getEstimatedCount(T element) {
-        return pool.allowingSlaves().safelyReturn(jedis -> {
+        try (Jedis jedis = pool.allowingSlaves().getResource()) {
             byte[][] hashesString = RedisUtils.encodeKey(hash(toBytes(element)));
             List<byte[]> hmget = jedis.hmget(keys.COUNTS_KEY.getBytes(), hashesString);
-            return hmget.stream().mapToLong(i -> i == null ? 0L : RedisUtils.decodeValue(i)).min().orElse(0L);
-        });
+            return hmget.stream().mapToLong(i -> (i == null) ? 0L : RedisUtils.decodeValue(i)).min().orElse(0L);
+        }
     }
-
 
     @Override
     public void clear() {
-        pool.safelyDo(jedis -> {
+        try (Jedis jedis = pool.getResource()) {
             jedis.del(keys.COUNTS_KEY, keys.BITS_KEY);
-        });
+        }
     }
 
     @Override
     public void remove() {
         clear();
-        pool.safelyDo(jedis -> jedis.del(config().name()));
+        try (Jedis jedis = pool.getResource()) {
+            jedis.del(config().name());
+        }
         pool.destroy();
     }
 
@@ -285,7 +267,7 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
             throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
 
-        final CountingBloomFilter<T> cbf = (CountingBloomFilter<T>) source;
+        CountingBloomFilter<T> cbf = (CountingBloomFilter<T>) source;
 
         Map<Integer, Long> countSetToMigrate = cbf.getCountMap();
 
@@ -303,16 +285,16 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
      */
     private Map<Integer, Long> getCounts(Jedis jedis, int... positions) {
         // Get the corresponding keys for the positions in Redis
-        final byte[][] keysToDec = RedisUtils.encodeKey(positions);
+        byte[][] keysToDec = RedisUtils.encodeKey(positions);
 
         // Get the resulting counts in the CBF after the elements have been removed
-        final List<byte[]> values = jedis.hmget(keys.COUNTS_KEY.getBytes(), keysToDec);
+        List<byte[]> values = jedis.hmget(keys.COUNTS_KEY.getBytes(), keysToDec);
         return IntStream.range(0, positions.length)
-                .collect(
-                        HashMap::new,
-                        (m, i) -> m.put(positions[i], values.get(i) == null ? 0L : RedisUtils.decodeValue(values.get(i))),
-                        Map::putAll
-                );
+            .collect(
+                HashMap::new,
+                (m, i) -> m.put(positions[i], (values.get(i) == null) ? 0L : RedisUtils.decodeValue(values.get(i))),
+                Map::putAll
+            );
     }
 
     /**

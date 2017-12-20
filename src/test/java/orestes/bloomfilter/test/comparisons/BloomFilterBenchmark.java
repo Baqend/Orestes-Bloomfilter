@@ -26,7 +26,7 @@ public class BloomFilterBenchmark {
     public static void main(String[] argv) {
         
 
-        final Random r = new Random();
+        Random r = new Random();
 
         // Generate elements first
         List<String> existingElements = new ArrayList<>(elementCount);

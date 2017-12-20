@@ -54,7 +54,7 @@ public class BloomFilterMigrationThroughput {
 
     public static void main(String[] args) throws Exception {
         writer = new PrintWriter(BloomFilterMigrationThroughput.class.getSimpleName() + ".csv", "UTF-8");
-        final FilterBuilder builder = new FilterBuilder(ITEMS, 0.02).hashFunction(HashMethod.Murmur3)
+        FilterBuilder builder = new FilterBuilder(ITEMS, 0.02).hashFunction(HashMethod.Murmur3)
                 .name("purity")
                 .redisBacked(true)
                 .redisHost("127.0.0.1")
@@ -96,8 +96,8 @@ public class BloomFilterMigrationThroughput {
         if (!toServer) addNewItems(servers.get(0), ITEMS);
         LOG.debug("Created " + SERVERS + " server Bloom filters");
 
-        final long start = System.currentTimeMillis();
-        final List<Future<?>> processes = servers.stream().flatMap(this::startServer).collect(toList());
+        long start = System.currentTimeMillis();
+        List<Future<?>> processes = servers.stream().flatMap(this::startServer).collect(toList());
 
         processes.forEach(process -> {
             try {
@@ -111,7 +111,7 @@ public class BloomFilterMigrationThroughput {
     }
 
     private ExpiringBloomFilter<String> createBloomFilter(FilterBuilder builder, Class<? extends ExpiringBloomFilter> type) {
-        final FilterBuilder clone = builder.clone().name(createRandomName());
+        FilterBuilder clone = builder.clone().name(createRandomName());
         ExpiringBloomFilter<String> result;
         if (type == ExpiringBloomFilterRedis.class) {
             result = new ExpiringBloomFilterRedis<>(clone);
@@ -125,8 +125,8 @@ public class BloomFilterMigrationThroughput {
     }
 
     private String createRandomName() {
-        final String chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-        final StringBuilder builder = new StringBuilder(6);
+        String chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder builder = new StringBuilder(6);
         for (int i = 0; i < builder.capacity(); i += 1) {
             builder.append(chars.charAt(rnd.nextInt(chars.length())));
         }
@@ -136,12 +136,12 @@ public class BloomFilterMigrationThroughput {
 
     private Stream<Future<?>> startServer(ExpiringBloomFilter<String> server) {
         // Schedule migration periodically
-        final Future<?> future = executor.submit(() -> doMigrateToRedis(server));
+        Future<?> future = executor.submit(() -> doMigrateToRedis(server));
         return Stream.of(future);
     }
 
     private void doMigrateToRedis(ExpiringBloomFilter<String> server) {
-        final long start = System.nanoTime();
+        long start = System.nanoTime();
         if (toServer) {
             server.migrateFrom(inMemoryFilter);
         } else {
@@ -154,7 +154,7 @@ public class BloomFilterMigrationThroughput {
         long duration = System.currentTimeMillis() - startTime;
         LOG.info("Ending Test (Runtime: " + duration + "ms)");
 
-        final Snapshot snapshot = migHistogram.getSnapshot();
+        Snapshot snapshot = migHistogram.getSnapshot();
         LOG.info("Servers     : " + SERVERS);
         LOG.info("Items       : " + ITEMS);
         LOG.info(String.format("Latency Avg : %.4fms", snapshot.getMean() / 1e6d));
@@ -183,7 +183,7 @@ public class BloomFilterMigrationThroughput {
     }
 
     private void addNewItem(ExpiringBloomFilter<String> server) {
-        final String item = String.valueOf(rnd.nextInt(ITEMS));
+        String item = String.valueOf(rnd.nextInt(ITEMS));
         server.reportRead(item, TimeUnit.NANOSECONDS.convert(TEST_RUNTIME, TimeUnit.SECONDS) + rnd.nextInt(Integer.MAX_VALUE), TimeUnit.NANOSECONDS);
         server.reportWrite(item);
     }

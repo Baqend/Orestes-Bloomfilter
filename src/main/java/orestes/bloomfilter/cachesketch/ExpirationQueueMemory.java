@@ -5,10 +5,7 @@ import orestes.bloomfilter.TimeMap;
 
 import java.util.Optional;
 import java.util.Queue;
-import java.util.concurrent.DelayQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -16,9 +13,10 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     private Future<?> future;
-    private boolean isEnabled = false;
+    private volatile boolean isEnabled;
     private final DelayQueue<ExpiringItem<T>> delayedQueue;
     private final Consumer<ExpiringItem<T>> handler;
+    private final ExecutorService delayedQueueExecutorService = Executors.newSingleThreadExecutor();
 
     public ExpirationQueueMemory(Consumer<ExpiringItem<T>> handler) {
         this.delayedQueue = new DelayQueue<>();
@@ -27,11 +25,11 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     }
 
     @Override
-    public boolean enable() {
+    public synchronized boolean enable() {
         if (isEnabled) return false;
 
         isEnabled = true;
-        future = Executors.newSingleThreadExecutor().submit(() -> {
+        future = delayedQueueExecutorService.submit(() -> {
             try {
                 while (isEnabled) {
                     // take() blocks until the next item expires
@@ -47,7 +45,7 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
     }
 
     @Override
-    public boolean disable() {
+    public synchronized boolean disable() {
         if (!isEnabled) return false;
 
         isEnabled = false;
@@ -87,7 +85,7 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
 
     @Override
     public boolean remove(T item) {
-        final Optional<ExpiringItem<T>> found = delayedQueue.stream().filter(it -> it.getItem().equals(item)).findFirst();
+        Optional<ExpiringItem<T>> found = delayedQueue.stream().filter(it -> it.getItem().equals(item)).findFirst();
         return found.filter(delayedQueue::remove).isPresent();
     }
 

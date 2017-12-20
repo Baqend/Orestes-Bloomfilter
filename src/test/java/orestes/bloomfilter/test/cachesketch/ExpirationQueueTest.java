@@ -28,7 +28,7 @@ public class ExpirationQueueTest {
     @Before
     public void setUp() throws Exception {
         handlerCallsCount = 0;
-        final Consumer<ExpiringItem<String>> handler = it -> handlerCallsCount++;
+        Consumer<ExpiringItem<String>> handler = it -> handlerCallsCount++;
         queue = new ExpirationQueueMemory<>(handler);
     }
 
@@ -100,7 +100,7 @@ public class ExpirationQueueTest {
         }
         assertEquals(3, calls);
 
-        final Set<String> elements = new HashSet<>(Lists.newArrayList(queue));
+        Set<String> elements = new HashSet<>(Lists.newArrayList(queue));
         assertEquals(new HashSet<>(Arrays.asList("bar", "demo", "foo")), elements);
     }
 

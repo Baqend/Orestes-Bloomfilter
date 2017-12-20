@@ -53,7 +53,7 @@ public class RedisBloomFilterThroughput {
         int k = 10;
 
         System.err.println("Please make sure to have Redis running on 127.0.0.1:6379.");
-        final FilterBuilder builder = new FilterBuilder(m, k).hashFunction(HashMethod.Murmur3)
+        FilterBuilder builder = new FilterBuilder(m, k).hashFunction(HashMethod.Murmur3)
             .name("purity")
             .redisBacked(true)
             .redisHost("127.0.0.1")
@@ -90,10 +90,10 @@ public class RedisBloomFilterThroughput {
             .mapToObj(i -> createBloomFilter(i, builder, type))
             .collect(toList());
 
-        final long start = System.currentTimeMillis();
-        final List<ScheduledFuture<?>> processes = servers.stream().flatMap(this::startUsers).collect(toList());
+        long start = System.currentTimeMillis();
+        List<ScheduledFuture<?>> processes = servers.stream().flatMap(this::startUsers).collect(toList());
 
-        final CompletableFuture<Boolean> testResult = new CompletableFuture<>();
+        CompletableFuture<Boolean> testResult = new CompletableFuture<>();
         Executors.newSingleThreadScheduledExecutor().schedule(() -> endTest(testResult, processes, servers, start), TEST_RUNTIME, TimeUnit.SECONDS);
 
         return testResult;
@@ -116,14 +116,14 @@ public class RedisBloomFilterThroughput {
 
     private Stream<ScheduledFuture<?>> startUsers(ExpiringBloomFilter<String> server) {
         return IntStream.range(0, USERS_PER_SERVER).mapToObj(userId -> {
-            final int randomDelay = rnd.nextInt(1000);
+            int randomDelay = rnd.nextInt(1000);
 
             // report reads and writes periodically
-            final ScheduledFuture<?> writeProcess = executor.scheduleAtFixedRate(
+            ScheduledFuture<?> writeProcess = executor.scheduleAtFixedRate(
                 () -> doReportWrite(server), randomDelay, WRITE_PERIOD, TimeUnit.MILLISECONDS);
 
             // read Bloom filter periodically
-            final ScheduledFuture<?> bloomFilterReadProcess = executor.scheduleAtFixedRate(
+            ScheduledFuture<?> bloomFilterReadProcess = executor.scheduleAtFixedRate(
                 () -> doReadBloomFilter(server), randomDelay, READ_PERIOD, TimeUnit.MILLISECONDS);
 
             return Stream.of(writeProcess, bloomFilterReadProcess);
@@ -131,14 +131,14 @@ public class RedisBloomFilterThroughput {
     }
 
     private void doReadBloomFilter(ExpiringBloomFilter<String> server) {
-        final long start = System.nanoTime();
+        long start = System.nanoTime();
         server.getBitSet();
         readHistogram.update(System.nanoTime() - start);
     }
 
     private void doReportWrite(ExpiringBloomFilter<String> server) {
-        final long start = System.nanoTime();
-        final String item = getRandomItem();
+        long start = System.nanoTime();
+        String item = getRandomItem();
         server.reportRead(item, 500, TimeUnit.MILLISECONDS);
         server.reportWrite(item);
         writeHistogram.update(System.nanoTime() - start);
@@ -163,8 +163,8 @@ public class RedisBloomFilterThroughput {
     }
 
     private void dumpHistogram(String name, Histogram histogram) {
-        final Snapshot snapshot = histogram.getSnapshot();
-        final String format = String.format(
+        Snapshot snapshot = histogram.getSnapshot();
+        String format = String.format(
                 Locale.ENGLISH,
                 "'%s', %.4f, %.4f, %.4f, %.4f, %.4f",
                 testName + " " + name,
@@ -178,7 +178,7 @@ public class RedisBloomFilterThroughput {
     }
 
     private void waitForServersToClear(List<ExpiringBloomFilter<String>> servers, CompletableFuture<Boolean> future) {
-        final boolean serversDone = servers.stream().allMatch(server -> server.getBitSet().isEmpty());
+        boolean serversDone = servers.stream().allMatch(server -> server.getBitSet().isEmpty());
         if (serversDone) {
             future.complete(true);
         } else {

@@ -20,7 +20,7 @@ public class RedisCBFTest {
     @Ignore
     @Test
     public void concurrencyTests() throws InterruptedException {
-        final int objects = 500;
+        int objects = 500;
         int m = 100;
         int k = 10;
         int threads = 4;
@@ -32,7 +32,7 @@ public class RedisCBFTest {
         // final CBloomFilter<String> cbfr = new CBloomFilter<String>(10000, 10, 4);
         Thread[] ts = new Thread[threads];
         for (int i = 0; i < threads; i++) {
-            final int id = i;
+            int id = i;
             Runnable run = () -> {
                 CountingBloomFilter<String> filter = new FilterBuilder(m, k).name(name).redisBacked(true).buildCountingBloomFilter();
                 for (int j = 0; j < objects; j++) {

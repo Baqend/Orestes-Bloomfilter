@@ -205,10 +205,10 @@ public class MemoryBFTest {
     @Test
     @SuppressWarnings("unchecked")
     public void serializeBloomFilter() throws IOException, ClassNotFoundException {
-        final int countingBits = 3;
+        int countingBits = 3;
 
         // Create a flat Bloom filter
-        final BloomFilter<String> fbf = createFilter(1000, 0.02, HashMethod.MD5);
+        BloomFilter<String> fbf = createFilter(1000, 0.02, HashMethod.MD5);
         // Create a counting Bloom filter
         CountingBloomFilterMemory<String> cbf = new CountingBloomFilterMemory<>(new FilterBuilder(1000, 0.2).hashFunction
             (HashMethod.MD5).countingBits(countingBits).complete());
