@@ -62,6 +62,7 @@ task redisMigrationLatency(type: JavaExec) {
 test {
     dependsOn 'startRedis'
     finalizedBy 'stopRedis'
+    ignoreFailures = project.hasProperty("test.ignoreFailures")? project["test.ignoreFailures"]: false
 }
 
 artifacts {
@@ -128,8 +129,8 @@ task startRedis() {
         sh "docker run -d -v $buildDir/node3/sentinel.conf:/redis.conf --name=redis-sentinel3 --net=host redis:2.8 redis-server /redis.conf --sentinel"
 
         //sh "docker network create bf-standalone"
-        sh "docker run -d -v $buildDir/master/redis.conf:/redis.conf --name=redis-master --net=host redis:2.8 redis-server /redis.conf"
-        sh "docker run -d -v $buildDir/slave/slave.conf:/redis.conf --name=redis-slave --net=host redis:2.8 redis-server /redis.conf"
+        sh "docker run -d -v $buildDir/master/redis.conf:/redis.conf --name=redis-master -p 6379:6379 --net=host redis:2.8 redis-server /redis.conf"
+        sh "docker run -d -v $buildDir/slave/slave.conf:/redis.conf --name=redis-slave -p 6380:6380 --net=host redis:2.8 redis-server /redis.conf"
     }
 }
 
