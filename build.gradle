@@ -119,17 +119,17 @@ task startRedis() {
         copy { from 'conf' into "$buildDir/slave" filter(ReplaceTokens, tokens:[redis_port:"6380", master_port:"6379"]) fileMode 0777 }
 
         //sh "docker network create bf-cluster"
-        sh "docker run -d -v $buildDir/node1/redis.conf:/redis.conf --name=redis-node1 --net=host redis redis-server /redis.conf"
-        sh "docker run -d -v $buildDir/node2/slave.conf:/redis.conf --name=redis-node2 --net=host redis redis-server /redis.conf"
-        sh "docker run -d -v $buildDir/node3/slave.conf:/redis.conf --name=redis-node3 --net=host redis redis-server /redis.conf"
+        sh "docker run -d -v $buildDir/node1/redis.conf:/redis.conf --name=redis-node1 --net=host redis:2.8 redis-server /redis.conf"
+        sh "docker run -d -v $buildDir/node2/slave.conf:/redis.conf --name=redis-node2 --net=host redis:2.8 redis-server /redis.conf"
+        sh "docker run -d -v $buildDir/node3/slave.conf:/redis.conf --name=redis-node3 --net=host redis:2.8 redis-server /redis.conf"
 
-        sh "docker run -d -v $buildDir/node1/sentinel.conf:/redis.conf --name=redis-sentinel1 --net=host redis redis-server /redis.conf --sentinel"
-        sh "docker run -d -v $buildDir/node2/sentinel.conf:/redis.conf --name=redis-sentinel2 --net=host redis redis-server /redis.conf --sentinel"
-        sh "docker run -d -v $buildDir/node3/sentinel.conf:/redis.conf --name=redis-sentinel3 --net=host redis redis-server /redis.conf --sentinel"
+        sh "docker run -d -v $buildDir/node1/sentinel.conf:/redis.conf --name=redis-sentinel1 --net=host redis:2.8 redis-server /redis.conf --sentinel"
+        sh "docker run -d -v $buildDir/node2/sentinel.conf:/redis.conf --name=redis-sentinel2 --net=host redis:2.8 redis-server /redis.conf --sentinel"
+        sh "docker run -d -v $buildDir/node3/sentinel.conf:/redis.conf --name=redis-sentinel3 --net=host redis:2.8 redis-server /redis.conf --sentinel"
 
         //sh "docker network create bf-standalone"
-        sh "docker run -d -v $buildDir/master/redis.conf:/redis.conf --name=redis-master --net=host redis redis-server /redis.conf"
-        sh "docker run -d -v $buildDir/slave/slave.conf:/redis.conf --name=redis-slave --net=host redis redis-server /redis.conf"
+        sh "docker run -d -v $buildDir/master/redis.conf:/redis.conf --name=redis-master --net=host redis:2.8 redis-server /redis.conf"
+        sh "docker run -d -v $buildDir/slave/slave.conf:/redis.conf --name=redis-slave --net=host redis:2.8 redis-server /redis.conf"
     }
 }
 

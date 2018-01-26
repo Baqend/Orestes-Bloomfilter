@@ -512,8 +512,11 @@ public class ExpiringTest {
     private <T> void assertTimeBetween(long min, long max, TimeUnit expectedUnit, TimeMap<T> actual, T actualItem) {
         Long remaining = actual.getRemaining(actualItem, MILLISECONDS);
         assertNotNull(remaining);
-        long minNormalized = MILLISECONDS.convert(min, expectedUnit);
-        long maxNormalized = MILLISECONDS.convert(max, expectedUnit);
+        
+        // ttls are handle as doubles by redis, therefore we must expect some rounding issues
+        long minNormalized = MILLISECONDS.convert(min, expectedUnit) - 1;
+        long maxNormalized = MILLISECONDS.convert(max, expectedUnit) + 1;
+        
         assertTrue("Expect " + remaining + "ms to be higher than or equal to " + minNormalized + "ms", remaining >= minNormalized);
         assertTrue("Expect " + remaining + "ms to be less than or equal to " + maxNormalized + "ms", remaining <= maxNormalized);
     }

@@ -70,7 +70,7 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
     public void reportRead(T element, long TTL, TimeUnit unit) {
         try (Jedis jedis = pool.getResource()) {
             // Create timestamp from TTL
-            double timestamp = remainingTTLToScore(TTL, unit);
+            long timestamp = remainingTTLToScore(TTL, unit);
             jedis.evalsha(reportReadScript, 1, keys.TTL_KEY, String.valueOf(timestamp), element.toString());
         }
     }
@@ -198,7 +198,7 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
      * @param unit the unit of the TTL
      * @return timestamp from TTL in microseconds
      */
-    private double remainingTTLToScore(long TTL, TimeUnit unit) {
+    private long remainingTTLToScore(long TTL, TimeUnit unit) {
         return clock.instant().plusMillis(MILLISECONDS.convert(TTL, unit)).toEpochMilli();
     }
 

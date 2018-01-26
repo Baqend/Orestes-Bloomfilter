@@ -1,8 +1,6 @@
 package orestes.bloomfilter;
 
 import java.time.Clock;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalAmount;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;

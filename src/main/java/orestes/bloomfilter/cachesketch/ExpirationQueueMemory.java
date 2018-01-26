@@ -12,7 +12,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
-    private Future<?> future;
+    private volatile Future<?> future;
     private volatile boolean isEnabled;
     private final DelayQueue<ExpiringItem<T>> delayedQueue;
     private final Consumer<ExpiringItem<T>> handler;
@@ -91,11 +91,14 @@ public class ExpirationQueueMemory<T> implements ExpirationQueue<T> {
 
     @Override
     public TimeMap<T> getExpirationMap() {
-        return delayedQueue.stream().collect(
+        return delayedQueue.stream()
+            // filter out our fake item
+            .filter(item -> item.getItem() != null)
+            .collect(
                 TimeMap::new,
-                (item, map) -> item.put(map.getItem(), map.getExpiration(MILLISECONDS)),
+                (timeMap, item) -> timeMap.put(item.getItem(), item.getExpiration(MILLISECONDS)),
                 TimeMap::putAll
-        );
+            );
     }
 
     @Override
