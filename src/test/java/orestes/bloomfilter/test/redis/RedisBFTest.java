@@ -94,6 +94,8 @@ public class RedisBFTest {
         List<String> items = IntStream.range(0, 100).mapToObj(i -> "obj" + String.valueOf(i)).collect(Collectors.toList());
         items.forEach(filter::add);
 
+        Thread.sleep(1000);
+        
         //On localhost, there is no perceivable replication lag
         //Thread.sleep(10);
 
