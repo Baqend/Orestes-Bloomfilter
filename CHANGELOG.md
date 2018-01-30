@@ -1,21 +1,80 @@
+## 1.2.3
+
+* Better implementation of ExpiringBloomFilter#reportWrites bulk methods
+
+## 1.2.1
+
+* Add interface for ExpiringBloomFilter#reportWrites bulk methods
+
+## 1.2.0
+
+* Make the RedisPool configurable #42
+* Support sentinel and master/slave setups for the redis backed Bloom Filter #39
+* Support database number to support redis namespaces 
+* Fix NullPointerException in CountingBloomFilterRedis #40 
+
+## 1.1.9
+
+* Implement SSL configuration for redis #38
+
+## 1.1.8
+
+* Implement ExpiringBloomFilterMemory#clear()
+
+## 1.1.7
+
+* Changed default hash function to Murmur3KirschMitzenmacher
+
+## 1.1.6
+
+* Fixed and tested problem in ExpirationQueue
+
+## 1.1.5
+
+* Fixed and tested problem in ExpirationQueue
+
+## 1.1.4
+
+* Fixed a problem with overwritten Redis paramters in existing Bloom filters
+
+## 1.1.3
+
+* Fix overwritten host names when the config builder was copied
+
+## 1.1.2
+
+* Fixed overflow and underflow behaviour in the memory Counting Bloom filters
+* Added test for reusing RedisPools
+
+## 1.1.1
+
+* Fixed Overflow Behaviour in the memory Counting Bloom filters
+* Added possibility to add Redis Pool in the Builder
+
+## 1.1.0
+
+* Added authentication
+* Fixed Race Condition in getBitSet
+* Fixed Problem with byte[] signatures and Generics
+
+## 1.0.8
+
+* Some improvements on the expiring Bloom Filter
+
 ## 1.0.7
 
-- Several bug fixes
-- improved tests
-- Added the expiring Bloom filter
+* Several bug fixes
+* improved tests
+* Added the expiring Bloom filter
 
 ## 1.0.6
 
-Bugfixes:
- - Fixed bug in JSON Converter and added conversion testing
+* Fixed bug in JSON Converter and added conversion testing
 
 ## 1.0.5
 
-Features:
- - performance optimizations for 8, 16, 32, 64 bit in-memory counting Bloom filters through native arrays (speed improvement ~ 10x)
-
+* performance optimizations for 8, 16, 32, 64 bit in-memory counting Bloom filters through native arrays (speed improvement ~ 10x)
 
 ## 1.0.4
 
-Bugfixes:
- - Fixed Jedis-related Stackoverflow issue in bulk methods
+* Fixed Jedis-related Stackoverflow issue in bulk methods
