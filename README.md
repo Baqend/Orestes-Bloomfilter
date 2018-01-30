@@ -26,6 +26,15 @@ urls.contains("http://twitter.com"); //Know in an instant which ones you have or
 ```
 So what's the catch? Bloom filters allow false positives (i.e. URL contained though never added) with some  probability (0.01 in the example). If you can mitigate rare false positives (false negatives never happen) then Bloom filters are probably for you.
 
+## New in 2.0
+* A new expiring Bloom filter which maintains Bloom filter entry expiration completely in Redis
+  (ExpiringBloomFilterPureRedis.java)
+* Counting and expiration-based Bloom filters can now be migrated between the in-memory and Redis-backed implementations
+* fixed a critical error with the hash entry calculation for counting Bloom filters:
+  Hashes were encoded incorrectly by Jedis in the 1.x-based releases.
+  Therefore, the Redis-backed counting Bloom filter implementation is not backward compatible with older releases.
+  To avoid problems during upgrade, make sure to start with a clean Redis when upgrading to 2.0!
+
 ## New in 1.0
 * Bloom filters are now constructed and configured using a comfortable Builder interface, e.g. `new FilterBuilder(100,0.01).redisBacked().buildCountingBloomFilter()`
 * All Bloom filters are thread-safe and drastically improved in performance
@@ -41,7 +50,7 @@ So what's the catch? Bloom filters allow false positives (i.e. URL contained tho
 * Frequency Estimation: the frequency/count of elements in Counting Bloom filter can now be estimated using the Minimum-Selection algorithm (known from <a href="http://theory.stanford.edu/~matias/papers/sbf_thesis.pdf">spectral Bloom filters</a>
 * All add and remove method variants now return whether the element was added/removed resp. what the element's estimated count is
 * Redis Bloom filters now use configurable connection pooling and are thus not limited by round-trip times anymore
-* The library is now an important component of our Backend-as-a-Service startup <a href="http://baqend.com">Baqend</a> and thus you can expect far more frequent updates. Don't worry, the Bloom filter library will always remain MIT-licensed and open-source!
+* The library is now an important component of our Backend-as-a-Service startup <a href="https://www.baqend.com">Baqend</a> and thus you can expect far more frequent updates. Don't worry, the Bloom filter library will always remain MIT-licensed and open-source!
 
 
 ## Features
