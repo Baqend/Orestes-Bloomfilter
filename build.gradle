@@ -2,7 +2,7 @@ import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
     id 'com.jfrog.bintray' version "1.1"
-    id 'net.researchgate.release' version '2.2.1'
+    id 'net.researchgate.release' version '2.6.0'
 }
 
 apply plugin: 'java'
