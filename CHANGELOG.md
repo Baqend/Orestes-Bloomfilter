@@ -1,3 +1,13 @@
+## 2.0.0
+
+* **BREAKING CHANGES:** A critical error with the hash entry calculation for counting Bloom filters has been fixed.
+  Hashes were encoded incorrectly by Jedis in the 1.x-based releases.
+  Therefore, the Redis-backed counting Bloom filter implementation is not backward compatible to older releases.
+  To avoid problems during upgrade, make sure to start with a clean Redis when upgrading to 2.0!
+* Introduced a new expiring Bloom filter which maintains Bloom filter entry expiration completely in Redis 
+* Counting and expiration-based Bloom filters can be migrated between in-memory and Redis-backed implementations
+* Many small improvements and a general interface overhaul
+
 ## 1.2.3
 
 * Better implementation of ExpiringBloomFilter#reportWrites bulk methods
