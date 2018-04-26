@@ -190,7 +190,7 @@ public class MemoryBFTest {
         int n = 100000;
         double p = 0.02;
         BloomFilter<String> b = createFilter(n, p, HashMethod.MD5);
-        CountingBloomFilter<String> cb = createCountingFilter(n, p, HashMethod.MD5);
+        CountingBloomFilter<String> cb = createCountingFilter(n, p, HashMethod.MD5, 16);
         System.out.println("Size of bloom filter: " + b.getSize() + ", hash functions: " + b.getHashes());
         long begin = System.nanoTime();
         for (int i = 0; i < inserts; i++) {

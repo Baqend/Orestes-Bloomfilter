@@ -66,8 +66,8 @@ public class Helper {
         return new FilterBuilder(m, k).hashFunction(hm).buildCountingBloomFilter();
     }
 
-    public static <T> CountingBloomFilterMemory<T> createCountingFilter(int n, double p, HashMethod hm) {
-        return new CountingBloomFilterMemory<>(new FilterBuilder(n, p).hashFunction(hm).complete());
+    public static <T> CountingBloomFilterMemory<T> createCountingFilter(int n, double p, HashMethod hm, int countingBits) {
+        return new CountingBloomFilterMemory<>(new FilterBuilder(n, p).hashFunction(hm).countingBits(countingBits).complete());
     }
 
     public static <T> BloomFilterRedis<T> createRedisFilter(String name, int m, int k, HashMethod hm, boolean overwrite) {
