@@ -239,6 +239,10 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
         return pool;
     }
 
+    public RedisKeys getRedisKeys() {
+        return keys;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
