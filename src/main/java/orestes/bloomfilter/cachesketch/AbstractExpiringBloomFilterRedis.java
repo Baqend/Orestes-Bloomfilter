@@ -148,7 +148,7 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
     @Override
     public TimeMap<T> getTimeToLiveMap() {
         try (Jedis jedis = pool.getResource()) {
-            Set<Tuple> tuples = jedis.zrangeByScoreWithScores(keys.TTL_KEY, now(), Double.POSITIVE_INFINITY);
+            Set<Tuple> tuples = jedis.zrangeByScoreWithScores(keys.TTL_KEY, now() - config.gracePeriod(), Double.POSITIVE_INFINITY);
             return tuples.stream().collect(TimeMap.collectMillis(t -> (T) t.getElement(), t -> (long) t.getScore()));
         }
     }
@@ -175,7 +175,7 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
      */
     public void cleanTimeToLives() {
         try (Jedis jedis = pool.getResource()) {
-            jedis.zremrangeByScore(keys.TTL_KEY, 0, now());
+            jedis.zremrangeByScore(keys.TTL_KEY, 0, now() - config.gracePeriod());
         }
     }
 
