@@ -164,6 +164,15 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
     }
 
     /**
+     * Cleans up TTLs which are lying in the past.
+     */
+    public void cleanTimeToLives() {
+        try (Jedis jedis = pool.getResource()) {
+            jedis.zremrangeByScore(keys.TTL_KEY, 0, now());
+        }
+    }
+
+    /**
      * Add an element to this Bloom filter's expiration queue.
      *
      * @param element   The element to add.
