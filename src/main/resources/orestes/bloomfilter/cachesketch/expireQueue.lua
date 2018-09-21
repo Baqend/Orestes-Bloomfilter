@@ -44,7 +44,10 @@ for i = length - 1, 1, -2 do
         local count = redis.call("HINCRBY", COUNTS_KEY, key, -1)
 
         -- If count is not positive, clear the bit at the given position
-        if count <= 0 then redis.call("SETBIT", BITS_KEY, position, 0) end
+        if count <= 0 then
+            redis.call("HDEL", COUNTS_KEY, key)
+            redis.call("SETBIT", BITS_KEY, position, 0)
+        end
     end
 end
 
