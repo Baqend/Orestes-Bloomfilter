@@ -50,6 +50,13 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
     }
 
     @Override
+    public boolean isKnown(T element) {
+        try (Jedis jedis = pool.getResource()) {
+            return jedis.zrank(keys.TTL_KEY, element.toString()) != null;
+        }
+    }
+
+    @Override
     public List<Long> getRemainingTTLs(List<T> elements, TimeUnit unit) {
         try (Jedis jedis = pool.getResource()) {
             // Retrieve scores from Redis
