@@ -82,82 +82,12 @@ public class ExpiringTest {
 
     @Test
     public void addAndLetExpire() throws Exception {
-        int NUMBER_OF_ELEMENTS = 100;
+        readAndLetExpire(true);
+    }
 
-        // Create Bloom filter
-        FilterBuilder b = new FilterBuilder(100000, 0.001);
-        b.redisConnections(NUMBER_OF_ELEMENTS);
-        createFilter(b);
-
-        // Assert we get no false positives
-        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
-            String item = String.valueOf(i);
-            assertFalse(filter.contains(item));
-            filter.add(item);
-        }
-        filter.clear();
-
-        AtomicInteger count = new AtomicInteger(0);
-
-        Random r = new Random(NUMBER_OF_ELEMENTS);
-        ExecutorService threads = Executors.newFixedThreadPool(100);
-        List<CompletableFuture> futures = new LinkedList<>();
-        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
-            int delay = r.nextInt(NUMBER_OF_ELEMENTS) * 10 + 1000;
-            String item = String.valueOf(i);
-            futures.add(CompletableFuture.runAsync(() -> {
-                // Check Bloom filter state before read
-                assertFalse(filter.isCached(item));
-                assertFalse(filter.contains(item));
-                assertNull(filter.getRemainingTTL(item, MILLISECONDS));
-
-                filter.reportRead(item, delay, MILLISECONDS);
-
-                // Check Bloom filter state after read
-                assertTrue(filter.isCached(item));
-                assertFalse(filter.contains(item));
-                assertTrue(filter.getRemainingTTL(item, MILLISECONDS) >= 0);
-                assertTrue(filter.getRemainingTTL(item, MILLISECONDS) <= delay);
-                boolean invalidation = filter.reportWrite(item);
-                assertTrue(invalidation);
-
-                // Check Bloom filter state after write
-                assertTrue(filter.isCached(item));
-                assertTrue(filter.contains(item));
-                assertFalse(filter.isEmpty());
-
-                // Wait for the delay to pass
-                try {
-                    Thread.sleep(delay + 2000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
-                // Check Bloom filter state after expire
-                Long remaining = filter.getRemainingTTL(item, MILLISECONDS);
-                if (filter.contains(item)) {
-                    fail("Element (" + item + ") still in Bloom filter. remaining TTL: " + remaining);
-                }
-                assertFalse(filter.isCached(item));
-                assertFalse(filter.contains(item));
-                assertEquals(null, remaining);
-                count.incrementAndGet();
-            }, threads));
-        }
-
-        // Wait for tasks to complete
-        futures.forEach(CompletableFuture::join);
-
-        // Ensure Bloom filter is empty
-        assertEquals(NUMBER_OF_ELEMENTS, count.get());
-        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
-            String item = String.valueOf(i);
-            assertFalse(filter.contains(item));
-        }
-
-        assertEquals(0, filter.getBitSet().length());
-        assertTrue("Bloom filter should be empty after", filter.isEmpty());
-        assertEquals(0, filter.getBitSet().cardinality());
+    @Test
+    public void addAndLetExpireWithoutWrite() throws Exception {
+        readAndLetExpire(false);
     }
 
     @Test
@@ -201,6 +131,32 @@ public class ExpiringTest {
         Long ttl3 = filter.getRemainingTTL("1", MILLISECONDS);
         assertEquals(null, ttl3);
         assertFalse("Element (1) should not be contained in Bloom filter", filter.contains("1"));
+    }
+
+    @Test
+    public void testGracePeriod() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.05).gracePeriod(2000);
+        createFilter(b);
+        filter.reportRead("1", 50, MILLISECONDS);
+        filter.reportRead("1", 100, MILLISECONDS);
+
+        Thread.sleep(1000);
+
+        Long ttl1 = filter.reportWrite("1", MILLISECONDS);
+        assertNull(ttl1);
+        assertFalse(filter.contains("1"));
+        assertFalse(filter.isCached("1"));
+
+        filter.cleanTimeToLives();
+        assertTrue(filter.isKnown("1"));
+
+        Thread.sleep(2000);
+
+        filter.cleanTimeToLives();
+        assertFalse(filter.isKnown("1"));
+        assertFalse(filter.isCached("1"));
+
+        assertEquals(0, Math.round(filter.getEstimatedPopulation()));
     }
 
     @Test
@@ -519,5 +475,87 @@ public class ExpiringTest {
         
         assertTrue("Expect " + remaining + "ms to be higher than or equal to " + minNormalized + "ms", remaining >= minNormalized);
         assertTrue("Expect " + remaining + "ms to be less than or equal to " + maxNormalized + "ms", remaining <= maxNormalized);
+    }
+
+    private void readAndLetExpire(boolean reportWrite) {
+        int NUMBER_OF_ELEMENTS = 100;
+
+        // Create Bloom filter
+        FilterBuilder b = new FilterBuilder(100000, 0.001);
+        b.redisConnections(NUMBER_OF_ELEMENTS);
+        createFilter(b);
+
+        // Assert we get no false positives
+        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
+            String item = String.valueOf(i);
+            assertFalse(filter.contains(item));
+            filter.add(item);
+        }
+        filter.clear();
+
+        AtomicInteger count = new AtomicInteger(0);
+
+        Random r = new Random(NUMBER_OF_ELEMENTS);
+        ExecutorService threads = Executors.newFixedThreadPool(100);
+        List<CompletableFuture> futures = new LinkedList<>();
+        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
+            int delay = r.nextInt(NUMBER_OF_ELEMENTS) * 10 + 1000;
+            String item = String.valueOf(i);
+            futures.add(CompletableFuture.runAsync(() -> {
+                // Check Bloom filter state before read
+                assertFalse(filter.isCached(item));
+                assertFalse(filter.contains(item));
+                assertNull(filter.getRemainingTTL(item, MILLISECONDS));
+
+                filter.reportRead(item, delay, MILLISECONDS);
+
+                // Check Bloom filter state after read
+                assertTrue(filter.isCached(item));
+                assertFalse(filter.contains(item));
+                assertTrue(filter.getRemainingTTL(item, MILLISECONDS) >= 0);
+                assertTrue(filter.getRemainingTTL(item, MILLISECONDS) <= delay);
+
+                if (reportWrite) {
+                    boolean invalidation = filter.reportWrite(item);
+                    assertTrue(invalidation);
+
+                    // Check Bloom filter state after write
+                    assertTrue(filter.contains(item));
+                    assertFalse(filter.isEmpty());
+                }
+                assertTrue(filter.isCached(item));
+
+                // Wait for the delay to pass
+                try {
+                    Thread.sleep(delay + 2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                // Check Bloom filter state after expire
+                Long remaining = filter.getRemainingTTL(item, MILLISECONDS);
+                if (filter.contains(item)) {
+                    fail("Element (" + item + ") still in Bloom filter. remaining TTL: " + remaining);
+                }
+                assertFalse(filter.isCached(item));
+                assertFalse(filter.contains(item));
+                assertEquals(null, remaining);
+                count.incrementAndGet();
+            }, threads));
+        }
+
+        // Wait for tasks to complete
+        futures.forEach(CompletableFuture::join);
+
+        // Ensure Bloom filter is empty
+        assertEquals(NUMBER_OF_ELEMENTS, count.get());
+        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
+            String item = String.valueOf(i);
+            assertFalse(filter.contains(item));
+        }
+
+        assertEquals(0, filter.getBitSet().length());
+        assertTrue("Bloom filter should be empty after", filter.isEmpty());
+        assertEquals(0, filter.getBitSet().cardinality());
     }
 }

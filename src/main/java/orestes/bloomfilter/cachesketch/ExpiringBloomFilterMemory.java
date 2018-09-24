@@ -27,6 +27,18 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     }
 
     @Override
+    public void cleanTimeToLives() {
+        for (T key : ttlMap.keySet()) {
+            ttlMap.computeIfPresent(key, (k, v) -> {
+                if (v + config.gracePeriod(TimeUnit.MILLISECONDS) > ttlMap.now()) {
+                    return v;
+                }
+                return null;
+            });
+        }
+    }
+
+    @Override
     public synchronized void reportRead(T element, long TTL, TimeUnit unit) {
         ttlMap.putRemaining(element, TTL, unit);
     }
@@ -35,13 +47,18 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     public synchronized Long reportWrite(T element, TimeUnit unit) {
         // Only add if there is a potentially cached read
         Long expiration = ttlMap.get(element);
-        if (expiration == null) {
+        if (expiration == null || expiration < ttlMap.now()) {
             return null;
         }
 
         add(element);
         queue.addExpiration(element, expiration, TimeUnit.MILLISECONDS);
         return unit.convert(expiration - ttlMap.now(), TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public boolean isKnown(T element) {
+        return ttlMap.containsKey(element);
     }
 
     @Override

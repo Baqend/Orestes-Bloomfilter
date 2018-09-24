@@ -21,7 +21,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
      * @return <code>true</code> if the element is non-expired
      */
     default boolean isCached(T element) {
-        return getTimeToLiveMap().containsKey(element);
+        return getRemainingTTL(element, TimeUnit.MILLISECONDS) != null;
     }
 
     /**
@@ -57,6 +57,13 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
      */
     default List<Long> getRemainingTTLs(List<T> elements, TimeUnit unit){
         return elements.stream().map(el -> getRemainingTTL(el, unit)).collect(Collectors.toList());
+    }
+
+    /**
+     * Cleans all expired time to live entries that have been tracked.
+     */
+    default void cleanTimeToLives() {
+        throw new UnsupportedOperationException();
     }
 
     /**
