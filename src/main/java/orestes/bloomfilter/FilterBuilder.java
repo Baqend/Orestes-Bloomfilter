@@ -46,6 +46,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     private RedisPool pool;
     private int database = Protocol.DEFAULT_DATABASE;
     private long gracePeriod = TimeUnit.HOURS.toMillis(6);
+    private long cleanupInterval = TimeUnit.HOURS.toMillis(1);
 
     /**
      * Constructs a new builder for Bloom filters and counting Bloom filters.
@@ -334,6 +335,43 @@ public class FilterBuilder implements Cloneable, Serializable {
      */
     public long gracePeriod(TimeUnit unit) {
         return unit.convert(this.gracePeriod, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Sets the cleanup interval in milliseconds.
+     *
+     * @param cleanupIntervalInMillis The cleanup interval to set, in milliseconds.
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder cleanupInterval(long cleanupIntervalInMillis) {
+        this.cleanupInterval = cleanupIntervalInMillis;
+        return this;
+    }
+
+    /**
+     * Sets the cleanup interval.
+     *
+     * @param cleanupInterval The cleanup interval to set, in the provided time unit.
+     * @param unit The time unit in which the cleanup interval is given.
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder cleanupInterval(long cleanupInterval, TimeUnit unit) {
+        this.cleanupInterval = unit.toMillis(cleanupInterval);
+        return this;
+    }
+
+    /**
+     * Gets the cleanup interval in milliseconds.
+     */
+    public long cleanupInterval() {
+        return this.cleanupInterval;
+    }
+
+    /**
+     * Gets the cleanup interval in the provided time unit.
+     */
+    public long cleanupInterval(TimeUnit unit) {
+        return unit.convert(this.cleanupInterval, TimeUnit.MILLISECONDS);
     }
 
     /**

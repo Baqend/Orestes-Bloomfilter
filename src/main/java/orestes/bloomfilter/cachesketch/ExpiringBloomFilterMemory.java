@@ -8,15 +8,25 @@ import orestes.bloomfilter.TimeMap;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.memory.CountingBloomFilter32;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> implements ExpiringBloomFilter<T>, MigratableBloomFilter<T> {
     private final TimeMap<T> ttlMap = new TimeMap<>();
     private final ExpirationQueue<T> queue;
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "BloomFilterCleanupThreadPool");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public ExpiringBloomFilterMemory(FilterBuilder config) {
         super(config);
         this.queue = new ExpirationQueueMemory<>(this::onExpire);
+        // Schedule TTL map cleanup
+        long interval = config.cleanupInterval();
+        scheduler.scheduleAtFixedRate(this::cleanupTTLs, interval, interval, TimeUnit.MILLISECONDS);
     }
 
     private void onExpire(ExpiringItem<T> entry) {

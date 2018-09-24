@@ -16,6 +16,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -25,7 +27,11 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
     private final Clock clock;
-
+    protected final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "BloomFilterExpiryThreadPool");
+        thread.setDaemon(true);
+        return thread;
+    });
     // Load the "report read" Lua script
     private final String reportReadScript = loadLuaScript("reportRead.lua");
 
@@ -33,6 +39,9 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
         super(builder);
 
         this.clock = pool.getClock();
+        // Schedule TTL map cleanup
+        long interval = config.cleanupInterval();
+        scheduler.scheduleAtFixedRate(this::cleanupTTLs, interval, interval, TimeUnit.MILLISECONDS);
     }
 
     @Override

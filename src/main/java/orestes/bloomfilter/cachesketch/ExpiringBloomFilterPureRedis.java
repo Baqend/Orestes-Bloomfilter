@@ -36,7 +36,6 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
 
     private final String expireQueueScript = loadLuaScript("expireQueue.lua");
     private final Random random = new Random();
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final MessagePackEncoder msgPack;
     private ScheduledFuture<?> job;
     private boolean isEnabled;

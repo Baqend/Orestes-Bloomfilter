@@ -160,6 +160,34 @@ public class ExpiringTest {
     }
 
     @Test
+    public void testAutoCleanupPeriod() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.05)
+                .gracePeriod(2000)
+                .cleanupInterval(1000);
+        createFilter(b);
+        filter.reportRead("1", 50, MILLISECONDS);
+        filter.reportRead("1", 100, MILLISECONDS);
+
+        Thread.sleep(1000);
+
+        Long ttl1 = filter.reportWrite("1", MILLISECONDS);
+        assertNull(ttl1);
+        assertFalse(filter.contains("1"));
+        assertFalse(filter.isCached("1"));
+
+        filter.cleanTimeToLives();
+        assertTrue(filter.isRead("1"));
+
+        Thread.sleep(2000);
+
+        filter.cleanTimeToLives();
+        assertFalse(filter.isRead("1"));
+        assertFalse(filter.isCached("1"));
+
+        assertEquals(0, Math.round(filter.getEstimatedPopulation()));
+    }
+
+    @Test
     public void exceedCapacity() {
         FilterBuilder b = new FilterBuilder(100, 0.05).overwriteIfExists(true);
         createFilter(b);
