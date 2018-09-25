@@ -147,12 +147,12 @@ public class ExpiringTest {
         assertFalse(filter.contains("1"));
         assertFalse(filter.isCached("1"));
 
-        filter.cleanTimeToLives();
+        filter.cleanupTTLs();
         assertTrue(filter.isKnown("1"));
 
         Thread.sleep(2000);
 
-        filter.cleanTimeToLives();
+        filter.cleanupTTLs();
         assertFalse(filter.isKnown("1"));
         assertFalse(filter.isCached("1"));
 

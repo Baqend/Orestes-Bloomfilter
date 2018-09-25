@@ -10,8 +10,6 @@ import orestes.bloomfilter.memory.CountingBloomFilter32;
 
 import java.util.concurrent.TimeUnit;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-
 public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> implements ExpiringBloomFilter<T>, MigratableBloomFilter<T> {
     private final TimeMap<T> ttlMap = new TimeMap<>();
     private final ExpirationQueue<T> queue;
@@ -27,10 +25,11 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     }
 
     @Override
-    public void cleanTimeToLives() {
+    public void cleanupTTLs() {
+        long now = ttlMap.now();
         for (T key : ttlMap.keySet()) {
             ttlMap.computeIfPresent(key, (k, v) -> {
-                if (v + config.gracePeriod(TimeUnit.MILLISECONDS) > ttlMap.now()) {
+                if (v + config.gracePeriod() > now) {
                     return v;
                 }
                 return null;

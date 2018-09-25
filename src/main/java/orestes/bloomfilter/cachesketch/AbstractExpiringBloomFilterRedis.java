@@ -171,7 +171,7 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
     }
 
     @Override
-    public void cleanTimeToLives() {
+    public void cleanupTTLs() {
         try (Jedis jedis = pool.getResource()) {
             jedis.zremrangeByScore(keys.TTL_KEY, 0, now() - config.gracePeriod());
         }

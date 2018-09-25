@@ -62,7 +62,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
     /**
      * Cleans all expired time to live entries that have been tracked.
      */
-    default void cleanTimeToLives() {
+    default void cleanupTTLs() {
         throw new UnsupportedOperationException();
     }
 
