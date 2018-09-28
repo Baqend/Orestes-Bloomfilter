@@ -1,12 +1,10 @@
 package orestes.bloomfilter.cachesketch;
 
 import orestes.bloomfilter.*;
-import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 
 /**
@@ -23,7 +21,20 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
      * @return <code>true</code> if the element is non-expired
      */
     default boolean isCached(T element) {
-        return getTimeToLiveMap().containsKey(element);
+        return getRemainingTTL(element, TimeUnit.MILLISECONDS) != null;
+    }
+
+    /**
+     * Determines whether a given object is known
+     *
+     * An object is known if it is cached or was removed from the cache not for
+     * longer than the grace period.
+     *
+     * @param element the element (or its id)
+     * @return <code>true</code> if the element is known
+     */
+    default boolean isKnown(T element) {
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -46,6 +57,13 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
      */
     default List<Long> getRemainingTTLs(List<T> elements, TimeUnit unit){
         return elements.stream().map(el -> getRemainingTTL(el, unit)).collect(Collectors.toList());
+    }
+
+    /**
+     * Cleans all expired time to live entries that have been tracked.
+     */
+    default void cleanupTTLs() {
+        throw new UnsupportedOperationException();
     }
 
     /**

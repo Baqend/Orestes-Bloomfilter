@@ -1,8 +1,6 @@
 package orestes.bloomfilter.test.cachesketch;
 
 import com.google.common.collect.Lists;
-import orestes.bloomfilter.cachesketch.ExpirationQueue;
-import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.cachesketch.ExpirationQueueMemory;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,7 +9,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 
@@ -20,16 +17,15 @@ import static org.junit.Assert.*;
  *
  * @author Konstantin Simon Maria Möllers
  */
-public class ExpirationQueueTest {
+public class ExpirationQueueMemoryTest {
 
-    private ExpirationQueue<String> queue;
+    private ExpirationQueueMemory<String> queue;
     private int handlerCallsCount;
 
     @Before
     public void setUp() throws Exception {
         handlerCallsCount = 0;
-        Consumer<ExpiringItem<String>> handler = it -> handlerCallsCount++;
-        queue = new ExpirationQueueMemory<>(handler);
+        queue = new ExpirationQueueMemory<>(it -> handlerCallsCount++);
     }
 
     @Test

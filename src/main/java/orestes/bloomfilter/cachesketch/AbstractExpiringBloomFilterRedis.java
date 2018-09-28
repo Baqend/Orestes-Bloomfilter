@@ -16,6 +16,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -25,7 +27,11 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomFilterRedis<T> implements ExpiringBloomFilter<T> {
     private final Clock clock;
-
+    protected final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "BloomFilterExpiryThreadPool");
+        thread.setDaemon(true);
+        return thread;
+    });
     // Load the "report read" Lua script
     private final String reportReadScript = loadLuaScript("reportRead.lua");
 
@@ -33,6 +39,9 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
         super(builder);
 
         this.clock = pool.getClock();
+        // Schedule TTL map cleanup
+        long interval = config.cleanupInterval();
+        scheduler.scheduleAtFixedRate(this::cleanupTTLs, interval, interval, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -46,6 +55,19 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
         try (Jedis jedis = pool.getResource()) {
             Double score = jedis.zscore(keys.TTL_KEY, element.toString());
             return scoreToRemainingTTL(score, unit);
+        }
+    }
+
+    @Override
+    public boolean isKnown(T element) {
+        try (Jedis jedis = pool.getResource()) {
+            Double score = jedis.zscore(keys.TTL_KEY, element.toString());
+            if (score == null) {
+                return  false;
+            }
+
+            long millis = score.longValue() - now() + config.gracePeriod();
+            return millis > 0;
         }
     }
 
@@ -141,7 +163,7 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
     @Override
     public TimeMap<T> getTimeToLiveMap() {
         try (Jedis jedis = pool.getResource()) {
-            Set<Tuple> tuples = jedis.zrangeByScoreWithScores(keys.TTL_KEY, now(), Double.POSITIVE_INFINITY);
+            Set<Tuple> tuples = jedis.zrangeByScoreWithScores(keys.TTL_KEY, now() - config.gracePeriod(), Double.POSITIVE_INFINITY);
             return tuples.stream().collect(TimeMap.collectMillis(t -> (T) t.getElement(), t -> (long) t.getScore()));
         }
     }
@@ -160,6 +182,13 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
                 }
             });
             pipeline.sync();
+        }
+    }
+
+    @Override
+    public void cleanupTTLs() {
+        try (Jedis jedis = pool.getResource()) {
+            jedis.zremrangeByScore(keys.TTL_KEY, 0, now() - config.gracePeriod());
         }
     }
 

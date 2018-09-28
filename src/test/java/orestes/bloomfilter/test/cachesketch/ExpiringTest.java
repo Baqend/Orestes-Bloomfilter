@@ -3,35 +3,42 @@ package orestes.bloomfilter.test.cachesketch;
 import orestes.bloomfilter.BloomFilter;
 import orestes.bloomfilter.FilterBuilder;
 import orestes.bloomfilter.TimeMap;
-import orestes.bloomfilter.cachesketch.*;
+import orestes.bloomfilter.cachesketch.ExpiringBloomFilter;
+import orestes.bloomfilter.cachesketch.ExpiringBloomFilterMemory;
+import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
+import orestes.bloomfilter.cachesketch.ExpiringBloomFilterRedis;
+import orestes.bloomfilter.test.cachesketch.DelayGenerator.DelayNamePair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static orestes.bloomfilter.test.cachesketch.ExpiringTestHelpers.*;
 import static org.junit.Assert.*;
 
 
 @RunWith(Parameterized.class)
 public class ExpiringTest {
-    public static final String TYPE_MEMORY_ONLY = "in-memory";
-    public static final String TYPE_REDIS_MEMORY = "with Redis counts and in-memory queue";
-    public static final String TYPE_REDIS_ONLY = "with Redis counts and Redis queue";
+    private static final String TYPE_MEMORY_ONLY = "in-memory";
+    private static final String TYPE_REDIS_MEMORY = "with Redis counts and in-memory queue";
+    private static final String TYPE_REDIS_ONLY = "with Redis counts and Redis queue";
+    private static final int NUMBER_OF_ELEMENTS = 100;
     private final String type;
     private ExpiringBloomFilter<String> filter;
 
-    @Parameterized.Parameters(name = "Expiring Bloom Filter test {0}")
-    public static Collection<Object[]> data() throws Exception {
+    @Parameters(name = "Expiring Bloom Filter test {0}")
+    public static Collection<Object[]> data() {
         Object[][] data = {
             {TYPE_MEMORY_ONLY},
             {TYPE_REDIS_MEMORY},
@@ -52,7 +59,7 @@ public class ExpiringTest {
         this.type = type;
     }
 
-    public void createFilter(FilterBuilder b) {
+    private void createFilter(FilterBuilder b) {
         b.overwriteIfExists(true);
 
         switch (type) {
@@ -81,87 +88,17 @@ public class ExpiringTest {
     }
 
     @Test
-    public void addAndLetExpire() throws Exception {
-        int NUMBER_OF_ELEMENTS = 100;
-
-        // Create Bloom filter
-        FilterBuilder b = new FilterBuilder(100000, 0.001);
-        b.redisConnections(NUMBER_OF_ELEMENTS);
-        createFilter(b);
-
-        // Assert we get no false positives
-        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
-            String item = String.valueOf(i);
-            assertFalse(filter.contains(item));
-            filter.add(item);
-        }
-        filter.clear();
-
-        AtomicInteger count = new AtomicInteger(0);
-
-        Random r = new Random(NUMBER_OF_ELEMENTS);
-        ExecutorService threads = Executors.newFixedThreadPool(100);
-        List<CompletableFuture> futures = new LinkedList<>();
-        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
-            int delay = r.nextInt(NUMBER_OF_ELEMENTS) * 10 + 1000;
-            String item = String.valueOf(i);
-            futures.add(CompletableFuture.runAsync(() -> {
-                // Check Bloom filter state before read
-                assertFalse(filter.isCached(item));
-                assertFalse(filter.contains(item));
-                assertNull(filter.getRemainingTTL(item, MILLISECONDS));
-
-                filter.reportRead(item, delay, MILLISECONDS);
-
-                // Check Bloom filter state after read
-                assertTrue(filter.isCached(item));
-                assertFalse(filter.contains(item));
-                assertTrue(filter.getRemainingTTL(item, MILLISECONDS) >= 0);
-                assertTrue(filter.getRemainingTTL(item, MILLISECONDS) <= delay);
-                boolean invalidation = filter.reportWrite(item);
-                assertTrue(invalidation);
-
-                // Check Bloom filter state after write
-                assertTrue(filter.isCached(item));
-                assertTrue(filter.contains(item));
-                assertFalse(filter.isEmpty());
-
-                // Wait for the delay to pass
-                try {
-                    Thread.sleep(delay + 2000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
-                // Check Bloom filter state after expire
-                Long remaining = filter.getRemainingTTL(item, MILLISECONDS);
-                if (filter.contains(item)) {
-                    fail("Element (" + item + ") still in Bloom filter. remaining TTL: " + remaining);
-                }
-                assertFalse(filter.isCached(item));
-                assertFalse(filter.contains(item));
-                assertEquals(null, remaining);
-                count.incrementAndGet();
-            }, threads));
-        }
-
-        // Wait for tasks to complete
-        futures.forEach(CompletableFuture::join);
-
-        // Ensure Bloom filter is empty
-        assertEquals(NUMBER_OF_ELEMENTS, count.get());
-        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
-            String item = String.valueOf(i);
-            assertFalse(filter.contains(item));
-        }
-
-        assertEquals(0, filter.getBitSet().length());
-        assertTrue("Bloom filter should be empty after", filter.isEmpty());
-        assertEquals(0, filter.getBitSet().cardinality());
+    public void addAndLetExpire() {
+        readAndLetExpire(true);
     }
 
     @Test
-    public void testAddMultipleTimes() throws Exception {
+    public void addAndLetExpireWithoutWrite() {
+        readAndLetExpire(false);
+    }
+
+    @Test
+    public void testAddMultipleTimes() {
         FilterBuilder b = new FilterBuilder(100000, 0.05);
         createFilter(b);
         boolean invalidation = filter.reportWrite("1");
@@ -187,20 +124,87 @@ public class ExpiringTest {
         filter.reportRead("1", 100, MILLISECONDS);
 
         long ttl1 = filter.reportWrite("1", MILLISECONDS);
-        assertRemainingTTL(ttl1, 70, 100);
+        assertRemainingTTL(70, 100, ttl1);
         assertTrue(filter.contains("1"));
         assertEquals(1, Math.round(filter.getEstimatedPopulation()));
 
         Thread.sleep(30);
 
         long ttl2 = filter.getRemainingTTL("1", MILLISECONDS);
-        assertRemainingTTL(ttl2, 15, 70);
+        assertRemainingTTL(15, 70, ttl2);
 
         Thread.sleep(150);
 
         Long ttl3 = filter.getRemainingTTL("1", MILLISECONDS);
-        assertEquals(null, ttl3);
+        assertNull(ttl3);
         assertFalse("Element (1) should not be contained in Bloom filter", filter.contains("1"));
+    }
+
+    @Test
+    public void testGracePeriod() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.05).gracePeriod(2000);
+        createFilter(b);
+
+        // Test state after read
+        filter.reportRead("1", 500, MILLISECONDS);
+        filter.reportRead("1", 700, MILLISECONDS);
+        assertTrue(filter.isKnown("1"));
+        assertTrue(filter.isCached("1"));
+
+        // Write after TTL is expired
+        Thread.sleep(1000);
+        Long ttl1 = filter.reportWrite("1", MILLISECONDS);
+        assertNull(ttl1);
+        assertFalse(filter.contains("1"));
+        assertFalse(filter.isCached("1"));
+        assertTrue(filter.isKnown("1"));
+
+        // Cleanup TTLs before grace period expires
+        filter.cleanupTTLs();
+        assertFalse(filter.contains("1"));
+        assertTrue(filter.isKnown("1"));
+        assertFalse(filter.isCached("1"));
+
+        // Cleanup TTLs after grace period expired
+        Thread.sleep(2000);
+        filter.cleanupTTLs();
+        assertFalse(filter.contains("1"));
+        assertFalse(filter.isKnown("1"));
+        assertFalse(filter.isCached("1"));
+
+        assertEquals(0, Math.round(filter.getEstimatedPopulation()));
+    }
+
+    @Test
+    public void testAutoCleanupPeriod() throws Exception {
+        FilterBuilder b = new FilterBuilder(100000, 0.05)
+                .gracePeriod(2000)
+                .cleanupInterval(1000);
+        createFilter(b);
+
+        // Test state after read
+        filter.reportRead("1", 500, MILLISECONDS);
+        filter.reportRead("1", 700, MILLISECONDS);
+        assertTrue(filter.isKnown("1"));
+        assertTrue(filter.isCached("1"));
+
+        Thread.sleep(1000);
+
+        // Write after TTL is expired
+        Thread.sleep(1000);
+        Long ttl1 = filter.reportWrite("1", MILLISECONDS);
+        assertNull(ttl1);
+        assertFalse(filter.contains("1"));
+        assertFalse(filter.isCached("1"));
+        assertTrue(filter.isKnown("1"));
+
+        // Wait for auto cleanup of TTLs
+        Thread.sleep(2000);
+        assertFalse(filter.contains("1"));
+        assertFalse(filter.isKnown("1"));
+        assertFalse(filter.isCached("1"));
+
+        assertEquals(0, Math.round(filter.getEstimatedPopulation()));
     }
 
     @Test
@@ -210,7 +214,7 @@ public class ExpiringTest {
 
         IntStream.range(0, 200).forEach(i -> {
             String elem = String.valueOf(i);
-            filter.reportRead(elem, 1000, TimeUnit.SECONDS);
+            filter.reportRead(elem, 1000, SECONDS);
             filter.reportWrite(elem);
             assertTrue(filter.contains(elem));
             //System.out.println(filter.getEstimatedPopulation() + ":" + filter.getEstimatedFalsePositiveProbability());
@@ -218,16 +222,16 @@ public class ExpiringTest {
         //System.out.println(filter.getFalsePositiveProbability(200));
 
         //Materialized size roughly equal to estimated size
-        assertTrue(Math.abs(filter.getEstimatedPopulation() - 200) < 10);
+        assertLessThan(10, Math.abs(filter.getEstimatedPopulation() - 200));
         //fpp exceeded
-        assertTrue(filter.getEstimatedFalsePositiveProbability() > 0.05);
+        assertGreaterThan(0.05, filter.getEstimatedFalsePositiveProbability());
         //Less then 10% difference between estimated and precise fpp
-        assertTrue(Math.abs(
-            1 - filter.getEstimatedFalsePositiveProbability() / filter.getFalsePositiveProbability(200)) < 0.1);
+        double diff = Math.abs(1 - (filter.getEstimatedFalsePositiveProbability() / filter.getFalsePositiveProbability(200)));
+        assertLessThan(0.1, diff);
     }
 
     @Test
-    public void testClone() throws Exception {
+    public void testClone() {
         FilterBuilder b = new FilterBuilder(100000, 0.05);
         createFilter(b);
         filter.reportRead("1", 50, MILLISECONDS);
@@ -240,7 +244,7 @@ public class ExpiringTest {
     }
 
     @Test
-    public void testReportMultipleWrites() throws Exception {
+    public void testReportMultipleWrites() {
         FilterBuilder b = new FilterBuilder(100000, 0.05);
         createFilter(b);
         filter.reportRead("1", 50, MILLISECONDS);
@@ -251,7 +255,7 @@ public class ExpiringTest {
     }
 
     @Test
-    public void testClear() throws Exception {
+    public void testClear() {
         FilterBuilder b = new FilterBuilder(100000, 0.05);
         createFilter(b);
         filter.reportRead("1", 50, MILLISECONDS);
@@ -272,17 +276,17 @@ public class ExpiringTest {
     }
 
     @Test
-    public void testGetTtls() throws Exception {
+    public void testGetTtls() {
         FilterBuilder b = new FilterBuilder(100000, 0.05);
         createFilter(b);
         List<String> keys = new ArrayList<>();
         for (int i = 0; i < 1000; i++) {
             String key = String.valueOf(i);
             keys.add(key);
-            filter.reportRead(key, 50, TimeUnit.SECONDS);
+            filter.reportRead(key, 50, SECONDS);
         }
 
-        List<Long> ttls = filter.getRemainingTTLs(keys, TimeUnit.SECONDS);
+        List<Long> ttls = filter.getRemainingTTLs(keys, SECONDS);
 
         for (Long ttl : ttls) {
             assertTrue(ttl >= 49);
@@ -290,17 +294,17 @@ public class ExpiringTest {
     }
 
     @Test
-    public void testGetTimeToLiveMap() throws Exception {
+    public void testGetTimeToLiveMap() {
         FilterBuilder b = new FilterBuilder(100000, 0.001);
         createFilter(b);
 
-        filter.reportRead("Foo", 2, TimeUnit.SECONDS);
+        filter.reportRead("Foo", 2, SECONDS);
         assertTrue(filter.isCached("Foo"));
         assertFalse(filter.contains("Foo"));
-        filter.reportRead("Bar", 4, TimeUnit.SECONDS);
+        filter.reportRead("Bar", 4, SECONDS);
         assertTrue(filter.isCached("Bar"));
         assertFalse(filter.contains("Bar"));
-        filter.reportRead("Baz", 3, TimeUnit.SECONDS);
+        filter.reportRead("Baz", 3, SECONDS);
         filter.reportWrite("Baz");
         assertTrue(filter.isCached("Baz"));
         assertTrue(filter.contains("Baz"));
@@ -308,15 +312,15 @@ public class ExpiringTest {
         TimeMap<String> map = filter.getTimeToLiveMap();
         assertEquals(3, map.size());
         assertTrue(map.containsKey("Foo"));
-        assertTimeBetween(1, 2, TimeUnit.SECONDS, map, "Foo");
+        assertTimeBetween(1, 2, SECONDS, map, "Foo");
         assertTrue(map.containsKey("Bar"));
-        assertTimeBetween(3, 4, TimeUnit.SECONDS, map, "Bar");
+        assertTimeBetween(3, 4, SECONDS, map, "Bar");
         assertTrue(map.containsKey("Baz"));
-        assertTimeBetween(2, 3, TimeUnit.SECONDS, map, "Baz");
+        assertTimeBetween(2, 3, SECONDS, map, "Baz");
     }
 
     @Test
-    public void testSetTimeToLiveMap() throws Exception {
+    public void testSetTimeToLiveMap() {
         FilterBuilder b = new FilterBuilder(100000, 0.001);
         createFilter(b);
 
@@ -328,38 +332,38 @@ public class ExpiringTest {
         assertFalse(filter.contains("Baz"));
 
         TimeMap<String> map = new TimeMap<>();
-        map.putRemaining("Foo", 2L, TimeUnit.SECONDS);
-        map.putRemaining("Bar", 4L, TimeUnit.SECONDS);
-        map.putRemaining("Baz", 3L, TimeUnit.SECONDS);
+        map.putRemaining("Foo", 2L, SECONDS);
+        map.putRemaining("Bar", 4L, SECONDS);
+        map.putRemaining("Baz", 3L, SECONDS);
 
         filter.setTimeToLiveMap(map);
 
         assertTrue(filter.isCached("Foo"));
-        assertTrue(1000L < filter.getRemainingTTL("Foo", TimeUnit.MILLISECONDS));
+        assertTrue(filter.getRemainingTTL("Foo", MILLISECONDS) > 1000L);
         assertFalse(filter.contains("Foo"));
 
         assertTrue(filter.isCached("Bar"));
-        assertTrue(3000L < filter.getRemainingTTL("Bar", TimeUnit.MILLISECONDS));
+        assertTrue(filter.getRemainingTTL("Bar", MILLISECONDS) > 3000L);
         assertFalse(filter.contains("Bar"));
 
         assertTrue(filter.isCached("Baz"));
-        assertTrue(2000L < filter.getRemainingTTL("Baz", TimeUnit.MILLISECONDS));
+        assertTrue(filter.getRemainingTTL("Baz", MILLISECONDS) > 2000L);
         assertFalse(filter.contains("Baz"));
     }
 
     @Test
-    public void testGetExpirationMap() throws Exception {
+    public void testGetExpirationMap() {
         FilterBuilder b = new FilterBuilder(100000, 0.001);
         createFilter(b);
 
-        filter.reportRead("Foo", 2, TimeUnit.SECONDS);
+        filter.reportRead("Foo", 2, SECONDS);
         assertTrue(filter.isCached("Foo"));
         assertFalse(filter.contains("Foo"));
-        filter.reportRead("Bar", 4, TimeUnit.SECONDS);
+        filter.reportRead("Bar", 4, SECONDS);
         filter.reportWrite("Bar");
         assertTrue(filter.isCached("Bar"));
         assertTrue(filter.contains("Bar"));
-        filter.reportRead("Baz", 3, TimeUnit.SECONDS);
+        filter.reportRead("Baz", 3, SECONDS);
         filter.reportWrite("Baz");
         assertTrue(filter.isCached("Baz"));
         assertTrue(filter.contains("Baz"));
@@ -368,13 +372,13 @@ public class ExpiringTest {
         assertEquals(2, map.size());
         assertFalse(map.containsKey("Foo"));
         assertTrue(map.containsKey("Bar"));
-        assertTimeBetween(3, 4, TimeUnit.SECONDS, map, "Bar");
+        assertTimeBetween(3, 4, SECONDS, map, "Bar");
         assertTrue(map.containsKey("Baz"));
-        assertTimeBetween(2, 3, TimeUnit.SECONDS, map, "Baz");
+        assertTimeBetween(2, 3, SECONDS, map, "Baz");
     }
 
     @Test
-    public void testSetExpirationMap() throws Exception {
+    public void testSetExpirationMap() {
         FilterBuilder b = new FilterBuilder(100000, 0.001);
         createFilter(b);
 
@@ -386,9 +390,9 @@ public class ExpiringTest {
         assertFalse(filter.contains("Baz"));
 
         TimeMap<String> map = new TimeMap<>();
-        map.putRemaining("Foo", 2L, TimeUnit.SECONDS);
-        map.putRemaining("Bar", 4L, TimeUnit.SECONDS);
-        map.putRemaining("Baz", 3L, TimeUnit.SECONDS);
+        map.putRemaining("Foo", 2L, SECONDS);
+        map.putRemaining("Bar", 4L, SECONDS);
+        map.putRemaining("Baz", 3L, SECONDS);
 
         filter.setExpirationMap(map);
 
@@ -397,18 +401,18 @@ public class ExpiringTest {
     }
 
     @Test
-    public void testMigrateFromInMemoryExpiringBloomFilter() throws Exception {
+    public void testMigrateFromInMemoryExpiringBloomFilter() {
         FilterBuilder b = new FilterBuilder(100000, 0.001);
 
         // Create the filter to migrate from
         ExpiringBloomFilterMemory<String> inMemory = new ExpiringBloomFilterMemory<>(b);
-        inMemory.reportRead("Foo", 50, TimeUnit.SECONDS);
+        inMemory.reportRead("Foo", 50, SECONDS);
         assertTrue(inMemory.isCached("Foo"));
         assertFalse(inMemory.contains("Foo"));
-        inMemory.reportRead("Bar", 40, TimeUnit.SECONDS);
+        inMemory.reportRead("Bar", 40, SECONDS);
         assertTrue(inMemory.isCached("Bar"));
         assertFalse(inMemory.contains("Bar"));
-        inMemory.reportRead("Baz", 30, TimeUnit.SECONDS);
+        inMemory.reportRead("Baz", 30, SECONDS);
         inMemory.reportWrite("Baz");
         assertTrue(inMemory.isCached("Baz"));
         assertTrue(inMemory.contains("Baz"));
@@ -426,13 +430,13 @@ public class ExpiringTest {
         inMemory.migrateTo(filter);
         assertTrue(filter.isCached("Foo"));
         assertFalse(filter.contains("Foo"));
-        assertRemainingTTL(filter.getRemainingTTL("Foo", TimeUnit.SECONDS), 30, 50);
+        assertRemainingTTL(30, 50, filter.getRemainingTTL("Foo", SECONDS));
         assertTrue(filter.isCached("Bar"));
         assertFalse(filter.contains("Bar"));
-        assertRemainingTTL(filter.getRemainingTTL("Bar", TimeUnit.SECONDS), 20, 40);
+        assertRemainingTTL(20, 40, filter.getRemainingTTL("Bar", SECONDS));
         assertTrue(filter.isCached("Baz"));
         assertTrue(filter.contains("Baz"));
-        assertRemainingTTL(filter.getRemainingTTL("Baz", TimeUnit.SECONDS), 10, 30);
+        assertRemainingTTL(10, 30, filter.getRemainingTTL("Baz", SECONDS));
 
         // Cleanup in-memory BF
         inMemory.clear();
@@ -444,13 +448,13 @@ public class ExpiringTest {
 
         // Create the filter to migrate from
         createFilter(b);
-        filter.reportRead("Foo", 3, TimeUnit.SECONDS);
+        filter.reportRead("Foo", 3, SECONDS);
         assertTrue(filter.isCached("Foo"));
         assertFalse(filter.contains("Foo"));
-        filter.reportRead("Bar", 2, TimeUnit.SECONDS);
+        filter.reportRead("Bar", 2, SECONDS);
         assertTrue(filter.isCached("Bar"));
         assertFalse(filter.contains("Bar"));
-        filter.reportRead("Baz", 1, TimeUnit.SECONDS);
+        filter.reportRead("Baz", 1, SECONDS);
         filter.reportWrite("Baz");
         assertTrue(filter.isCached("Baz"));
         assertTrue(filter.contains("Baz"));
@@ -468,13 +472,13 @@ public class ExpiringTest {
         filter.migrateTo(inMemory);
         assertTrue(inMemory.isCached("Foo"));
         assertFalse(inMemory.contains("Foo"));
-        assertRemainingTTL(inMemory.getRemainingTTL("Foo", TimeUnit.SECONDS), 2, 2);
+        assertRemainingTTL(2, 2, inMemory.getRemainingTTL("Foo", SECONDS));
         assertTrue(inMemory.isCached("Bar"));
         assertFalse(inMemory.contains("Bar"));
-        assertRemainingTTL(inMemory.getRemainingTTL("Bar", TimeUnit.SECONDS), 1, 2);
+        assertRemainingTTL(1, 2, inMemory.getRemainingTTL("Bar", SECONDS));
         assertTrue(inMemory.isCached("Baz"));
         assertTrue(inMemory.contains("Baz"));
-        assertRemainingTTL(inMemory.getRemainingTTL("Baz", TimeUnit.SECONDS), 0, 1);
+        assertRemainingTTL(0, 1, inMemory.getRemainingTTL("Baz", SECONDS));
 
         // Ensure everything expires as suspected
         Thread.sleep(3000);
@@ -489,35 +493,79 @@ public class ExpiringTest {
         inMemory.clear();
     }
 
-    private void assertRemainingTTL(long ttl, long min, long max) {
-        assertTrue("Assert remaining TTL is lower than " + max + " ms, but was " + ttl + " ms", ttl <= max);
-        assertTrue("Assert remaining TTL is higher than " + min + " ms, but was " + ttl + " ms", ttl >= min);
-    }
+    private void readAndLetExpire(boolean reportWrite) {
+        // Create Bloom filter
+        FilterBuilder b = new FilterBuilder(100000, 0.001);
+        b.redisConnections(NUMBER_OF_ELEMENTS);
+        createFilter(b);
 
-    private void assertItemExists(Collection<ExpirationQueue.ExpiringItem<String>> actual, String expected, long expirationMin, long expirationMax, TimeUnit unit) {
-        long min = MILLISECONDS.convert(expirationMin, unit);
-        long max = MILLISECONDS.convert(expirationMax, unit);
-        String u = unit.toString().toLowerCase();
-        String message = "Expect expirations to contain " + expected + " with a TTL from " + expirationMin + " to " + expirationMax + " " + u;
-        assertTrue(message, actual.stream().anyMatch(item -> {
-            if (item.getItem().equals(expected)) {
-                long expiration = item.getExpiration(MILLISECONDS);
-                return expiration >= min && expiration <= max;
-            }
+        // Assert we get no false positives
+        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
+            String item = String.valueOf(i);
+            assertFalse(filter.contains(item));
+            filter.add(item);
+        }
+        filter.clear();
 
-            return false;
-        }));
-    }
+        AtomicInteger count = new AtomicInteger(0);
 
-    private <T> void assertTimeBetween(long min, long max, TimeUnit expectedUnit, TimeMap<T> actual, T actualItem) {
-        Long remaining = actual.getRemaining(actualItem, MILLISECONDS);
-        assertNotNull(remaining);
-        
-        // ttls are handle as doubles by redis, therefore we must expect some rounding issues
-        long minNormalized = MILLISECONDS.convert(min, expectedUnit) - 1;
-        long maxNormalized = MILLISECONDS.convert(max, expectedUnit) + 1;
-        
-        assertTrue("Expect " + remaining + "ms to be higher than or equal to " + minNormalized + "ms", remaining >= minNormalized);
-        assertTrue("Expect " + remaining + "ms to be less than or equal to " + maxNormalized + "ms", remaining <= maxNormalized);
+        DelayGenerator delayGenerator = new DelayGenerator(NUMBER_OF_ELEMENTS);
+        ExecutorService threads = Executors.newFixedThreadPool(100);
+        List<CompletableFuture> futures = new LinkedList<>();
+        for (DelayNamePair pair : delayGenerator) {
+            int delay = pair.getDelay();
+            String item = pair.getItem();
+            futures.add(CompletableFuture.runAsync(() -> {
+                // Check Bloom filter state before read
+                assertFalse(filter.isCached(item));
+                assertFalse(filter.contains(item));
+                assertNull(filter.getRemainingTTL(item, MILLISECONDS));
+
+                filter.reportRead(item, delay, MILLISECONDS);
+
+                // Check Bloom filter state after read
+                assertTrue(filter.isCached(item));
+                assertFalse(filter.contains(item));
+                assertBetween(0, delay, filter.getRemainingTTL(item, MILLISECONDS));
+
+                if (reportWrite) {
+                    assertTrue(filter.reportWrite(item));
+
+                    // Check Bloom filter state after write
+                    assertTrue(filter.contains(item));
+                    assertFalse(filter.isEmpty());
+                }
+                assertTrue(filter.isCached(item));
+
+                // Wait for the delay to pass
+                try {
+                    Thread.sleep(delay + 2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                // Check Bloom filter state after expire
+                Long remaining = filter.getRemainingTTL(item, MILLISECONDS);
+                if (filter.contains(item)) {
+                    fail("Element (" + item + ") still in Bloom filter. remaining TTL: " + remaining);
+                }
+                assertFalse(filter.isCached(item));
+                assertFalse(filter.contains(item));
+                assertNull(remaining);
+                count.incrementAndGet();
+            }, threads));
+        }
+
+        // Wait for tasks to complete
+        futures.forEach(CompletableFuture::join);
+
+        // Ensure Bloom filter is empty
+        assertEquals(NUMBER_OF_ELEMENTS, count.get());
+        for (int i = 0; i < NUMBER_OF_ELEMENTS; i++) {
+            String item = String.valueOf(i);
+            assertFalse(filter.contains(item));
+        }
+
+        assertEmpty(filter);
     }
 }

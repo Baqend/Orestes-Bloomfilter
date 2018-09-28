@@ -8,22 +8,42 @@ import orestes.bloomfilter.TimeMap;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.memory.CountingBloomFilter32;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> implements ExpiringBloomFilter<T>, MigratableBloomFilter<T> {
     private final TimeMap<T> ttlMap = new TimeMap<>();
     private final ExpirationQueue<T> queue;
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "BloomFilterCleanupThreadPool");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public ExpiringBloomFilterMemory(FilterBuilder config) {
         super(config);
         this.queue = new ExpirationQueueMemory<>(this::onExpire);
+        // Schedule TTL map cleanup
+        long interval = config.cleanupInterval();
+        scheduler.scheduleAtFixedRate(this::cleanupTTLs, interval, interval, TimeUnit.MILLISECONDS);
     }
 
     private void onExpire(ExpiringItem<T> entry) {
         this.remove(entry.getItem());
-        ttlMap.remove(entry.getItem(), entry.getExpiration(MILLISECONDS));
+    }
+
+    @Override
+    public void cleanupTTLs() {
+        long now = ttlMap.now();
+        for (T key : ttlMap.keySet()) {
+            ttlMap.computeIfPresent(key, (k, v) -> {
+                if (v + config.gracePeriod() > now) {
+                    return v;
+                }
+                return null;
+            });
+        }
     }
 
     @Override
@@ -35,13 +55,23 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     public synchronized Long reportWrite(T element, TimeUnit unit) {
         // Only add if there is a potentially cached read
         Long expiration = ttlMap.get(element);
-        if (expiration == null) {
+        if (expiration == null || expiration < ttlMap.now()) {
             return null;
         }
 
         add(element);
         queue.addExpiration(element, expiration, TimeUnit.MILLISECONDS);
         return unit.convert(expiration - ttlMap.now(), TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public boolean isKnown(T element) {
+        if (!ttlMap.containsKey(element)) {
+            return false;
+        }
+
+        long ttl = ttlMap.get(element) - ttlMap.now() + config.gracePeriod();
+        return ttl > 0;
     }
 
     @Override

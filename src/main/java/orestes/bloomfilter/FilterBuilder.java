@@ -19,6 +19,7 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Builder for Bloom Filters.
@@ -44,6 +45,8 @@ public class FilterBuilder implements Cloneable, Serializable {
     private String password = null;
     private RedisPool pool;
     private int database = Protocol.DEFAULT_DATABASE;
+    private long gracePeriod = TimeUnit.HOURS.toMillis(6);
+    private long cleanupInterval = TimeUnit.HOURS.toMillis(1);
 
     /**
      * Constructs a new builder for Bloom filters and counting Bloom filters.
@@ -296,7 +299,81 @@ public class FilterBuilder implements Cloneable, Serializable {
     public int database() {
         return database;
     }
-    
+
+    /**
+     * Sets the grace period in milliseconds.
+     *
+     * @param gracePeriodInMillis The grace period to set, in milliseconds.
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder gracePeriod(long gracePeriodInMillis) {
+        this.gracePeriod = gracePeriodInMillis;
+        return this;
+    }
+
+    /**
+     * Sets the grace period.
+     *
+     * @param gracePeriod The grace period to set, in the provided time unit.
+     * @param unit The time unit in which the grace period is given.
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder gracePeriod(long gracePeriod, TimeUnit unit) {
+        this.gracePeriod = unit.toMillis(gracePeriod);
+        return this;
+    }
+
+    /**
+     * Gets the grace period in milliseconds.
+     */
+    public long gracePeriod() {
+        return this.gracePeriod;
+    }
+
+    /**
+     * Gets the grace period in the provided time unit.
+     */
+    public long gracePeriod(TimeUnit unit) {
+        return unit.convert(this.gracePeriod, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Sets the cleanup interval in milliseconds.
+     *
+     * @param cleanupIntervalInMillis The cleanup interval to set, in milliseconds.
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder cleanupInterval(long cleanupIntervalInMillis) {
+        this.cleanupInterval = cleanupIntervalInMillis;
+        return this;
+    }
+
+    /**
+     * Sets the cleanup interval.
+     *
+     * @param cleanupInterval The cleanup interval to set, in the provided time unit.
+     * @param unit The time unit in which the cleanup interval is given.
+     * @return the modified FilterBuilder (fluent interface)
+     */
+    public FilterBuilder cleanupInterval(long cleanupInterval, TimeUnit unit) {
+        this.cleanupInterval = unit.toMillis(cleanupInterval);
+        return this;
+    }
+
+    /**
+     * Gets the cleanup interval in milliseconds.
+     */
+    public long cleanupInterval() {
+        return this.cleanupInterval;
+    }
+
+    /**
+     * Gets the cleanup interval in the provided time unit.
+     */
+    public long cleanupInterval(TimeUnit unit) {
+        return unit.convert(this.cleanupInterval, TimeUnit.MILLISECONDS);
+    }
+
     /**
      * Constructs a Bloom filter using the specified parameters and computing missing parameters if possible (e.g. the
      * optimal Bloom filter bit size).

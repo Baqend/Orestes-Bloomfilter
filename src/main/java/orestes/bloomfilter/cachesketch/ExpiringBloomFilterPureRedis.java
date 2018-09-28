@@ -34,9 +34,8 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
      */
     private static final Logger LOG = LoggerFactory.getLogger(ExpiringBloomFilterPureRedis.class);
 
-    private final String exportQueueScript = loadLuaScript("exportQueue.lua");
+    private final String expireQueueScript = loadLuaScript("expireQueue.lua");
     private final Random random = new Random();
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final MessagePackEncoder msgPack;
     private ScheduledFuture<?> job;
     private boolean isEnabled;
@@ -87,7 +86,7 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
         LOG.debug("[{}] Expiring items ... {}", config.name(), now);
         try (Jedis jedis = pool.getResource()) {
             long expiredItems = (long) jedis.evalsha(
-                exportQueueScript, 3,
+                expireQueueScript, 3,
                 // Keys:
                 keys.EXPIRATION_QUEUE_KEY, keys.COUNTS_KEY, keys.BITS_KEY,
                 // Args:
