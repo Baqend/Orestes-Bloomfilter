@@ -66,7 +66,12 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
 
     @Override
     public boolean isKnown(T element) {
-        return ttlMap.containsKey(element);
+        if (!ttlMap.containsKey(element)) {
+            return false;
+        }
+
+        long ttl = ttlMap.get(element) - ttlMap.now() + config.gracePeriod();
+        return ttl > 0;
     }
 
     @Override

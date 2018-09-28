@@ -61,7 +61,13 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
     @Override
     public boolean isKnown(T element) {
         try (Jedis jedis = pool.getResource()) {
-            return jedis.zrank(keys.TTL_KEY, element.toString()) != null;
+            Double score = jedis.zscore(keys.TTL_KEY, element.toString());
+            if (score == null) {
+                return  false;
+            }
+
+            long millis = score.longValue() - now() + config.gracePeriod();
+            return millis > 0;
         }
     }
 
