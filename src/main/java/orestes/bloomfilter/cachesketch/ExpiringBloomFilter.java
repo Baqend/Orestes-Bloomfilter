@@ -31,10 +31,24 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
      * longer than the grace period.
      *
      * @param element the element (or its id)
-     * @return <code>true</code> if the element is known
+     * @return <code>true</code> if the element is known; <code>false</code> else
      */
     default boolean isKnown(T element) {
         throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Determines whether each of the given input elements is known and returns a list of boolean values where each
+     * Boolean represents whether or not the corresponding element in the input list is known.
+     *
+     * An object is known if it is cached or was removed from the cache not for longer than the grace period.
+     *
+     * @param elements elements to check (or their ids)
+     * @return a list of boolean values indicating whether each of the input elements is known (<code>true</code>) or
+     * not (<code>false</code>)
+     */
+    default List<Boolean> isKnown(List<T> elements){
+        return elements.stream().map(this::isKnown).collect(Collectors.toList());
     }
 
     /**

@@ -66,8 +66,25 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
                 return  false;
             }
 
-            long millis = score.longValue() - now() + config.gracePeriod();
-            return millis > 0;
+            long endOfGracePeriod = now() - config.gracePeriod();
+            return score.longValue() > endOfGracePeriod;
+        }
+    }
+
+    @Override
+    public List<Boolean> isKnown(List<T> elements) {
+        try (Jedis jedis = pool.getResource()) {
+            // Retrieve scores from Redis
+            Pipeline pipe = jedis.pipelined();
+            elements.forEach(it -> pipe.zscore(keys.TTL_KEY, it.toString()));
+            List<Object> scores = pipe.syncAndReturnAll();
+
+            long endOfGracePeriod = now() - config.gracePeriod();
+            // Convert to boolean
+            return scores
+                    .stream()
+                    .map(score -> score != null && ((Double) score).longValue() > endOfGracePeriod)
+                    .collect(Collectors.toList());
         }
     }
 
