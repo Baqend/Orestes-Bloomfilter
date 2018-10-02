@@ -1,3 +1,9 @@
+## 2.1.0
+
+* Implement a grace period which keeps expired entries in the TTL map for a configurable addtional time period
+* Allow checking whether an item is expired, but still within the grace period by ExpiringBloomFilter#isKnown
+* Fix a bug that prevented expired items from being removed from the expiration TTL map
+
 ## 2.0.0
 
 * **BREAKING CHANGES:** A critical error with the hash entry calculation for counting Bloom filters has been fixed.
