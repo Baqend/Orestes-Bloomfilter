@@ -294,6 +294,94 @@ public class ExpiringTest {
     }
 
     @Test
+    public void testIsKnownList() throws InterruptedException {
+        FilterBuilder b = new FilterBuilder(100000, 0.05);
+        b.gracePeriod(3_000);
+        createFilter(b);
+
+        String key1 = "key1";
+        String key2 = "key2";
+        String key3 = "key3";
+
+        List<String> keys = new ArrayList<>();
+        keys.add(key1);
+        filter.reportRead(key1, 1, SECONDS);
+        keys.add(key2);
+        filter.reportRead(key2, 2, SECONDS);
+        keys.add(key3);
+        filter.reportRead(key3, 3, SECONDS);
+
+        // initially: all cached, all known
+        assertTrue(filter.isCached(key1));
+        assertTrue(filter.isCached(key2));
+        assertTrue(filter.isCached(key3));
+        assertEquals(Arrays.asList(true, true, true), filter.isKnown(keys));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_100);
+
+        // after 1100 ms: key1 expired, all known
+        assertFalse(filter.isCached(key1));
+        assertTrue(filter.isCached(key2));
+        assertTrue(filter.isCached(key3));
+        assertEquals(Arrays.asList(true, true, true), filter.isKnown(keys));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 2100 ms: key1/key2 expired, all known
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertTrue(filter.isCached(key3));
+        assertEquals(Arrays.asList(true, true, true), filter.isKnown(keys));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 3100 ms: all expired, all known
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertFalse(filter.isCached(key3));
+        assertEquals(Arrays.asList(true, true, true), filter.isKnown(keys));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 4100 ms: all expired, key1 unknown
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertFalse(filter.isCached(key3));
+        assertEquals(Arrays.asList(false, true, true), filter.isKnown(keys));
+        assertFalse(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 5100 ms: all expired, key1/key2 unknown
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertFalse(filter.isCached(key3));
+        assertEquals(Arrays.asList(false, false, true), filter.isKnown(keys));
+        assertFalse(filter.isKnown(key1));
+        assertFalse(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 6100 ms: all expired, all unknown
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertFalse(filter.isCached(key3));
+        assertEquals(Arrays.asList(false, false, false), filter.isKnown(keys));
+        assertFalse(filter.isKnown(key1));
+        assertFalse(filter.isKnown(key2));
+        assertFalse(filter.isKnown(key3));
+    }
+
+    @Test
     public void testGetTimeToLiveMap() {
         FilterBuilder b = new FilterBuilder(100000, 0.001);
         createFilter(b);
