@@ -145,4 +145,9 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
     }
 
     BloomFilter<T> getClonedBloomFilter();
+
+    /**
+     * Executes a soft clear operation on the expiring Bloom filter.
+     */
+    void softClear();
 }

@@ -133,6 +133,14 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
         return enabled ? enableJob() : disableJob();
     }
 
+    @Override
+    public void softClear() {
+        try (Jedis jedis = pool.getResource()) {
+            // Delete all used fields from Redis
+            jedis.del(keys.COUNTS_KEY, keys.BITS_KEY);
+        }
+    }
+
     /**
      * Triggers the expiration handling before the given delay is expired.
      *
