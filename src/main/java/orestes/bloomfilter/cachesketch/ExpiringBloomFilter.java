@@ -148,6 +148,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
 
     /**
      * Executes a soft clear operation on the expiring Bloom filter.
+     * Clears the bloom filter without deleting any TTLs
      */
     void softClear();
 }
