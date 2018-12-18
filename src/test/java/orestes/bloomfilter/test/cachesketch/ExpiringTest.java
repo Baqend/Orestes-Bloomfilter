@@ -581,18 +581,24 @@ public class ExpiringTest {
     }
 
     @Test
-    public void testSoftClear() throws Exception {
+    public void testSoftClear() {
         FilterBuilder b = new FilterBuilder(100000, 0.001);
         createFilter(b);
+
         filter.reportRead("Foo", 70, SECONDS);
         filter.reportWrite("Foo");
         assertTrue(filter.getExpirationMap().containsKey("Foo"));
+        assertTrue(filter.contains("Foo"));
 
         filter.softClear();
         assertFalse(filter.contains("Foo"));
         assertEquals(1, filter.getRemainingTTL("Foo", MINUTES).longValue());
         assertTrue(filter.isKnown("Foo"));
         assertFalse(filter.getExpirationMap().containsKey("Foo"));
+
+        filter.reportWrite("Foo");
+        assertTrue(filter.getExpirationMap().containsKey("Foo"));
+        assertTrue(filter.contains("Foo"));
     }
 
     private void readAndLetExpire(boolean reportWrite) {
