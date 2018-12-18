@@ -1,3 +1,7 @@
+## 2.2.0
+
+* Implement soft clear for expiring Bloom filter to clear the filter without deleting any TTLs
+
 ## 2.1.0
 
 * Implement a grace period which keeps expired entries in the TTL map for a configurable addtional time period
