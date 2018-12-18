@@ -47,10 +47,9 @@ public class ExpiringBloomFilterRedis<T> extends AbstractExpiringBloomFilterRedi
     }
 
     private void clearExpirationQueue() {
-        if (queue == null) {
-            return;
+        if (queue != null) {
+            queue.clear();
         }
-        queue.clear();
     }
 
     @Override
