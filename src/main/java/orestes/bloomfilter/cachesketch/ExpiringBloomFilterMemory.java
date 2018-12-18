@@ -85,16 +85,16 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     }
 
     @Override
-    public void softClear() {
-        super.clear();
-        queue.clear();
-    }
-
-    @Override
     public void clear() {
         super.clear();
         queue.clear();
         ttlMap.clear();
+    }
+
+    @Override
+    public void softClear() {
+        super.clear();
+        queue.clear();
     }
 
     @Override

@@ -33,11 +33,6 @@ public class ExpiringBloomFilterRedis<T> extends AbstractExpiringBloomFilterRedi
     }
 
     @Override
-    public BloomFilter<T> getClonedBloomFilter() {
-        return toMemoryFilter();
-    }
-
-    @Override
     public void softClear() {
         try (Jedis jedis = pool.getResource()) {
             // Clear CBF, Bits, and TTLs
@@ -50,6 +45,11 @@ public class ExpiringBloomFilterRedis<T> extends AbstractExpiringBloomFilterRedi
         if (queue != null) {
             queue.clear();
         }
+    }
+
+    @Override
+    public BloomFilter<T> getClonedBloomFilter() {
+        return toMemoryFilter();
     }
 
     @Override
