@@ -22,8 +22,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.concurrent.TimeUnit.*;
 import static orestes.bloomfilter.test.cachesketch.ExpiringTestHelpers.*;
 import static org.junit.Assert.*;
 
@@ -579,6 +578,27 @@ public class ExpiringTest {
 
         // Cleanup in-memory BF
         inMemory.clear();
+    }
+
+    @Test
+    public void testSoftClear() {
+        FilterBuilder b = new FilterBuilder(100000, 0.001);
+        createFilter(b);
+
+        filter.reportRead("Foo", 70, SECONDS);
+        filter.reportWrite("Foo");
+        assertTrue(filter.getExpirationMap().containsKey("Foo"));
+        assertTrue(filter.contains("Foo"));
+
+        filter.softClear();
+        assertFalse(filter.contains("Foo"));
+        assertEquals(1, filter.getRemainingTTL("Foo", MINUTES).longValue());
+        assertTrue(filter.isKnown("Foo"));
+        assertFalse(filter.getExpirationMap().containsKey("Foo"));
+
+        filter.reportWrite("Foo");
+        assertTrue(filter.getExpirationMap().containsKey("Foo"));
+        assertTrue(filter.contains("Foo"));
     }
 
     private void readAndLetExpire(boolean reportWrite) {

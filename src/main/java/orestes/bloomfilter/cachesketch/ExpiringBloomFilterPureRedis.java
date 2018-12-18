@@ -55,6 +55,14 @@ public class ExpiringBloomFilterPureRedis extends AbstractExpiringBloomFilterRed
     }
 
     @Override
+    public void softClear() {
+        try (Jedis jedis = pool.getResource()) {
+            // Delete all used fields from Redis
+            jedis.del(keys.COUNTS_KEY, keys.BITS_KEY, keys.EXPIRATION_QUEUE_KEY);
+        }
+    }
+
+    @Override
     public synchronized void remove() {
         super.remove();
         if (job != null) {

@@ -132,6 +132,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
     /**
      * Sets whether expiration should be turned on.
      *
+     * @param enabled The boolean to enable or disable the expiration
      * @return Whether state could be changed successfully.
      */
     boolean setExpirationEnabled(boolean enabled);
@@ -145,4 +146,10 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
     }
 
     BloomFilter<T> getClonedBloomFilter();
+
+    /**
+     * Executes a soft clear operation on the expiring Bloom filter.
+     * Clears the bloom filter without deleting any TTLs
+     */
+    void softClear();
 }

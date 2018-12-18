@@ -325,6 +325,8 @@ public class FilterBuilder implements Cloneable, Serializable {
 
     /**
      * Gets the grace period in milliseconds.
+     *
+     * @return the grace period
      */
     public long gracePeriod() {
         return this.gracePeriod;
@@ -332,6 +334,9 @@ public class FilterBuilder implements Cloneable, Serializable {
 
     /**
      * Gets the grace period in the provided time unit.
+     *
+     * @param unit The {@link TimeUnit} to which the Grace Period is converted
+     * @return the grace period in the provided time unit
      */
     public long gracePeriod(TimeUnit unit) {
         return unit.convert(this.gracePeriod, TimeUnit.MILLISECONDS);
@@ -362,6 +367,8 @@ public class FilterBuilder implements Cloneable, Serializable {
 
     /**
      * Gets the cleanup interval in milliseconds.
+     *
+     * @return the cleanup interval
      */
     public long cleanupInterval() {
         return this.cleanupInterval;
@@ -369,6 +376,9 @@ public class FilterBuilder implements Cloneable, Serializable {
 
     /**
      * Gets the cleanup interval in the provided time unit.
+     *
+     * @param unit The {@link TimeUnit} to which the cleanup interval is converted
+     * @return the cleanup interval in the provided time unit
      */
     public long cleanupInterval(TimeUnit unit) {
         return unit.convert(this.cleanupInterval, TimeUnit.MILLISECONDS);

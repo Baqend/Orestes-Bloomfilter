@@ -135,6 +135,7 @@ public interface ExpirationQueue<T> extends Iterable<T>, ExpirationMapAware<T> {
          *
          * @param item       The actual item which expires
          * @param expiration The expiration timestamp, relative to {@link java.lang.System#nanoTime()}
+         * @param timeUnit   The {@link TimeUnit} of the given expiration
          */
         public ExpiringItem(T item, long expiration, TimeUnit timeUnit) {
             this.item = item;
@@ -149,6 +150,7 @@ public interface ExpirationQueue<T> extends Iterable<T>, ExpirationMapAware<T> {
         }
 
         /**
+         * @param timeUnit The {@link TimeUnit} to which the expiration is converted
          * @return the timestamp in nanoseconds when the item expires
          */
         public long getExpiration(TimeUnit timeUnit) {

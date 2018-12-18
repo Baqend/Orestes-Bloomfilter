@@ -28,11 +28,21 @@ public class ExpiringBloomFilterRedis<T> extends AbstractExpiringBloomFilterRedi
         try (Jedis jedis = pool.getResource()) {
             // Clear CBF, Bits, and TTLs
             jedis.del(keys.COUNTS_KEY, keys.BITS_KEY, keys.TTL_KEY);
-            // During init, ONLY clear CBF
-            if (queue == null) {
-                return;
-            }
-            // Clear Queue
+            clearExpirationQueue();
+        }
+    }
+
+    @Override
+    public void softClear() {
+        try (Jedis jedis = pool.getResource()) {
+            // Clear CBF, Bits, and TTLs
+            jedis.del(keys.COUNTS_KEY, keys.BITS_KEY);
+            clearExpirationQueue();
+        }
+    }
+
+    private void clearExpirationQueue() {
+        if (queue != null) {
             queue.clear();
         }
     }

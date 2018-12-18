@@ -92,14 +92,20 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
     }
 
     @Override
+    public void softClear() {
+        super.clear();
+        queue.clear();
+    }
+
+    @Override
     public void migrateFrom(BloomFilter<T> source) {
         if (!(source instanceof ExpiringBloomFilter) || !compatible(source)) {
             throw new IncompatibleMigrationSourceException("Source is not compatible with the targeted Bloom filter");
         }
-        
+
         // Migrate CBF and FBF
         super.migrateFrom(source);
-    
+
         ExpiringBloomFilter<T> ebfSource = (ExpiringBloomFilter<T>) source;
         ebfSource.disableExpiration();
 
