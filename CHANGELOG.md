@@ -1,3 +1,8 @@
+## 2.2.1
+
+* Java 8 compatibility
+* Some minor changes in the build process
+
 ## 2.2.0
 
 * Implement soft clear for expiring Bloom filter to clear the filter without deleting any TTLs
