@@ -39,8 +39,8 @@ group = "com.baqend"
 
 distTar.compression "GZIP"
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '2.3'
+wrapper {
+    gradleVersion = '5.1.1'
 }
 
 task javadocJar(type: Jar) {
