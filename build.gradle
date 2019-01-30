@@ -31,6 +31,10 @@ dependencies {
     )
 }
 
+// NO TOUCHING! REQUIRED BY STORM
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
 group = "com.baqend"
 
 distTar.compression "GZIP"
