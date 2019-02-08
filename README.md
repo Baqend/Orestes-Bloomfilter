@@ -358,8 +358,7 @@ The Redis-backed Bloom filters are concurrency/thread-safe at the backend as-wel
 The Redis-backed Bloom filters save their metadata (like number and kind of hash functions) in Redis, too. Thus other clients can easily to connect to a Redis instance that already holds a Bloom filter with a given name and specify whether to use or overwrite it.
 
 ## Redis Counting Bloom Filters
-The Redis Counting Bloom filter saves the counters as separate counters in a compact [Redis hash](http://redis
-.io/commands#hash) and keeps the materialized flat Bloom filter as a bit array. It is compatatible with Redis 2.4 or 
+The Redis Counting Bloom filter saves the counters as separate counters in a compact [Redis hash](http://redis.io/commands#hash) and keeps the materialized flat Bloom filter as a bit array. It is compatatible with Redis 2.4 or 
 higher.
 
 ```java
