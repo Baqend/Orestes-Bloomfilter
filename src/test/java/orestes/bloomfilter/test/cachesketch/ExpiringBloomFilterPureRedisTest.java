@@ -1,6 +1,7 @@
 package orestes.bloomfilter.test.cachesketch;
 
 import orestes.bloomfilter.FilterBuilder;
+import orestes.bloomfilter.HashProvider;
 import orestes.bloomfilter.cachesketch.ExpiringBloomFilterPureRedis;
 import orestes.bloomfilter.redis.helper.RedisKeys;
 import orestes.bloomfilter.redis.helper.RedisPool;
@@ -199,6 +200,32 @@ public class ExpiringBloomFilterPureRedisTest {
         assertFalse(bloomFilter.isKnown("hello"));
         assertFalse(bloomFilter.isCached("hello"));
         assertNull(bloomFilter.getRemainingTTL("hello", TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void testUpdateConfig() throws Exception {
+        FilterBuilder builder = new FilterBuilder();
+        builder
+                .name(bloomFilter.config().name())
+                .gracePeriod(1337)
+                .falsePositiveProbability(1337)
+                .size(1337)
+                .hashes(1337)
+                .expectedElements(1337)
+                .countingBits(1337)
+                .hashFunction(HashProvider.HashMethod.CRC32);
+
+        ExpiringBloomFilterPureRedis bf = new ExpiringBloomFilterPureRedis(builder);
+
+        assertNotEquals(bf.config().gracePeriod(), bloomFilter.config().gracePeriod());
+        assertEquals(1337, bf.config().gracePeriod());
+
+        assertEquals(bf.config().falsePositiveProbability(), bloomFilter.config().falsePositiveProbability(), 0);
+        assertEquals(bf.config().size(), bloomFilter.config().size());
+        assertEquals(bf.config().hashes(), bloomFilter.config().hashes());
+        assertEquals(bf.config().expectedElements(), bloomFilter.config().expectedElements());
+        assertEquals(bf.config().countingBits(), bloomFilter.config().countingBits());
+        assertEquals(bf.config().hashMethod().name(), bloomFilter.config().hashMethod().name());
     }
 
     private void assertExists(String key) {
