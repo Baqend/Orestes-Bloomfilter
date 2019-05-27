@@ -1,3 +1,7 @@
+## 2.2.2
+
+* Apply secure config values to existing bloom filter
+
 ## 2.2.1
 
 * Java 8 compatibility
