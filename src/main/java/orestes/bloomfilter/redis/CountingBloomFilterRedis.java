@@ -32,11 +32,13 @@ public class CountingBloomFilterRedis<T> implements CountingBloomFilter<T>, Migr
 
 
     public CountingBloomFilterRedis(FilterBuilder builder) {
+        FilterBuilder updateBuilder = builder.clone();
         builder.complete();
+
         this.keys = new RedisKeys(builder.name());
         this.pool = builder.pool();
         this.bloom = new RedisBitSet(pool, keys.BITS_KEY, builder.size());
-        this.config = keys.persistConfig(pool, builder);
+        this.config = keys.persistConfig(pool, updateBuilder);
         if (builder.overwriteIfExists()) {
             this.clear();
         }

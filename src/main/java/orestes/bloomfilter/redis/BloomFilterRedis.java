@@ -21,23 +21,21 @@ import java.util.List;
  * @param <T> The type of the containing elements
  */
 public class BloomFilterRedis<T> implements BloomFilter<T> {
-    private final RedisKeys keys;
     private final RedisPool pool;
     private final RedisBitSet bloom;
     private final FilterBuilder config;
 
-
     public BloomFilterRedis(FilterBuilder builder) {
+        FilterBuilder updateBuilder = builder.clone();
         builder.complete();
-        this.keys = new RedisKeys(builder.name());
+
+        RedisKeys keys = new RedisKeys(builder.name());
         this.pool = builder.pool();
         this.bloom = new RedisBitSet(pool, keys.BITS_KEY, builder.size());
-        this.config = keys.persistConfig(pool, builder);
+        this.config = keys.persistConfig(pool, updateBuilder);
         if (builder.overwriteIfExists())
             this.clear();
     }
-
-
 
     @Override
     public FilterBuilder config() {

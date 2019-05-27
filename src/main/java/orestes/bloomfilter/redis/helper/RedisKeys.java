@@ -38,9 +38,11 @@ public class RedisKeys {
             //Retry on concurrent changes
             while (newConfig == null) {
                 if (!builder.overwriteIfExists() && jedis.exists(builder.name())) {
-                    newConfig = this.parseConfigHash(jedis.hgetAll(builder.name()), builder.name(), pool);
+                    newConfig = this.applyRedisConfigMap(jedis.hgetAll(builder.name()), builder, pool);
+                    newConfig.complete();
                 } else {
-                    Map<String, String> hash = this.buildConfigHash(builder);
+                    builder.complete();
+                    Map<String, String> hash = this.buildRedisConfigMap(builder);
                     jedis.watch(builder.name());
                     Transaction t = jedis.multi();
                     hash.forEach((k, v) -> t.hset(builder.name(), k, v));
@@ -53,7 +55,7 @@ public class RedisKeys {
         });
     }
 
-    public Map<String, String> buildConfigHash(FilterBuilder config) {
+    private Map<String, String> buildRedisConfigMap(FilterBuilder config) {
         Map<String, String> map = new HashMap<>();
         map.put(P_KEY, String.valueOf(config.falsePositiveProbability()));
         map.put(M_KEY, String.valueOf(config.size()));
@@ -64,9 +66,7 @@ public class RedisKeys {
         return map;
     }
 
-    public FilterBuilder parseConfigHash(Map<String, String> map, String name, RedisPool pool) {
-        FilterBuilder config = new FilterBuilder();
-        config.name(name);
+    private FilterBuilder applyRedisConfigMap(Map<String, String> map, FilterBuilder config, RedisPool pool) {
         config.pool(pool);
         config.falsePositiveProbability(Double.valueOf(map.get(P_KEY)));
         config.size(Integer.valueOf(map.get(M_KEY)));
@@ -74,7 +74,6 @@ public class RedisKeys {
         config.expectedElements(Integer.valueOf(map.get(N_KEY)));
         config.countingBits(Integer.valueOf(map.get(C_KEY)));
         config.hashFunction(HashMethod.valueOf(map.get(HASH_METHOD_KEY)));
-        config.complete();
         return config;
     }
 
