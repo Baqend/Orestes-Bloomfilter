@@ -33,9 +33,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
      * @param element the element (or its id)
      * @return <code>true</code> if the element is known; <code>false</code> else
      */
-    default boolean isKnown(T element) {
-        throw new UnsupportedOperationException();
-    }
+    boolean isKnown(T element);
 
     /**
      * Determines whether each of the given input elements is known and returns a list of boolean values where each
@@ -47,9 +45,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
      * @return a list of boolean values indicating whether each of the input elements is known (<code>true</code>) or
      * not (<code>false</code>)
      */
-    default List<Boolean> isKnown(List<T> elements){
-        return elements.stream().map(this::isKnown).collect(Collectors.toList());
-    }
+    List<Boolean> isKnown(List<T> elements);
 
     /**
      * Return the expiration timestamp of an object
