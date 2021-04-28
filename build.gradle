@@ -1,13 +1,13 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
-    id 'com.jfrog.bintray' version "1.1"
     id 'net.researchgate.release' version '2.6.0'
 }
 
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'java-library-distribution'
+apply plugin: 'maven-publish'
 
 repositories {
     mavenCentral()
@@ -85,26 +85,23 @@ release {
     }
 }
 
-afterReleaseBuild.dependsOn bintrayUpload
+afterReleaseBuild.dependsOn publish
 
-bintray {
-    user = project.properties.get('bintray_user')
-    key = project.properties.get('bintray_api_key')
-
-    configurations = ['archives'] //When uploading configuration files
-    dryRun = false //Whether to run this as dry-run, without deploying
-    publish = true //If version should be auto published after an upload
-    pkg {
-        repo = 'maven'
-        userOrg = 'baqend' //An optional organization name when the repo belongs to one of the user's orgs
-        name = 'Orestes-Bloomfilter'
-        desc = 'Library of different Bloom filters in Java with optional Redis-backing, counting and many hashing options'
-        websiteUrl = 'https://github.com/Baqend/Orestes-Bloomfilter'
-        issueTrackerUrl = 'https://github.com/Baqend/Orestes-Bloomfilter/issues'
-        vcsUrl = 'git@github.com:Baqend/Orestes-Bloomfilter.git'
-        licenses = ['MIT']
-        labels = ['bloomfilter', 'redis', 'memory', 'counting bloomfilter']
-        publicDownloadNumbers = true
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/baqend/orestes-bloomfilter")
+            credentials {
+                username = project.properties.get('github_user')
+                password = project.properties.get('github_password')
+            }
+        }
+    }
+    publications {
+        gpr(MavenPublication) {
+            from(components.java)
+        }
     }
 }
 
