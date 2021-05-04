@@ -1,9 +1,5 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 
-plugins {
-    id 'net.researchgate.release' version '2.6.0'
-}
-
 buildscript {
     repositories {
         maven {
@@ -13,6 +9,10 @@ buildscript {
     dependencies {
         classpath "io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.30.0"
     }
+}
+
+plugins {
+    id 'net.researchgate.release' version '2.6.0'
 }
 
 apply plugin: 'java'
