@@ -4,6 +4,17 @@ plugins {
     id 'net.researchgate.release' version '2.6.0'
 }
 
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.30.0"
+    }
+}
+
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'java-library-distribution'
