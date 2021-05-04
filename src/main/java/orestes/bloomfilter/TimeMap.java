@@ -15,7 +15,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 /**
  * Created on 24.11.17.
  *
- * @author Konstantin Simon Maria Möllers
+ * @author Konstantin Simon Maria Moellers
  */
 public final class TimeMap<T> implements Map<T, Long> {
     private static final Clock clock = Clock.systemUTC();
@@ -50,7 +50,7 @@ public final class TimeMap<T> implements Map<T, Long> {
     public Long get(Object key) {
         return map.get(key);
     }
-    
+
     public Long get(Object key, TimeUnit timeUnit) {
         Long sourceDuration = get(key);
         return sourceDuration == null ? null : timeUnit.convert(sourceDuration, MILLISECONDS);

@@ -173,7 +173,7 @@ public class RedisBitSet extends BitSet {
      * Tests whether the provided bit positions are all set.
      *
      * @param positions the positions to test
-     * @return <tt>true</tt> if all positions are set
+     * @return <code>true</code> if all positions are set
      */
     public boolean isAllSet(int... positions) {
         Boolean[] results = getBulk(positions);

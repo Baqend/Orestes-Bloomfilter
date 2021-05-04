@@ -13,7 +13,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 /**
  * Created on 04.10.17.
  *
- * @author Konstantin Simon Maria Möllers
+ * @author Konstantin Simon Maria Moellers
  */
 public interface ExpirationQueue<T> extends Iterable<T>, ExpirationMapAware<T> {
     /**

@@ -8,6 +8,8 @@ apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'java-library-distribution'
 apply plugin: 'maven-publish'
+apply plugin: 'signing'
+apply plugin: 'io.codearte.nexus-staging'
 
 repositories {
     mavenCentral()
@@ -36,6 +38,7 @@ sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
 
 group = "com.baqend"
+archivesBaseName = "bloom-filter"
 
 distTar.compression "GZIP"
 
@@ -85,24 +88,10 @@ release {
     }
 }
 
-afterReleaseBuild.dependsOn publish
+afterReleaseBuild.dependsOn uploadArchives
 
-publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/baqend/orestes-bloomfilter")
-            credentials {
-                username = project.properties.get('github_user')
-                password = project.properties.get('github_password')
-            }
-        }
-    }
-    publications {
-        gpr(MavenPublication) {
-            from(components.java)
-        }
-    }
+signing {
+    sign configurations.archives
 }
 
 task startRedis() {
@@ -136,7 +125,7 @@ task startRedis() {
 }
 
 task stopRedis() {
-    
+
     doLast {
         try {
             sh "docker rm -f redis-sentinel1 redis-sentinel2 redis-sentinel3 redis-node1 redis-node2 redis-node3 redis-master redis-slave"
@@ -164,3 +153,52 @@ def sh(command, workingDir = buildDir, returnOutput = false) {
         return process.text
 }
 
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: findProperty('sonatype_user'), password: findProperty('sonatype_password'))
+            }
+
+            snapshotRepository(url: "https://s01.oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: findProperty('sonatype_user'), password: findProperty('sonatype_password'))
+            }
+
+            pom.project {
+                name 'Bloom Filter'
+                packaging 'jar'
+                description 'A bloom filter implementation in java'
+                url 'https://github.com/Baqend/Orestes-Bloomfilter'
+
+                scm {
+                    connection 'scm:git:https://github.com/Baqend/Orestes-Bloomfilter'
+                    developerConnection 'scm:git:https://github.com/Baqend/Orestes-Bloomfilter'
+                    url 'https://github.com/Baqend/Orestes-Bloomfilter'
+                }
+
+                licenses {
+                    license {
+                        name 'MIT'
+                        url 'https://github.com/Baqend/Orestes-Bloomfilter/blob/master/LICENSE'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id 'com.baqend'
+                        name 'Baqend GmbH'
+                        email 'info@baqend.com'
+                    }
+                }
+            }
+        }
+    }
+}
+
+nexusStaging {
+    serverUrl = "https://s01.oss.sonatype.org/service/local/"
+    username = findProperty('sonatype_user')
+    password = findProperty('sonatype_password')
+}

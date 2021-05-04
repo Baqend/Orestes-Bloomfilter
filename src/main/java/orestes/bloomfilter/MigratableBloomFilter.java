@@ -4,7 +4,7 @@ package orestes.bloomfilter;
  * A Bloom filter that can be migrated to from another implementation.
  *
  * @author Erik Witt
- * @author Konstantin Simon Maria Möllers
+ * @author Konstantin Simon Maria Moellers
  */
 public interface MigratableBloomFilter<U> {
 

@@ -210,7 +210,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * would have resulted if all elements wer directly inserted in just one bloom filter.
      *
      * @param other the other bloom filter
-     * @return <tt>true</tt> if this bloom filter could successfully be updated through the union with the provided
+     * @return <code>true</code> if this bloom filter could successfully be updated through the union with the provided
      * bloom filter
      */
     boolean union(BloomFilter<T> other);
@@ -222,7 +222,7 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
      * false-positive probability in one of the constituent bloom filters
      *
      * @param other the other bloom filter
-     * @return <tt>true</tt> if this bloom filter could successfully be updated through the intersection with the
+     * @return <code>true</code> if this bloom filter could successfully be updated through the intersection with the
      * provided bloom filter
      */
     boolean intersect(BloomFilter<T> other);

@@ -172,7 +172,7 @@ public class FilterBuilder implements Cloneable, Serializable {
     }
 
     /**
-     * Instructs the FilterBuilder to build a Redis-Backed Bloom filters. <p><b>Default</b>: <tt>false</tt></p>
+     * Instructs the FilterBuilder to build a Redis-Backed Bloom filters. <p><b>Default</b>: <code>false</code></p>
      *
      * @param redisBacked a boolean indicating whether redis should be used
      * @return the modified FilterBuilder (fluent interface)
@@ -233,7 +233,7 @@ public class FilterBuilder implements Cloneable, Serializable {
 
     /**
      * Sets whether any existing Bloom filter with same name should be overwritten in Redis. <p><b>Default</b>:
-     * <tt>false</tt></p>
+     * <code>false</code></p>
      *
      * @param overwrite boolean indicating whether to overwrite any existing filter with the same name
      * @return the modified FilterBuilder (fluent interface)

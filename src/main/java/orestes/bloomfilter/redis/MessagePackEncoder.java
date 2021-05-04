@@ -12,7 +12,7 @@ import java.util.UUID;
 /**
  * Created on 27.11.17.
  *
- * @author Konstantin Simon Maria Möllers
+ * @author Konstantin Simon Maria Moellers
  */
 public class MessagePackEncoder {
     /**

@@ -392,7 +392,7 @@ public class HashProvider {
      * An interface which can be implemented to provide custom hash functions.
      */
     public static interface HashFunction extends Serializable {
-        
+
         /**
          * Computes hash values.
          *
@@ -454,7 +454,7 @@ public class HashProvider {
          */
         Murmur3KirschMitzenmacher(HashProvider::hashCassandra),
         /**
-         * Uses the Fowler–Noll–Vo (FNV) hash function to generate a hash values. It is superior to the standard
+         * Uses the Fowler-Noll-Vo (FNV) hash function to generate a hash values. It is superior to the standard
          * implementation in {@link Arrays} and can be easily implemented in most languages. Hashing then uses the very
          * simple Linear Congruential Generator scheme and the Java initialization constants. This method is intended to
          * be employed if the bloom filter has to be used in a language which doesn't support any of the other hash

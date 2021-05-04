@@ -3,7 +3,7 @@ package orestes.bloomfilter;
 /**
  * Created on 24.11.17.
  *
- * @author Konstantin Simon Maria Möllers
+ * @author Konstantin Simon Maria Moellers
  */
 public interface ExpirationMapAware<T> {
     /**

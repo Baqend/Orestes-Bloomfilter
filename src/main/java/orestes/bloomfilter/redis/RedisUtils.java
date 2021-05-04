@@ -9,7 +9,7 @@ import static java.util.stream.Collectors.toMap;
 /**
  * Created on 22.11.17.
  *
- * @author Konstantin Simon Maria Möllers
+ * @author Konstantin Simon Maria Moellers
  */
 public class RedisUtils {
     private RedisUtils() {
