@@ -1,3 +1,7 @@
+## 2.2.4
+
+* publish to maven central
+
 ## 2.2.2
 
 * Apply secure config values to existing bloom filter
