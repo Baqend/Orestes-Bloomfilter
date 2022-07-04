@@ -1,3 +1,7 @@
+## 2.2.5
+
+* Prevent size of Infinity with full bloom filters
+
 ## 2.2.4
 
 * publish to maven central
