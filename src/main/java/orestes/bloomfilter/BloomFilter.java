@@ -287,7 +287,8 @@ public interface BloomFilter<T> extends Cloneable, Serializable {
     }
 
     public static Double population(BitSet bitSet, FilterBuilder config) {
-        int oneBits = bitSet.cardinality();
+        // limit number of oneBits to size of bitSet - 1 to prevent Math.log(0), below
+        int oneBits = Math.min(bitSet.cardinality(), config.size() - 1);
         return -config.size() / ((double) config.hashes()) * Math.log(1 - oneBits / ((double) config.size()));
     }
 
