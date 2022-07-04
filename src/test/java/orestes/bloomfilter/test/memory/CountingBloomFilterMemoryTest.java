@@ -10,6 +10,8 @@ import org.junit.runners.Parameterized;
 
 import java.lang.reflect.Constructor;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static junit.framework.TestCase.*;
 import static orestes.bloomfilter.test.helper.Helper.*;
@@ -128,6 +130,13 @@ public class CountingBloomFilterMemoryTest {
         assertEquals(2L, (long) countMap2.get(6341));
         assertEquals(2L, (long) countMap2.get(7596));
         assertEquals(1L, (long) countMap2.get(7745));
+    }
+
+    @Test
+    public void testFullPopulation() {
+        cbf.addAll(IntStream.range(0, 100000).mapToObj(String::valueOf).collect(Collectors.toList()));
+        assertFalse(Double.isInfinite(cbf.getEstimatedPopulation()));
+        assertEquals(12221, cbf.getEstimatedPopulation().intValue());
     }
 
     @Test
