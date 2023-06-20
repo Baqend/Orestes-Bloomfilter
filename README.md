@@ -1,7 +1,7 @@
 Bloom filter library
 ================================
 
-[Changelog](CHANGELOG.md) | [Setup](#install) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter)
+[Changelog](CHANGELOG.md) | [Setup](#install) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter) | [Contributing](https://www.notion.so/Coding-Guidelines-161d619cb9d54299bb7717b848140a53)
 
 Version 1 is out with a complete rewrite of almost all functionalities and many new ones.
 
