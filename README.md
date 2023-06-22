@@ -1,7 +1,18 @@
 Bloom filter library
 ================================
 
-[Changelog](CHANGELOG.md) | [Setup](#install) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter) | [Contributing](https://www.notion.so/Coding-Guidelines-161d619cb9d54299bb7717b848140a53)
+[Changelog](CHANGELOG.md) | [Setup](#install) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter)
+
+__Please review the [contribution guide](CONTRIBUTING.md) and the [coding guidelines](https://www.notion.so/Coding-Guidelines-161d619cb9d54299bb7717b848140a53) for information on how to contribute to this project before supplying a merge request.__
+
+## Getting Started
+
+### Rules
+
+* New fixes, features or other code work is done in separate branches. Please refer to the [contribution guide](CONTRIBUTING.md) for branch naming rules and
+  other rules on contributing to this project.
+* Regularily (at leas once a day) ***rebase*** your feature branch onto the master branch. This will make sure, that you're working on the most up-to-date code.
+  The chance for merge conflicts is much lower as well.
 
 Version 1 is out with a complete rewrite of almost all functionalities and many new ones.
 
