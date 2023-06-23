@@ -3,7 +3,7 @@ Bloom filter library
 
 [Changelog](CHANGELOG.md) | [Setup](#install) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter)
 
-__Please review the [contribution guide](CONTRIBUTING.md) and the [coding guidelines](https://www.notion.so/Coding-Guidelines-161d619cb9d54299bb7717b848140a53) for information on how to contribute to this project before supplying a merge request.__
+__Please review the [contribution guide](CONTRIBUTING.md) for information on how to contribute to this project before supplying a merge request.__
 
 ## Getting Started
 

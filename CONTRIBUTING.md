@@ -11,12 +11,12 @@ Feature branch mames
 
 Branches should fulfill the following name scheme:
 
-    <year>/<calendarweek>/<kind>/[<ticket>]_<name_with_underscores>
+    <year>/<calendarweek>/<kind>/<name_with_underscores>
 
 For example:
 
-    2023/44/feat/BAQ-1111_disable_speed_kit_on_many_errors
-    2023/27/fix/BBQ-123_implement_feature_xyz
+    2023/44/feat/disable_speed_kit_on_many_errors
+    2023/27/fix/implement_feature_xyz
 
 Keeping your feature branch up to date
 --------------------------------------
