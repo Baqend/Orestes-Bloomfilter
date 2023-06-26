@@ -3,6 +3,17 @@ Bloom filter library
 
 [Changelog](CHANGELOG.md) | [Setup](#install) | [Docs](#usage) | [Maven Repo](https://bintray.com/baqend/maven/Orestes-Bloomfilter)
 
+__Please review the [contribution guide](CONTRIBUTING.md) for information on how to contribute to this project before supplying a merge request.__
+
+## Getting Started
+
+### Rules
+
+* New fixes, features or other code work is done in separate branches. Please refer to the [contribution guide](CONTRIBUTING.md) for branch naming rules and
+  other rules on contributing to this project.
+* Regularily (at leas once a day) ***rebase*** your feature branch onto the master branch. This will make sure, that you're working on the most up-to-date code.
+  The chance for merge conflicts is much lower as well.
+
 Version 1 is out with a complete rewrite of almost all functionalities and many new ones.
 
 This is a set of Bloom filters we implemented as we found all existing open-source implementations to be lacking in various aspects. This library takes some inspiration from the [simple Bloom filter implementation of Magnus Skjegstad](https://github.com/MagnusS/Java-BloomFilter) and the [Ruby Bloom filters by Ilya Grigorik](https://github.com/igrigorik/bloomfilter-rb).
