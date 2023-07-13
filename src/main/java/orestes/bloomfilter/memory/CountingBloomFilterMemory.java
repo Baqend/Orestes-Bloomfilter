@@ -206,8 +206,19 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
 
     @Override
     public boolean union(BloomFilter<T> other) {
-        //TODO
-        throw new UnsupportedOperationException();
+        if (other instanceof CountingBloomFilter && compatible(other)) {
+            CountingBloomFilter<T> cbf = (CountingBloomFilter<T>) other;
+            // Set filter bits from the other filter. Add counts together and cap them at the maximum we can fit in the
+            // counting bits.
+            int maxVal = (1 << config.countingBits()) - 1;
+            cbf.getCountMap().forEach((position, otherCount) -> {
+                long sum = count(position) + otherCount;
+                set(position, Math.min(sum, maxVal));
+                filter.setBit(position, sum > 0);
+            });
+            return true;
+        }
+        return false;
     }
 
     @Override
