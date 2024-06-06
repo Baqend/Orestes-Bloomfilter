@@ -12,9 +12,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Clock;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -63,7 +61,7 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
         try (Jedis jedis = pool.getResource()) {
             Double score = jedis.zscore(keys.TTL_KEY, element.toString());
             if (score == null) {
-                return  false;
+                return false;
             }
 
             long endOfGracePeriod = now() - config.gracePeriod();
@@ -89,6 +87,30 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
     }
 
     @Override
+    public List<Boolean> isKnown(Map<T, Long> elementGracePeriod) {
+        try (Jedis jedis = pool.getResource()) {
+            List<Long> endOfGracePeriods = new ArrayList<>();
+            List<Boolean> results = new ArrayList<>();
+            // Retrieve scores from Redis
+            Pipeline pipe = jedis.pipelined();
+            elementGracePeriod.keySet().forEach(it -> pipe.zscore(keys.TTL_KEY, it.toString()));
+            List<Object> scores = pipe.syncAndReturnAll();
+
+            // Calculate the endOfGracePeriod for every configured grace period
+            Long currentTimestamp = now();
+            elementGracePeriod.values().forEach(gracePeriod -> endOfGracePeriods.add(currentTimestamp - gracePeriod));
+
+            // Calculate the results for known items
+            for (int i = 0; i < scores.size(); i++) {
+                results.add(scores.get(i) != null && ((Double) scores.get(i)).longValue() > endOfGracePeriods.get(i));
+
+            }
+            return results;
+        }
+
+    }
+
+    @Override
     public List<Long> getRemainingTTLs(List<T> elements, TimeUnit unit) {
         try (Jedis jedis = pool.getResource()) {
             // Retrieve scores from Redis
@@ -98,10 +120,10 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
 
             // Convert to desired time
             return scores
-                .stream()
-                .map(score -> (Double) score)
-                .map(score -> scoreToRemainingTTL(score, unit))
-                .collect(Collectors.toList());
+                    .stream()
+                    .map(score -> (Double) score)
+                    .map(score -> scoreToRemainingTTL(score, unit))
+                    .collect(Collectors.toList());
         }
     }
 
@@ -167,11 +189,11 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
         ebfSource.disableExpiration();
 
         CompletableFuture.allOf(
-            // Migrate TTL list
-            CompletableFuture.runAsync(() -> setTimeToLiveMap(ebfSource.getTimeToLiveMap())),
+                // Migrate TTL list
+                CompletableFuture.runAsync(() -> setTimeToLiveMap(ebfSource.getTimeToLiveMap())),
 
-            // Migrate queue
-            CompletableFuture.runAsync(() -> setExpirationMap(ebfSource.getExpirationMap()))
+                // Migrate queue
+                CompletableFuture.runAsync(() -> setExpirationMap(ebfSource.getExpirationMap()))
         ).join();
 
         ebfSource.enableExpiration();

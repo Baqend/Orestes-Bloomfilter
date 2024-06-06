@@ -3,6 +3,7 @@ package orestes.bloomfilter.cachesketch;
 import orestes.bloomfilter.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -47,6 +48,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
      */
     List<Boolean> isKnown(List<T> elements);
 
+    List<Boolean> isKnown(Map<T, Long> elementGracePeriod);
     /**
      * Return the expiration timestamp of an object
      *
