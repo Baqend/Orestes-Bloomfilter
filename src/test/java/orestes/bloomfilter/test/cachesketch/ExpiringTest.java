@@ -39,9 +39,9 @@ public class ExpiringTest {
     @Parameters(name = "Expiring Bloom Filter test {0}")
     public static Collection<Object[]> data() {
         Object[][] data = {
-            {TYPE_MEMORY_ONLY},
-            {TYPE_REDIS_MEMORY},
-            {TYPE_REDIS_ONLY},
+                {TYPE_MEMORY_ONLY},
+                {TYPE_REDIS_MEMORY},
+                {TYPE_REDIS_ONLY},
         };
 
         return Arrays.asList(data);
@@ -248,7 +248,7 @@ public class ExpiringTest {
         createFilter(b);
         filter.reportRead("1", 50, MILLISECONDS);
         filter.reportRead("2", 50, MILLISECONDS);
-        filter.reportWrites(Arrays.asList("1","2"));
+        filter.reportWrites(Arrays.asList("1", "2"));
         assertTrue(filter.contains("1"));
         assertTrue(filter.contains("2"));
     }
@@ -378,6 +378,109 @@ public class ExpiringTest {
         assertFalse(filter.isKnown(key1));
         assertFalse(filter.isKnown(key2));
         assertFalse(filter.isKnown(key3));
+    }
+
+    @Test
+    public void testIsKnownMap() throws InterruptedException {
+        FilterBuilder b = new FilterBuilder(100000, 0.05);
+        createFilter(b);
+        Map<String, Long> keysGracePeriodMap = new HashMap<>();
+
+        String key1 = "key1";
+        String key2 = "key2";
+        String key3 = "key3";
+
+        Long gp1 = 2_000L;
+        Long gp2 = 3_000L;
+        Long gp3 = 4_000L;
+
+        keysGracePeriodMap.put(key1, gp1);
+        filter.reportRead(key1, 1, SECONDS);
+        keysGracePeriodMap.put(key2, gp2);
+        filter.reportRead(key2, 2, SECONDS);
+        keysGracePeriodMap.put(key3, gp3);
+        filter.reportRead(key3, 3, SECONDS);
+
+        // initially: all cached, all known
+        assertTrue(filter.isCached(key1));
+        assertTrue(filter.isCached(key2));
+        assertTrue(filter.isCached(key3));
+        assertEquals(Arrays.asList(true, true, true), new ArrayList<>(filter.isKnown(keysGracePeriodMap).values()));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_100);
+
+
+        // after 1100 ms: key1 expired, all known
+        assertFalse(filter.isCached(key1));
+        assertTrue(filter.isCached(key2));
+        assertTrue(filter.isCached(key3));
+        assertEquals(Arrays.asList(true, true, true), new ArrayList<>(filter.isKnown(keysGracePeriodMap).values()));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 2100 ms: key1/key2 expired, all known
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertTrue(filter.isCached(key3));
+        assertEquals(Arrays.asList(true, true, true), new ArrayList<>(filter.isKnown(keysGracePeriodMap).values()));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 3100 ms: all expired, key 1 unknown
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertFalse(filter.isCached(key3));
+        assertEquals(Arrays.asList(false, true, true), new ArrayList<>(filter.isKnown(keysGracePeriodMap).values()));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 4100 ms: all expired, key1 unknown
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertFalse(filter.isCached(key3));
+        assertEquals(Arrays.asList(false, true, true), new ArrayList<>(filter.isKnown(keysGracePeriodMap).values()));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 5100 ms: all expired, key1/key2 unknown
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertFalse(filter.isCached(key3));
+        assertEquals(Arrays.asList(false, false, true), new ArrayList<>(filter.isKnown(keysGracePeriodMap).values()));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 6100 ms: all expired, key1/key2 unknown
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertFalse(filter.isCached(key3));
+        assertEquals(Arrays.asList(false, false, true), new ArrayList<>(filter.isKnown(keysGracePeriodMap).values()));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
+
+        // after 7100 ms: all expired, all unknown
+        assertFalse(filter.isCached(key1));
+        assertFalse(filter.isCached(key2));
+        assertFalse(filter.isCached(key3));
+        assertEquals(Arrays.asList(false, false, false), new ArrayList<>(filter.isKnown(keysGracePeriodMap).values()));
+        assertTrue(filter.isKnown(key1));
+        assertTrue(filter.isKnown(key2));
+        assertTrue(filter.isKnown(key3));
+        Thread.sleep(1_000);
     }
 
     @Test
