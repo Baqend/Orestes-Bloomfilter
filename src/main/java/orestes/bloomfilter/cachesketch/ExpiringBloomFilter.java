@@ -48,7 +48,7 @@ public interface ExpiringBloomFilter<T> extends CountingBloomFilter<T>, TimeToLi
      */
     List<Boolean> isKnown(List<T> elements);
 
-    List<Boolean> isKnown(Map<T, Long> elementGracePeriod);
+    Map<T,Boolean> isKnown(Map<T, Long> elementGracePeriod);
     /**
      * Return the expiration timestamp of an object
      *
