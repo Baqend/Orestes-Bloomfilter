@@ -87,22 +87,24 @@ public abstract class AbstractExpiringBloomFilterRedis<T> extends CountingBloomF
     }
 
     @Override
-    public List<Boolean> isKnown(Map<T, Long> elementGracePeriod) {
+    public Map<T, Boolean> isKnown(Map<T, Long> elementGracePeriod) {
         try (Jedis jedis = pool.getResource()) {
+            List<T> elements = new ArrayList<>(elementGracePeriod.keySet());
             List<Long> endOfGracePeriods = new ArrayList<>();
-            List<Boolean> results = new ArrayList<>();
+            Map<T, Boolean> results = new HashMap<>();
             // Retrieve scores from Redis
             Pipeline pipe = jedis.pipelined();
-            elementGracePeriod.keySet().forEach(it -> pipe.zscore(keys.TTL_KEY, it.toString()));
+            elements.forEach(it -> pipe.zscore(keys.TTL_KEY, it.toString()));
             List<Object> scores = pipe.syncAndReturnAll();
 
             // Calculate the endOfGracePeriod for every configured grace period
-            Long currentTimestamp = now();
-            elementGracePeriod.values().forEach(gracePeriod -> endOfGracePeriods.add(currentTimestamp - gracePeriod));
+            elementGracePeriod.values().forEach(gracePeriod -> endOfGracePeriods.add(now() - gracePeriod));
 
             // Calculate the results for known items
             for (int i = 0; i < scores.size(); i++) {
-                results.add(scores.get(i) != null && ((Double) scores.get(i)).longValue() > endOfGracePeriods.get(i));
+                results.put(
+                        elements.get(i),
+                        scores.get(i) != null && ((Double) scores.get(i)).longValue() > endOfGracePeriods.get(i));
 
             }
             return results;
