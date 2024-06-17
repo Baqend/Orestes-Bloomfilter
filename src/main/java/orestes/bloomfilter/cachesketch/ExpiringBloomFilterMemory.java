@@ -8,7 +8,10 @@ import orestes.bloomfilter.TimeMap;
 import orestes.bloomfilter.cachesketch.ExpirationQueue.ExpiringItem;
 import orestes.bloomfilter.memory.CountingBloomFilter32;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -75,10 +78,27 @@ public class ExpiringBloomFilterMemory<T> extends CountingBloomFilter32<T> imple
         long ttl = ttlMap.get(element) - ttlMap.now() + config.gracePeriod();
         return ttl > 0;
     }
-    
+
     @Override
-    public List<Boolean> isKnown(List<T> elements){
+    public List<Boolean> isKnown(List<T> elements) {
         return elements.stream().map(this::isKnown).collect(Collectors.toList());
+    }
+
+
+    @Override
+    public Map<T, Boolean> isKnown(Map<T, Long> elementGracePeriod) {
+        Map<T, Boolean> results = new HashMap<>();
+        for (T element : elementGracePeriod.keySet()) {
+            if (!ttlMap.containsKey(element)) {
+                results.put(element, false);
+                continue;
+            }
+
+            long ttl = ttlMap.get(element) - ttlMap.now() + elementGracePeriod.get(element);
+            results.put(element, ttl > 0);
+        }
+
+        return results;
     }
 
     @Override
