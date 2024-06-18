@@ -1,3 +1,7 @@
+## 2.3.0
+
+* Add `isKnown` method which takes and returns a map of entries to check against the bloom filter
+
 ## 2.2.5
 
 * Prevent size of Infinity with full bloom filters
