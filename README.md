@@ -81,9 +81,7 @@ There are a many things we addressed as we sorely missed them in other implement
 
 <a name="install"></a>
 ## Getting started
-
-
-New: The Bloom filter repository is now hosted on [JCenter](https://bintray.com/baqend/maven/Orestes-Bloomfilter/view).
+*New*: The Bloom filter repository is now hosted on [JCenter](https://bintray.com/baqend/maven/Orestes-Bloomfilter/view).
 
 Java 8 is required. The recommended way to include the Bloom filter is via the Maven repo (works for Gradle, Ivy, etc., 
 too):
