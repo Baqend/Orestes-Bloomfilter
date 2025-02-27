@@ -459,19 +459,7 @@ Moreover, the Memory Counting Bloom filter can also be serialized and deserializ
 ## Hash Functions
 There is a detailed description of the available hash functions in the Javadocs of the HashMethod enum. Hash uniformity (i.e. all bits of the Bloom filter being equally likely) is of great importance for the false positive rate. But there is also an inherent trade-off between hash uniformity and speed of computation. For instance cryptographic hash functions have very good distribution properties but are very CPU intensive. Pseudorandom number generators like the [linear congruential generator](http://en.wikipedia.org/wiki/Linear_congruential_generator) are easy to compute but do not have perfectly random outputs but rather certain distribution patterns which for some inputs are notable and for others are negligible. The implementations of all hash functions are part of the BloomFilter class and use tricks like [rejection sampling](https://en.wikipedia.org/wiki/Rejection_sampling) to get the best possible distribution for the respective hash function type.
 
-Here is a Box plot overview of how good the different hash functions perform (Intel i7 with 4 cores, 16 GB RAM). The configuration is 100000 hashes using k = 10, m = 1000 averaged over 20 runs. 
-
-<img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/hash-speed.png"/> 
-
 Speed of computation doesn't tell anything about the quality of hash values. A good hash function is one, which has a discrete uniform distribution of outputs. That means that every bit of the Bloom filter's bit vector is equally likely to bet set. To measure if and how good the hash functions follow a uniform distribution [goodness of fit Chi-Square hypothesis tests](http://en.wikipedia.org/wiki/Pearson%27s_chi-squared_test) are the mathematical instrument of choice.
-
-Here are some of the results. The inputs are random strings. The p-value is the probability of getting a statistical result that is at least as extreme as the obtained result. So the usual way of hypothesis testing would be rejecting the null hypothesis ("the hash hash function is uniformly distributed") if the p-value is smaller than 0.05. We did 100 Chi-Square Tests:
-
-<img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/chi-strings.png"/>
-
-If about 5 runs fail the test an 95 pass it, we can be very confident that the hash function is indeed uniformly distributed. For random inputs it is relatively easy though, so we also tested other input distribution, e.g. increasing integers:
-
-<img src="https://orestes-bloomfilter-images.s3-external-3.amazonaws.com/chi-ints.png"/>
 
 Here the LCG is too evenly distributed (due to its modulo arithmetics) which is a good thing here, but shows, that LCGs do not have a random uniform distribution.
 
