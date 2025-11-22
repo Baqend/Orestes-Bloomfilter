@@ -29,6 +29,12 @@ import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class ExpiringTest {
+    // Ensure Testcontainers Redis is started and system properties are set for Redis-backed variants
+    static {
+        try {
+            orestes.bloomfilter.test.helper.Helper.getPool();
+        } catch (Throwable ignore) {}
+    }
     private static final String TYPE_MEMORY_ONLY = "in-memory";
     private static final String TYPE_REDIS_MEMORY = "with Redis counts and in-memory queue";
     private static final String TYPE_REDIS_ONLY = "with Redis counts and Redis queue";
