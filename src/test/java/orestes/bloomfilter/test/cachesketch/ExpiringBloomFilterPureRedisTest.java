@@ -21,6 +21,12 @@ import static java.lang.Thread.sleep;
  * @author Konstantin Simon Maria Möllers
  */
 public class ExpiringBloomFilterPureRedisTest {
+    // Ensure Testcontainers Redis is started and system properties are set
+    static {
+        try {
+            orestes.bloomfilter.test.helper.Helper.getPool();
+        } catch (Throwable ignore) {}
+    }
     private ExpiringBloomFilterPureRedis bloomFilter;
     private RedisPool redis;
     private RedisKeys keys;

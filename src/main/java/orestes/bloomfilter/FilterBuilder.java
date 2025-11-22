@@ -33,8 +33,8 @@ public class FilterBuilder implements Cloneable, Serializable {
     private Integer countingBits = 16;
     private Double falsePositiveProbability;
     private String name = "";
-    private String redisHost = "localhost";
-    private Integer redisPort = 6379;
+    private String redisHost = System.getProperty("redis.host", "localhost");
+    private Integer redisPort = Integer.getInteger("redis.port", 6379);
     private Integer redisConnections = 10;
     private boolean redisSsl = false;
     private HashMethod hashMethod = HashMethod.Murmur3KirschMitzenmacher;

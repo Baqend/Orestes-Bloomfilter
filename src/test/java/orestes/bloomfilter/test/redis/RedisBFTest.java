@@ -37,13 +37,14 @@ public class RedisBFTest {
 
     @Parameterized.Parameters(name = "Redis Bloom Filter test with {0}")
     public static Collection<Object[]> data() throws Exception {
-        Object[][] data = {
-                {"normal", FilterTypes.NORMAL},
-                {"pool_config", FilterTypes.POOL_CONFIG},
-                {"sentinel_config", FilterTypes.SENTINEL_CONFIG},
-                {"counting", FilterTypes.COUNTING}
-        };
-        return Arrays.asList(data);
+        List<Object[]> list = new ArrayList<>();
+        list.add(new Object[]{"normal", FilterTypes.NORMAL});
+        list.add(new Object[]{"pool_config", FilterTypes.POOL_CONFIG});
+        if (Boolean.getBoolean("enableRedisSentinel")) {
+            list.add(new Object[]{"sentinel_config", FilterTypes.SENTINEL_CONFIG});
+        }
+        list.add(new Object[]{"counting", FilterTypes.COUNTING});
+        return list;
     }
 
     public RedisBFTest(String type, FilterTypes filterTypes) {

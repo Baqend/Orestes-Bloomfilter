@@ -16,6 +16,10 @@ import redis.clients.jedis.Protocol;
 
 import java.util.*;
 
+// Testcontainers Redis support
+import com.redis.testcontainers.RedisContainer;
+import org.testcontainers.utility.DockerImageName;
+
 public class Helper {
     // Jedis automatically translates any address which is known to refer to a local IP to the system's hostname.
     // All Redis servers must listen on all networks (bind 0.0.0.0 in redis conf) to workaround this.
@@ -23,6 +27,30 @@ public class Helper {
     public static int port = 6379;
     public static int slavePort = 6380;
     private static int connections = 10;
+
+    private static RedisContainer redisContainer;
+
+    static {
+        // Start a Redis container for tests unless explicitly disabled
+        String enable = System.getProperty("useTestcontainersRedis", "true");
+        if (Boolean.parseBoolean(enable)) {
+            try {
+                redisContainer = new RedisContainer(DockerImageName.parse("redis:6.2.6"));
+                redisContainer.start();
+                host = redisContainer.getHost();
+                // Map to first exposed port (Redis default 6379)
+                port = redisContainer.getFirstMappedPort();
+                // Use the same port for slave reads by default (no separate replica needed for tests)
+                slavePort = port;
+                // Propagate to system properties so code using FilterBuilder defaults picks up container host/port
+                System.setProperty("redis.host", host);
+                System.setProperty("redis.port", String.valueOf(port));
+            } catch (Throwable t) {
+                // If Docker is unavailable, fall back to defaults (e.g., local Redis)
+                t.printStackTrace();
+            }
+        }
+    }
     
     private static final String sentinelHostName = host;
     private static final String sentinelClusterName = "bf-cluster";

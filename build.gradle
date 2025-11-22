@@ -16,8 +16,9 @@ plugins {
 }
 
 apply plugin: 'java'
-apply plugin: 'maven'
-apply plugin: 'java-library-distribution'
+// The old 'java-library-distribution' plugin is removed in recent Gradle versions.
+// Use the standard 'distribution' plugin instead.
+apply plugin: 'distribution'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 apply plugin: 'io.codearte.nexus-staging'
@@ -27,64 +28,68 @@ repositories {
 }
 
 dependencies {
-    compile(
-        "com.google.code.gson:gson:2.5",
-        "redis.clients:jedis:2.9.0",
-        //"org.apache.commons:commons-pool2:2.2",
-        "org.slf4j:slf4j-api:$slf4jVersion",
-        "org.msgpack:msgpack:0.6.12",
+    implementation(
+            'com.google.code.gson:gson:2.8.9',
+            "redis.clients:jedis:2.9.0",
+            //"org.apache.commons:commons-pool2:2.2",
+            "org.slf4j:slf4j-api:$slf4jVersion",
+            "org.msgpack:msgpack:0.6.12",
     )
-    testCompile(
-        "junit:junit:4.11",
-        "org.apache.commons:commons-math:2.2",
-        "com.google.guava:guava:18.0",
-        "org.apache.commons:commons-lang3:3.0",
-        "io.dropwizard.metrics:metrics-core:3.2.3",
-        "org.slf4j:slf4j-simple:$slf4jVersion",
+    testImplementation(
+            'junit:junit:4.13.1',
+            "org.apache.commons:commons-math:2.2",
+            "com.google.guava:guava:33.4.0-jre",
+            'org.apache.commons:commons-lang3:3.18.0',
+            "io.dropwizard.metrics:metrics-core:3.2.3",
+            "org.slf4j:slf4j-simple:$slf4jVersion",
+            "org.testcontainers:testcontainers:2.0.2",
+            "com.redis:testcontainers-redis:2.2.2"
     )
 }
-
-// NO TOUCHING! REQUIRED BY STORM
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
 
 group = "com.baqend"
-archivesBaseName = "bloom-filter"
+// Set the base archive name in a Gradle 9 compatible way
+base {
+    archivesName = "bloom-filter"
+}
 
-distTar.compression "GZIP"
+// Configure distribution archive compression in a Gradle 9 compatible way
+tasks.named('distTar') {
+    compression = Compression.GZIP
+}
 
 wrapper {
-    gradleVersion = '5.1.1'
+    // Keep aligned with the wrapper in gradle-wrapper.properties if the wrapper task is run
+    gradleVersion = '9.2.1'
 }
 
-task javadocJar(type: Jar) {
-    classifier = 'javadoc'
-    from javadoc
+tasks.register('javadocJar', Jar) {
+    from tasks.named('javadoc')
+    archiveClassifier = 'javadoc'
 }
 
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
+tasks.register('sourcesJar', Jar) {
     from sourceSets.main.allSource
+    archiveClassifier = 'sources'
 }
 
-task redisBloomFilterLatency(type: JavaExec) {
-    classpath = sourceSets.test.runtimeClasspath
-    main = 'performance.RedisBloomFilterThroughput'
-}
-
-task redisMigrationLatency(type: JavaExec) {
-    classpath = sourceSets.test.runtimeClasspath
-    main = 'performance.BloomFilterMigrationThroughput'
-}
 
 test {
-    dependsOn 'startRedis'
-    finalizedBy 'stopRedis'
-    ignoreFailures = project.hasProperty("test.ignoreFailures")? project["test.ignoreFailures"]: false
+    ignoreFailures = project.hasProperty("test.ignoreFailures") ? project["test.ignoreFailures"] : false
 }
 
-artifacts {
-    archives javadocJar, sourcesJar
+// Configure publishing instead of deprecated uploadArchives/archives configuration
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact tasks.named('sourcesJar')
+            artifact tasks.named('javadocJar')
+            groupId = project.group
+            artifactId = (project.extensions.getByType(org.gradle.api.plugins.BasePluginExtension).archivesName.get())
+            version = project.version
+        }
+    }
 }
 
 release {
@@ -92,17 +97,15 @@ release {
     tagCommitMessage = "creating tag:"
     newVersionCommitMessage = "[ci skip] new version commit:"
     buildTasks = ['assemble']
-    git {
-        requireBranch = 'master'
-        pushToRemote = 'origin'
-        pushToCurrentBranch = false
-    }
 }
 
-afterReleaseBuild.dependsOn uploadArchives
+// Use the modern publish task instead of removed uploadArchives
+afterReleaseBuild.dependsOn tasks.named('publish')
 
 signing {
-    sign configurations.archives
+    // Sign the Maven publication instead of the removed 'archives' configuration
+    useGpgCmd()
+    sign publishing.publications
 }
 
 task startRedis() {
@@ -114,11 +117,11 @@ task startRedis() {
     doLast {
         //redis currently does not support a docker setup with docker networks
         //https://github.com/antirez/redis/issues/2527
-        copy { from 'conf' into "$buildDir/node1" filter(ReplaceTokens, tokens:[redis_port:"6385", sentinel_port:"16385", master_port:"6385"]) fileMode 0777 }
-        copy { from 'conf' into "$buildDir/node2" filter(ReplaceTokens, tokens:[redis_port:"6386", sentinel_port:"16386", master_port:"6385"]) fileMode 0777 }
-        copy { from 'conf' into "$buildDir/node3" filter(ReplaceTokens, tokens:[redis_port:"6387", sentinel_port:"16387", master_port:"6385"]) fileMode 0777 }
-        copy { from 'conf' into "$buildDir/master" filter(ReplaceTokens, tokens:[redis_port:"6379", master_port:"6379"]) fileMode 0777 }
-        copy { from 'conf' into "$buildDir/slave" filter(ReplaceTokens, tokens:[redis_port:"6380", master_port:"6379"]) fileMode 0777 }
+        copy { from 'conf' into "$buildDir/node1" filter(ReplaceTokens, tokens: [redis_port: "6385", sentinel_port: "16385", master_port: "6385"]) fileMode 0777 }
+        copy { from 'conf' into "$buildDir/node2" filter(ReplaceTokens, tokens: [redis_port: "6386", sentinel_port: "16386", master_port: "6385"]) fileMode 0777 }
+        copy { from 'conf' into "$buildDir/node3" filter(ReplaceTokens, tokens: [redis_port: "6387", sentinel_port: "16387", master_port: "6385"]) fileMode 0777 }
+        copy { from 'conf' into "$buildDir/master" filter(ReplaceTokens, tokens: [redis_port: "6379", master_port: "6379"]) fileMode 0777 }
+        copy { from 'conf' into "$buildDir/slave" filter(ReplaceTokens, tokens: [redis_port: "6380", master_port: "6379"]) fileMode 0777 }
 
         //sh "docker network create bf-cluster"
         sh "docker run -d -v $buildDir/node1/redis.conf:/redis.conf --name=redis-node1 --net=host redis:$redisVersion redis-server /redis.conf"
@@ -140,10 +143,12 @@ task stopRedis() {
     doLast {
         try {
             sh "docker rm -f redis-sentinel1 redis-sentinel2 redis-sentinel3 redis-node1 redis-node2 redis-node3 redis-master redis-slave"
-        } catch (ignore) {}
+        } catch (ignore) {
+        }
         try {
             //sh "docker network rm bf-cluster bf-standalone"
-        } catch (ignore) {}
+        } catch (ignore) {
+        }
     }
 }
 
@@ -153,7 +158,7 @@ def sh(command, workingDir = buildDir, returnOutput = false) {
     def process = new ProcessBuilder(command.split(" "))
             .directory(file(workingDir))
             .redirectError(ProcessBuilder.Redirect.INHERIT)
-            .redirectOutput(returnOutput? ProcessBuilder.Redirect.PIPE: ProcessBuilder.Redirect.INHERIT)
+            .redirectOutput(returnOutput ? ProcessBuilder.Redirect.PIPE : ProcessBuilder.Redirect.INHERIT)
             .start()
 
     def code = process.waitFor()
@@ -162,50 +167,6 @@ def sh(command, workingDir = buildDir, returnOutput = false) {
 
     if (returnOutput)
         return process.text
-}
-
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-
-            repository(url: "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: findProperty('sonatype_user'), password: findProperty('sonatype_password'))
-            }
-
-            snapshotRepository(url: "https://s01.oss.sonatype.org/content/repositories/snapshots/") {
-                authentication(userName: findProperty('sonatype_user'), password: findProperty('sonatype_password'))
-            }
-
-            pom.project {
-                name 'Bloom Filter'
-                packaging 'jar'
-                description 'A bloom filter implementation in java'
-                url 'https://github.com/Baqend/Orestes-Bloomfilter'
-
-                scm {
-                    connection 'scm:git:https://github.com/Baqend/Orestes-Bloomfilter'
-                    developerConnection 'scm:git:https://github.com/Baqend/Orestes-Bloomfilter'
-                    url 'https://github.com/Baqend/Orestes-Bloomfilter'
-                }
-
-                licenses {
-                    license {
-                        name 'MIT'
-                        url 'https://github.com/Baqend/Orestes-Bloomfilter/blob/master/LICENSE'
-                    }
-                }
-
-                developers {
-                    developer {
-                        id 'com.baqend'
-                        name 'Baqend GmbH'
-                        email 'info@baqend.com'
-                    }
-                }
-            }
-        }
-    }
 }
 
 nexusStaging {
