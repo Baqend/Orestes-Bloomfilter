@@ -205,9 +205,23 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
     }
 
     @Override
-    public boolean union(BloomFilter<T> other) {
-        //TODO
-        throw new UnsupportedOperationException();
+    public synchronized boolean union(BloomFilter<T> other) {
+        if (!(other instanceof CountingBloomFilter) || !compatible(other)) {
+            return false;
+        }
+        @SuppressWarnings("unchecked")
+        CountingBloomFilter<T> cbfOther = (CountingBloomFilter<T>) other;
+
+        // Merge count maps by summing counts per position
+        Map<Integer, Long> merged = new HashMap<>(this.getCountMap());
+        cbfOther.getCountMap().forEach((pos, val) -> merged.merge(pos, val, Long::sum));
+
+        // Apply merged counts to this filter and update binary bloom bits
+        merged.forEach((pos, val) -> {
+            set(pos, val);
+            filter.setBit(pos, val > 0);
+        });
+        return true;
     }
 
     @Override

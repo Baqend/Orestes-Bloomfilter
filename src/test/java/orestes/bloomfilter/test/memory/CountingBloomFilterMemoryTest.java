@@ -236,4 +236,51 @@ public class CountingBloomFilterMemoryTest {
             assertTrue(called[0]);
         }
     }
+
+    @Test
+    public void testUnionSumsCounts() throws Exception {
+        // Create a second compatible counting Bloom filter of the same class and config
+        Constructor<? extends CountingBloomFilterMemory<String>> constructor = cbfClass.getConstructor(FilterBuilder.class);
+        CountingBloomFilterMemory<String> other = constructor.newInstance(
+            configure(1000, 0.02, HashMethod.MD5).countingBits(countingBits)
+        );
+
+        // Add elements with counts to both filters
+        // foo: cbf=3 times, other=2 times => union should estimate 5
+        cbf.add("foo");
+        cbf.add("foo");
+        cbf.add("foo");
+        other.add("foo");
+        other.add("foo");
+
+        // onlyOne: present only in cbf (2 times)
+        cbf.add("onlyOne");
+        cbf.add("onlyOne");
+
+        // onlyTwo: present only in other (3 times)
+        other.add("onlyTwo");
+        other.add("onlyTwo");
+        other.add("onlyTwo");
+
+        // Sanity before union
+        assertEquals(3L, cbf.getEstimatedCount("foo"));
+        assertEquals(2L, other.getEstimatedCount("foo"));
+        assertEquals(2L, cbf.getEstimatedCount("onlyOne"));
+        assertEquals(0L, cbf.getEstimatedCount("onlyTwo"));
+        assertEquals(0L, other.getEstimatedCount("onlyOne"));
+        assertEquals(3L, other.getEstimatedCount("onlyTwo"));
+
+        // Perform union and verify it returns true
+        assertTrue(cbf.union(other));
+
+        // After union, counts should be summed per position
+        assertEquals(5L, cbf.getEstimatedCount("foo"));
+        assertEquals(2L, cbf.getEstimatedCount("onlyOne"));
+        assertEquals(3L, cbf.getEstimatedCount("onlyTwo"));
+
+        // Presence checks according to original Bloom filter union spec
+        assertTrue(cbf.contains("foo"));
+        assertTrue(cbf.contains("onlyOne"));
+        assertTrue(cbf.contains("onlyTwo"));
+    }
 }
