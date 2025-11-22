@@ -283,4 +283,46 @@ public class CountingBloomFilterMemoryTest {
         assertTrue(cbf.contains("onlyOne"));
         assertTrue(cbf.contains("onlyTwo"));
     }
+
+    @Test
+    public void testIntersectionMinsCounts() throws Exception {
+        // Create a second compatible counting Bloom filter of the same class and config
+        Constructor<? extends CountingBloomFilterMemory<String>> constructor = cbfClass.getConstructor(FilterBuilder.class);
+        CountingBloomFilterMemory<String> other = constructor.newInstance(
+            configure(1000, 0.02, HashMethod.MD5).countingBits(countingBits)
+        );
+
+        // Prepare counts in both filters
+        // foo: cbf=3 times, other=2 times => intersection should estimate 2
+        cbf.add("foo");
+        cbf.add("foo");
+        cbf.add("foo");
+        other.add("foo");
+        other.add("foo");
+
+        // onlyOne: present only in cbf (2 times)
+        cbf.add("onlyOne");
+        cbf.add("onlyOne");
+
+        // onlyTwo: present only in other (3 times)
+        other.add("onlyTwo");
+        other.add("onlyTwo");
+        other.add("onlyTwo");
+
+        long fooMinBefore = Math.min(cbf.getEstimatedCount("foo"), other.getEstimatedCount("foo"));
+        long onlyOneMinBefore = Math.min(cbf.getEstimatedCount("onlyOne"), other.getEstimatedCount("onlyOne"));
+        long onlyTwoMinBefore = Math.min(cbf.getEstimatedCount("onlyTwo"), other.getEstimatedCount("onlyTwo"));
+
+        // Perform intersection and verify it returns true
+        assertTrue(cbf.intersect(other));
+
+        // After intersection, counts should be the per-position minimum -> equals min of estimated counts before
+        assertEquals(fooMinBefore, cbf.getEstimatedCount("foo"));
+        assertEquals(onlyOneMinBefore, cbf.getEstimatedCount("onlyOne"));
+        assertEquals(onlyTwoMinBefore, cbf.getEstimatedCount("onlyTwo"));
+
+        // Presence checks according to original Bloom filter intersection spec
+        assertTrue(cbf.contains("foo"));
+        // We avoid asserting absence for elements only present in one filter due to potential false positives.
+    }
 }

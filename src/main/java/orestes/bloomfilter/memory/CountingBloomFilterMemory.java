@@ -225,9 +225,34 @@ public class CountingBloomFilterMemory<T> implements CountingBloomFilter<T>, Mig
     }
 
     @Override
-    public boolean intersect(BloomFilter<T> other) {
-        //TODO
-        throw new UnsupportedOperationException();
+    public synchronized boolean intersect(BloomFilter<T> other) {
+        if (!(other instanceof CountingBloomFilter) || !compatible(other)) {
+            return false;
+        }
+        @SuppressWarnings("unchecked")
+        CountingBloomFilter<T> cbfOther = (CountingBloomFilter<T>) other;
+
+        // Build the union of positions from both count maps
+        Map<Integer, Long> thisMap = new HashMap<>(this.getCountMap());
+        Map<Integer, Long> otherMap = cbfOther.getCountMap();
+
+        // For every position that appears in either, set to the minimum of both (missing -> 0)
+        // Start with positions from this map
+        thisMap.forEach((pos, valThis) -> {
+            long valOther = otherMap.getOrDefault(pos, 0L);
+            long min = Math.min(valThis, valOther);
+            set(pos, min);
+            filter.setBit(pos, min > 0);
+        });
+        // Handle positions that are only in the other map (not present in this map)
+        otherMap.forEach((pos, valOther) -> {
+            if (!thisMap.containsKey(pos)) {
+                long min = Math.min(0L, valOther); // = 0
+                set(pos, min);
+                filter.setBit(pos, false);
+            }
+        });
+        return true;
     }
 
     @Override
