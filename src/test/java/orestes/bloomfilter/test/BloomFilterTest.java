@@ -43,7 +43,7 @@ public class BloomFilterTest {
     private BloomFilter<String> createFilter(String name, int n, double p, HashMethod hm) {
         if (!redisBacked) {
             if (counting)
-                return createCountingFilter(n, p, hm);
+                return createCountingFilter(n, p, hm, 16);
             else
                 return Helper.createFilter(n, p, hm);
         } else {

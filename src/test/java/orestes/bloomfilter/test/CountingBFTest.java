@@ -10,6 +10,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -18,6 +19,7 @@ import static orestes.bloomfilter.test.helper.Helper.createCountingRedisFilter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.*;
 
 @RunWith(Parameterized.class)
 public class CountingBFTest {
@@ -34,9 +36,9 @@ public class CountingBFTest {
         this.redis = redis;
     }
 
-    private CountingBloomFilter<String> createFilter(String name, int n, double p, HashMethod hm) {
+    private CountingBloomFilter<String> createFilter(String name, int n, double p, HashMethod hm, int countingBits) {
         if (!redis) {
-            return createCountingFilter(n, p, hm);
+            return createCountingFilter(n, p, hm, countingBits);
         } else {
             return createCountingRedisFilter(name, n, p, hm, true);
         }
@@ -75,7 +77,7 @@ public class CountingBFTest {
         double p = 0.01;
         int elements = 100;
         int range = 20;
-        CountingBloomFilter<String> b = createFilter(name + "normal", n, p, HashMethod.MD5);
+        CountingBloomFilter<String> b = createFilter(name + "normal", n, p, HashMethod.MD5, 16);
         Random r = new Random();
         List<String> adds = r.longs().limit(elements).mapToObj(i -> String.valueOf(i % range)).collect(Collectors.toList());
 
@@ -110,7 +112,7 @@ public class CountingBFTest {
     public void countingTest() {
         int n = 5;
         double p = 0.01;
-        CountingBloomFilter<String> b = createFilter(name + "normal", n, p, HashMethod.MD5);
+        CountingBloomFilter<String> b = createFilter(name + "normal", n, p, HashMethod.MD5, 16);
         System.out.println("Size of bloom filter: " + b.getSize() + ", hash functions: " + b.getHashes());
         b.add("Käsebrot");
         b.add("ist");
@@ -142,7 +144,7 @@ public class CountingBFTest {
     public void countingBasics() {
         int n = 2;
         double p = 0.01;
-        CountingBloomFilter<String> b = createFilter(name + "normal", n, p, HashMethod.MD5);
+        CountingBloomFilter<String> b = createFilter(name + "normal", n, p, HashMethod.MD5, 16);
         System.out.println("Size of bloom filter: " + b.getSize() + ", hash functions: " + b.getHashes());
         b.add("Käsebrot");
         assertTrue(b.contains("Käsebrot"));
@@ -158,5 +160,36 @@ public class CountingBFTest {
         CountingBloomFilter<String> bc = b.clone();
         assertTrue(b.equals(bc));
         b.remove();
+    }
+
+    @Test
+    public void testUnion() {
+        assumeTrue(!redis);  // Not implemented for Redis.
+
+        int n = 1000;
+        double p = 0.01;
+        int elements = 100;
+        int range = 20;
+        int c = 3;  // Make it likely we'll get some overflow.
+        Random r = new Random();
+
+        CountingBloomFilter<String> f = createFilter(name + "normal", n, p, HashMethod.MD5, c);
+        CountingBloomFilter<String> f1 = createFilter(name + "normal1", n, p, HashMethod.MD5, c);
+        CountingBloomFilter<String> f2 = createFilter(name + "normal2", n, p, HashMethod.MD5, c);
+
+        // Add some random values. For each value, add it to f and randomly to either f1 or f2.
+        for (int i = 0; i < elements * 2; i++) {
+            String val = String.valueOf(r.nextInt(range));
+            f.add(val);
+            if (ThreadLocalRandom.current().nextBoolean()) {
+                f1.add(val);
+            } else {
+                f2.add(val);
+            }
+        }
+
+        // The union of f1 and f2 should be f.
+        assertTrue(f1.union(f2));
+        assertEquals(f, f1);
     }
 }
