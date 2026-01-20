@@ -28,16 +28,16 @@ repositories {
 
 dependencies {
     compile(
-        "com.google.code.gson:gson:2.5",
+        "com.google.code.gson:gson:2.8.9",
         "redis.clients:jedis:2.9.0",
         //"org.apache.commons:commons-pool2:2.2",
         "org.slf4j:slf4j-api:$slf4jVersion",
         "org.msgpack:msgpack:0.6.12",
     )
     testCompile(
-        "junit:junit:4.11",
+        "junit:junit:4.13.1",
         "org.apache.commons:commons-math:2.2",
-        "com.google.guava:guava:18.0",
+        "com.google.guava:guava:33.4.0-jre",
         "org.apache.commons:commons-lang3:3.0",
         "io.dropwizard.metrics:metrics-core:3.2.3",
         "org.slf4j:slf4j-simple:$slf4jVersion",
